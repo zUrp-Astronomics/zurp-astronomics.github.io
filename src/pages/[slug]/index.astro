@@ -1,0 +1,307 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { products } from '../../data/products';
+
+export function getStaticPaths() {
+  return products.map((p) => ({
+    params: { slug: p.slug },
+    props: { product: p },
+  }));
+}
+
+const { product } = Astro.props;
+
+const statusLabel = {
+  wip: 'WIP',
+  future: 'Future',
+  released: 'Released',
+};
+---
+
+<Layout
+  title={`${product.name} — zUrp Astronomics`}
+  description={product.tagline}
+>
+  <header class="hero">
+    <div class="container">
+      <p class="breadcrumb">
+        <a href="/">zUrp Astronomics</a>
+        <span class="sep">/</span>
+        <span class="current">{product.name}</span>
+      </p>
+
+      <img
+        src="/logo_zUrp-astronomics.png"
+        alt="zUrp Astronomics corporate logotype"
+        class="hero-logo"
+      />
+
+      <h1>{product.name}</h1>
+      <p class="tagline-mono">{product.category.toUpperCase()}</p>
+
+      <div class="badges">
+        <span class={`badge badge-${product.status}`}>{statusLabel[product.status]}</span>
+        <span class="badge badge-license">GPL-3.0</span>
+        {product.basedOn && <span class="badge badge-based">based on {product.basedOn}</span>}
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="lead">
+      <p class="pitch">{product.tagline}</p>
+    </section>
+
+    <section class="description">
+      <h2>About</h2>
+      {product.description.map((paragraph) => <p>{paragraph}</p>)}
+    </section>
+
+    <section class="repo">
+      <h2>Source</h2>
+      <a class="repo-link" href={product.repo}>
+        <span class="repo-icon">⟶</span>
+        <span class="repo-url">{product.repo.replace('https://github.com/', 'github.com/')}</span>
+      </a>
+      <p class="repo-note">
+        Open hardware — BOM, 3D files, firmware, docs. All under GPL-3.0.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <p class="org-link">
+        GitHub · <a href="https://github.com/zUrp-Astronomics">@zUrp-Astronomics</a>
+      </p>
+      <p><em>{product.name} — a product of zUrp Astronomics, a subsidiary of zUrp Industries.</em></p>
+      <p class="legalese">
+        Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
+        Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
+      </p>
+    </div>
+  </footer>
+</Layout>
+
+<style>
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .hero {
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(200, 169, 90, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(74, 111, 165, 0.08) 0%, transparent 50%),
+      var(--bg);
+    padding: 4rem 0 5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .breadcrumb {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+    margin-bottom: 2.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .breadcrumb a {
+    color: var(--fg-muted);
+  }
+
+  .breadcrumb a:hover {
+    color: var(--accent);
+    opacity: 1;
+  }
+
+  .breadcrumb .sep {
+    margin: 0 0.5rem;
+    opacity: 0.5;
+  }
+
+  .breadcrumb .current {
+    color: var(--accent);
+  }
+
+  .hero-logo {
+    max-width: 300px;
+    width: 60%;
+    filter: invert(1) brightness(1.1);
+    margin-bottom: 2rem;
+    opacity: 0.7;
+  }
+
+  .hero h1 {
+    font-size: 3rem;
+    color: var(--fg);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  .tagline-mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-bottom: 2rem;
+  }
+
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .badge-wip {
+    background: rgba(200, 169, 90, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(200, 169, 90, 0.3);
+  }
+
+  .badge-future {
+    background: rgba(138, 147, 163, 0.1);
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+  }
+
+  .badge-released {
+    background: rgba(90, 200, 120, 0.15);
+    color: #5ac878;
+    border: 1px solid rgba(90, 200, 120, 0.3);
+  }
+
+  .badge-license,
+  .badge-based {
+    background: rgba(138, 147, 163, 0.1);
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+  }
+
+  section {
+    padding: 3.5rem 0;
+  }
+
+  section h2 {
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+    color: var(--fg);
+  }
+
+  .lead .pitch {
+    font-size: 1.25rem;
+    color: var(--fg);
+    line-height: 1.5;
+    max-width: 680px;
+    font-weight: 300;
+  }
+
+  .description {
+    border-top: 1px solid var(--border);
+  }
+
+  .description p {
+    color: var(--fg-muted);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin-bottom: 1.2rem;
+    max-width: 680px;
+  }
+
+  .repo {
+    border-top: 1px solid var(--border);
+  }
+
+  .repo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--fg);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+
+  .repo-link:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+
+  .repo-icon {
+    color: var(--accent);
+  }
+
+  .repo-url {
+    font-size: 0.95rem;
+  }
+
+  .repo-note {
+    margin-top: 1rem;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+  }
+
+  footer {
+    background: var(--bg-elev);
+    border-top: 1px solid var(--border);
+    padding: 3rem 0;
+    text-align: center;
+  }
+
+  .footer-inner p {
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .org-link {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.25rem !important;
+  }
+
+  .org-link a {
+    color: var(--accent);
+  }
+
+  .legalese {
+    font-size: 0.8rem !important;
+    color: var(--fg-muted);
+    opacity: 0.7;
+  }
+
+  @media (max-width: 640px) {
+    .hero {
+      padding: 3rem 0 4rem;
+    }
+    .hero h1 {
+      font-size: 2rem;
+    }
+    section {
+      padding: 2.5rem 0;
+    }
+    section h2 {
+      font-size: 1.4rem;
+    }
+    .lead .pitch {
+      font-size: 1.1rem;
+    }
+  }
+</style>

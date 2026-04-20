@@ -1,51 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ProductCard from '../components/ProductCard.astro';
+import { products } from '../data/products';
 
-const products = [
-  {
-    name: 'Kaiju',
-    tagline: 'Fully integrated harmonic alt-az mount for DSLR, like a SeeStar on steroids.',
-    category: 'Mount',
-    repo: 'https://github.com/zUrp-Astronomics/kaiju',
-    status: 'wip' as const,
-  },
-  {
-    name: 'Berserker',
-    tagline: 'State-of-the-art harmonic equatorial mount, 3D printed with CNC machined core.',
-    category: 'Mount',
-    repo: 'https://github.com/zUrp-Astronomics/berserker',
-    status: 'wip' as const,
-  },
-  {
-    name: 'Unicorn',
-    tagline: 'Small but effective controller for astronomical mount, in a Tic-Tac box size.',
-    category: 'Controller',
-    repo: 'https://github.com/zUrp-Astronomics/unicorn',
-    status: 'wip' as const,
-  },
-  {
-    name: 'Kraken',
-    tagline: 'Compact but efficient powerbox, in a Raspberry Pi case.',
-    category: 'Powerbox',
-    repo: 'https://github.com/zUrp-Astronomics/kraken',
-    status: 'wip' as const,
-  },
-  {
-    name: 'Maelstrom',
-    tagline: 'APS-C cooled astronomical camera, with Nikon D40 CCD sensor.',
-    category: 'Camera',
-    repo: 'https://github.com/zUrp-Astronomics/maelstrom',
-    status: 'wip' as const,
-  },
-  {
-    name: 'Wraith',
-    tagline: 'All-in-One mount controller with a Compute Module 5.',
-    category: 'Controller',
-    repo: 'https://github.com/zUrp-Astronomics',
-    status: 'future' as const,
-  },
-];
+const cards = products.map((p) => ({
+  name: p.name,
+  tagline: p.tagline,
+  category: p.category,
+  repo: `/${p.slug}/`,
+  status: p.status,
+}));
 ---
 
 <Layout title="zUrp Astronomics">
@@ -68,7 +32,7 @@ const products = [
     <section class="catalog">
       <h2>Catalog</h2>
       <div class="grid">
-        {products.map((p) => <ProductCard {...p} />)}
+        {cards.map((c) => <ProductCard {...c} />)}
       </div>
     </section>
 

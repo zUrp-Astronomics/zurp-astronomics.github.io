@@ -1,0 +1,220 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProductCard from '../components/ProductCard.astro';
+
+const products = [
+  {
+    name: 'Kaiju',
+    tagline: 'Fully integrated harmonic alt-az mount for DSLR, like a SeeStar on steroids.',
+    category: 'Mount',
+    repo: 'https://github.com/zUrp-Astronomics/kaiju',
+    status: 'wip' as const,
+  },
+  {
+    name: 'Berserker',
+    tagline: 'State-of-the-art harmonic equatorial mount, 3D printed with CNC machined core.',
+    category: 'Mount',
+    repo: 'https://github.com/zUrp-Astronomics/berserker',
+    status: 'wip' as const,
+  },
+  {
+    name: 'Unicorn',
+    tagline: 'Small but effective controller for astronomical mount, in a Tic-Tac box size.',
+    category: 'Controller',
+    repo: 'https://github.com/zUrp-Astronomics/unicorn',
+    status: 'wip' as const,
+  },
+  {
+    name: 'Kraken',
+    tagline: 'Compact but efficient powerbox, in a Raspberry Pi case.',
+    category: 'Powerbox',
+    repo: 'https://github.com/zUrp-Astronomics/kraken',
+    status: 'wip' as const,
+  },
+  {
+    name: 'Maelstrom',
+    tagline: 'APS-C cooled astronomical camera, with Nikon D40 CCD sensor.',
+    category: 'Camera',
+    repo: 'https://github.com/zUrp-Astronomics/maelstrom',
+    status: 'wip' as const,
+  },
+  {
+    name: 'Wraith',
+    tagline: 'All-in-One mount controller with a Compute Module 5.',
+    category: 'Controller',
+    repo: 'https://github.com/zUrp-Astronomics',
+    status: 'future' as const,
+  },
+];
+---
+
+<Layout title="zUrp Astronomics">
+  <header class="hero">
+    <div class="container">
+      <img
+        src="/logo_zUrp-astronomics.png"
+        alt="zUrp Astronomics corporate logotype"
+        class="hero-logo"
+      />
+      <p class="tagline">Low-tech, DIY, amateur astronomy hardware.</p>
+      <p class="pitch">
+        We build astronomy gear with harmonic drives, 3D printers, and stubbornness.
+        Open hardware by default, over-engineered by principle.
+      </p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="catalog">
+      <h2>Catalog</h2>
+      <div class="grid">
+        {products.map((p) => <ProductCard {...p} />)}
+      </div>
+    </section>
+
+    <section class="manifesto">
+      <h2>Manifesto</h2>
+      <p>
+        Amateur astronomy, like open hardware, rewards patience. You don't ship a mount
+        the month you think of it. You machine parts, mess up prints, tune harmonic drives
+        at 2 a.m., and eventually point a camera at something 10&nbsp;million light-years away.
+      </p>
+      <p>
+        We do it anyway, because the alternative is giving money to closed gear that breaks
+        on warranty expiry. And because the sky doesn't care about our budget.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <p><em>zUrp Astronomics — a subsidiary of zUrp Industries.</em></p>
+      <p class="legalese">
+        Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
+        Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
+      </p>
+      <img
+        src="/Low_tech_DIY.png"
+        alt="Nyan Cat — Low-Tech & DIY internal sticker"
+        class="easter-egg"
+        title="Internal sticker — culture zUrp"
+      />
+    </div>
+  </footer>
+</Layout>
+
+<style>
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .hero {
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(200, 169, 90, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(74, 111, 165, 0.08) 0%, transparent 50%),
+      var(--bg);
+    padding: 6rem 0 5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero-logo {
+    max-width: 520px;
+    width: 80%;
+    filter: invert(1) brightness(1.1);
+    margin-bottom: 2rem;
+  }
+
+  .tagline {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+  }
+
+  .pitch {
+    max-width: 620px;
+    margin: 0 auto;
+    font-size: 1.1rem;
+    color: var(--fg-muted);
+  }
+
+  section {
+    padding: 4rem 0;
+  }
+
+  section h2 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: var(--fg);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .manifesto {
+    border-top: 1px solid var(--border);
+  }
+
+  .manifesto p {
+    max-width: 720px;
+    margin-bottom: 1.2rem;
+    color: var(--fg-muted);
+    font-size: 1.05rem;
+  }
+
+  footer {
+    background: var(--bg-elev);
+    border-top: 1px solid var(--border);
+    padding: 3rem 0;
+    text-align: center;
+  }
+
+  .footer-inner p {
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .legalese {
+    font-size: 0.8rem !important;
+    color: var(--fg-muted);
+    opacity: 0.7;
+  }
+
+  .easter-egg {
+    max-width: 140px;
+    margin-top: 1.5rem;
+    opacity: 0.6;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+  }
+
+  .easter-egg:hover {
+    opacity: 1;
+    transform: scale(1.1) rotate(-2deg);
+  }
+
+  @media (max-width: 640px) {
+    .hero {
+      padding: 4rem 0 3rem;
+    }
+    .hero-logo {
+      max-width: 300px;
+      width: 90%;
+    }
+    section {
+      padding: 3rem 0;
+    }
+    section h2 {
+      font-size: 1.6rem;
+    }
+  }
+</style>

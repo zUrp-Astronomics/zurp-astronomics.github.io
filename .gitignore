@@ -1,0 +1,17 @@
+# build
+dist/
+.astro/
+
+# deps
+node_modules/
+
+# env
+.env
+.env.production
+
+# macOS
+.DS_Store
+
+# editor
+.vscode/
+.idea/

@@ -1,0 +1,86 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Low-tech, DIY, amateur astronomy hardware.' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #0a0d14;
+    --bg-elev: #141821;
+    --fg: #e8ebf0;
+    --fg-muted: #8a93a3;
+    --accent: #c8a95a;
+    --border: #242834;
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-display: 'Orbitron', 'IBM Plex Sans', sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--fg);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+  }
+
+  a:hover {
+    opacity: 0.75;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  code, pre {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+</style>

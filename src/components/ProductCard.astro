@@ -1,0 +1,93 @@
+---
+interface Props {
+  name: string;
+  tagline: string;
+  category: string;
+  repo: string;
+  status?: 'wip' | 'future' | 'released';
+}
+
+const { name, tagline, category, repo, status = 'wip' } = Astro.props;
+
+const statusLabel = {
+  wip: 'WIP',
+  future: 'Future',
+  released: 'Released',
+};
+---
+
+<a class="card" href={repo}>
+  <div class="card-header">
+    <span class="category">{category}</span>
+    <span class={`status status-${status}`}>{statusLabel[status]}</span>
+  </div>
+  <h3>{name}</h3>
+  <p>{tagline}</p>
+</a>
+
+<style>
+  .card {
+    display: block;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.5rem;
+    color: var(--fg);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+    height: 100%;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .category {
+    color: var(--fg-muted);
+  }
+
+  .status {
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 0.7rem;
+  }
+
+  .status-wip {
+    background: rgba(200, 169, 90, 0.15);
+    color: var(--accent);
+  }
+
+  .status-future {
+    background: rgba(138, 147, 163, 0.15);
+    color: var(--fg-muted);
+  }
+
+  .status-released {
+    background: rgba(90, 200, 120, 0.15);
+    color: #5ac878;
+  }
+
+  .card h3 {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+    color: var(--fg);
+  }
+
+  .card p {
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+</style>

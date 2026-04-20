@@ -88,6 +88,9 @@ const products = [
 
   <footer>
     <div class="container footer-inner">
+      <p class="org-link">
+        GitHub · <a href="https://github.com/zUrp-Astronomics">@zUrp-Astronomics</a>
+      </p>
       <p><em>zUrp Astronomics — a subsidiary of zUrp Industries.</em></p>
       <p class="legalese">
         Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
@@ -181,6 +184,17 @@ const products = [
     color: var(--fg-muted);
     font-size: 0.9rem;
     margin-bottom: 0.75rem;
+  }
+
+  .org-link {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.25rem !important;
+  }
+
+  .org-link a {
+    color: var(--accent);
   }
 
   .legalese {

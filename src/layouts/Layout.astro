@@ -2,9 +2,19 @@
 interface Props {
   title: string;
   description?: string;
+  ogImage?: string;
 }
 
-const { title, description = 'Low-tech, DIY, amateur astronomy hardware.' } = Astro.props;
+const {
+  title,
+  description = 'Low-tech, DIY, amateur astronomy hardware.',
+  ogImage = '/logo_zUrp-astronomics.png',
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://zurp-astronomics.github.io').toString();
+const ogImageURL = new URL(ogImage, Astro.site ?? 'https://zurp-astronomics.github.io').toString();
+const commitHash = import.meta.env.PUBLIC_COMMIT_HASH;
+const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
 ---
 
 <!doctype html>
@@ -13,18 +23,37 @@ const { title, description = 'Low-tech, DIY, amateur astronomy hardware.' } = As
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="generator" content={Astro.generator} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={ogImageURL} />
+    <meta property="og:site_name" content="zUrp Astronomics" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageURL} />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>
   </head>
   <body>
     <slot />
+    <div class="build-stamp" aria-hidden="true">
+      <code>{commitHash}</code>
+      <span class="sep">·</span>
+      <span>{buildDate}</span>
+    </div>
   </body>
 </html>
 
@@ -38,6 +67,7 @@ const { title, description = 'Low-tech, DIY, amateur astronomy hardware.' } = As
     --border: #242834;
     --font-body: 'IBM Plex Sans', system-ui, sans-serif;
     --font-display: 'Orbitron', 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
   }
 
   * {
@@ -80,7 +110,42 @@ const { title, description = 'Low-tech, DIY, amateur astronomy hardware.' } = As
     height: auto;
   }
 
-  code, pre {
-    font-family: 'IBM Plex Mono', monospace;
+  code, pre, kbd, samp {
+    font-family: var(--font-mono);
+  }
+
+  .build-stamp {
+    position: fixed;
+    bottom: 0.5rem;
+    right: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--fg-muted);
+    opacity: 0.35;
+    letter-spacing: 0.03em;
+    pointer-events: none;
+    user-select: none;
+    z-index: 100;
+    transition: opacity 0.2s ease;
+  }
+
+  .build-stamp:hover {
+    opacity: 0.8;
+  }
+
+  .build-stamp code {
+    color: var(--accent);
+    opacity: 0.8;
+  }
+
+  .build-stamp .sep {
+    margin: 0 0.35rem;
+    opacity: 0.5;
+  }
+
+  @media (max-width: 640px) {
+    .build-stamp {
+      display: none;
+    }
   }
 </style>

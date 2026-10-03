@@ -11,6 +11,16 @@ name: probe-test-relevance
 # Le verdict est un FAIT, pas une décision : la sonde le mesure et l'écrit, un juge le lit et
 # tranche. C'est pour ça qu'elle SORT TOUJOURS EN 0 — voir plus bas, c'est la partie contre-intuitive.
 #
+# ═══ ENTRÉES PASSÉES PAR `env:`, JAMAIS INTERPOLÉES DANS UN `run:` ═══
+#
+# Les quatre entrées (`harness`, `base_sha`, `head_sha`, `test_cmd`) arrivent dans le script de
+# « Sonder » par le bloc `env:` de l'étape, en variables `PROBE_*`, et le script ne lit QUE ces
+# variables shell, toujours quotées. Une expression d'entrée substituée dans le TEXTE d'un `run:`
+# l'est avant que le shell ne le lise : une valeur portant `"`, `$(…)` ou une ligne bien choisie
+# s'y exécuterait comme du code (injection de script). Le rail refuse un workflow qui interpole
+# ainsi : `verdict=inapplicable reason=probe-workflow-unsafe`. Aucune expression ne doit donc
+# apparaître dans un `run:`, ni même dans ces commentaires.
+#
 # ═══ LE NOM EST UNE GARDE, PAS UNE DÉCORATION ═══
 #
 # `probe-*`, JAMAIS `CI*`. Gitea compose le contexte d'un statut ainsi :
@@ -87,8 +97,14 @@ jobs:
         run: apk add --no-cache git >/dev/null 2>&1 || true
 
       - name: Sonder
+        # Une affectation par entrée, et c'est la SEULE place où une expression d'entrée apparaît :
+        # le runner pose la valeur dans l'environnement, le shell la lit comme une donnée.
         env:
           FORGE_TOKEN: ${{ github.token }}
+          PROBE_HARNESS: ${{ inputs.harness }}
+          PROBE_BASE_SHA: ${{ inputs.base_sha }}
+          PROBE_HEAD_SHA: ${{ inputs.head_sha }}
+          PROBE_TEST_CMD: ${{ inputs.test_cmd }}
         run: |
           # PAS de `set -e` ici, et c'est délibéré : ce script FAIT ÉCHOUER des commandes exprès —
           # l'échec de la suite EST la mesure. Un `set -e` avorterait au moment précis où le fait
@@ -102,9 +118,9 @@ jobs:
           set -f
 
           fact() { echo "LCARS-PROBE $*"; }
-          harness="${{ inputs.harness }}"
-          base="${{ inputs.base_sha }}"
-          head="${{ inputs.head_sha }}"
+          harness="$PROBE_HARNESS"
+          base="$PROBE_BASE_SHA"
+          head="$PROBE_HEAD_SHA"
 
           fact "probe=test-relevance base=${base} head=${head}"
 
@@ -121,7 +137,7 @@ jobs:
           # sous-shell valide en POSIX et sort en 0 : le témoin passerait, la mesure passerait, et
           # la sonde annoncerait « la suite reste verte sans le code livré » à un projet qui n'a
           # aucune suite. C'est le seul mensonge que cette sonde pouvait produire.
-          if [ -z "${{ inputs.test_cmd }}" ]; then
+          if [ -z "$PROBE_TEST_CMD" ]; then
             fact "verdict=inapplicable reason=no-test-cmd"
             echo "Ce projet ne déclare aucune commande de test (section '## Test' de son CLAUDE.md)."
             exit 0
@@ -135,28 +151,35 @@ jobs:
           #
           # Écrite dans un fichier et jouée par `sh -e`, elle a la sémantique de la CI — première
           # erreur, arrêt — et le contrat du template exige justement que `## Test` et `ci.yml`
-          # portent la MÊME commande. Le délimiteur est quoté : rien n'est ré-interprété à l'écriture.
+          # portent la MÊME commande.
           #
-          # ⚠ ET UNE TRANSCRIPTION PARTIELLE SERAIT PIRE QU'UN ÉCHEC. Un `## Test` contenant une
-          # ligne ÉGALE au délimiteur ferme le heredoc à cet endroit : le fichier ne reçoit que le
-          # début, le reste retombe dans CE shell (hors `set -e`, hors sous-shell), et la sonde rend
-          # un verdict sur une commande qui n'est pas celle du projet. Silencieux, donc inacceptable
-          # — c'est la même classe que la commande vide et que le `## Test` multi-lignes aplati.
+          # ⚠ ELLE EST ÉCRITE DEPUIS LA VARIABLE, PLUS COLLÉE DANS UN HEREDOC. Avant, l'expression
+          # d'entrée `inputs.test_cmd` était substituée DANS le corps d'un heredoc à délimiteur
+          # quoté : rien n'était ré-interprété à l'écriture, mais la substitution avait lieu dans le
+          # texte du script, avant le shell — c'est l'interpolation que le rail refuse. `printf '%s\n'`
+          # écrit la valeur de `$PROBE_TEST_CMD` telle quelle, octet pour octet : guillemets, `$(…)`,
+          # retours à la ligne restent du texte jusqu'à ce que `sh -e` joue le fichier.
           #
-          # La SENTINELLE le rend visible : `:` est le no-op POSIX, elle ne change ni la sémantique
-          # ni le code de sortie (sous `sh -e`, un échec antérieur a déjà arrêté le script ; si tout
-          # passe, `:` rend 0 comme la dernière commande l'aurait fait). Absente du fichier, elle
-          # PROUVE que la transcription s'est arrêtée avant la fin.
+          # La SENTINELLE reste en dernière ligne : `:` est le no-op POSIX, elle ne change ni la
+          # sémantique ni le code de sortie (sous `sh -e`, un échec antérieur a déjà arrêté le
+          # script ; si tout passe, `:` rend 0 comme la dernière commande l'aurait fait).
           cmd_file="$(pwd)/.lcars-probe-cmd.sh"
-          cat > "$cmd_file" <<'LCARS_PROBE_CMD_EOF'
-          ${{ inputs.test_cmd }}
-          : LCARS_PROBE_CMD_COMPLETE
-          LCARS_PROBE_CMD_EOF
+          {
+            printf '%s\n' "$PROBE_TEST_CMD"
+            printf '%s\n' ": LCARS_PROBE_CMD_COMPLETE"
+          } > "$cmd_file"
 
-          if [ "$(tail -n 1 "$cmd_file")" != ": LCARS_PROBE_CMD_COMPLETE" ]; then
+          # ⚠ CE QUE CETTE VÉRIFICATION GARDAIT A DISPARU, ET ELLE CHANGE DONC DE RÔLE. Elle
+          # détectait un `## Test` contenant une ligne ÉGALE au délimiteur du heredoc, qui fermait
+          # celui-ci en cours de route (transcription partielle, reste de la commande joué dans CE
+          # shell). Sans heredoc, plus de délimiteur, plus de collision possible. On la garde pour le
+          # seul cas qui reste : une écriture du fichier qui échoue ou s'arrête avant la fin (disque
+          # plein, répertoire non inscriptible). Mesurer une fraction de la commande rendrait un
+          # verdict sur une AUTRE commande — la raison de verdict ne change pas, sa cause si.
+          if [ "$(tail -n 1 "$cmd_file" 2>/dev/null)" != ": LCARS_PROBE_CMD_COMPLETE" ]; then
             fact "verdict=inapplicable reason=test-cmd-untranscribable"
-            echo "La commande de test n'a pas pu être transcrite intégralement : une de ses lignes"
-            echo "entre en collision avec le délimiteur interne de la sonde (LCARS_PROBE_CMD_EOF)."
+            echo "La commande de test n'a pas pu être écrite intégralement dans le fichier de la"
+            echo "sonde ($cmd_file) : la sentinelle de fin manque."
             echo "Mesurer la fraction transcrite rendrait un verdict sur une AUTRE commande."
             exit 0
           fi

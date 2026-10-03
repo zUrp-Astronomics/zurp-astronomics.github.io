@@ -15,6 +15,12 @@
 // it is never displayed wider. The only other addition to the v1 copy is the discreet "v1" link to
 // the archive under /alternate/ — the one bridge between the two versions (v1 must never link back
 // here).
+// Ticket #23: the panel is a link back to the top of the page (`#top`, the id on <body> in
+// V2Layout.astro), with nothing visible added — no text, no icon: the human wanted it unannounced,
+// the existing hover is the hint. Its accessible name is "Back to top" (aria-label), so it is not
+// silent for screen readers. Smooth scroll comes from `scroll-behavior` on html.z2, already turned
+// off under prefers-reduced-motion. No JavaScript. The footer is cut off from the page by ONE thin
+// rule (the old 4 px red border + 2 px red echo doubled the signature's own red rules).
 import { Image } from 'astro:assets';
 import lowTechPoster from '../../assets/header/low-tech-diy-poster.webp';
 
@@ -46,18 +52,20 @@ const { productName } = Astro.props;
       Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
       Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
     </p>
-    <Image
-      src={lowTechPoster}
-      alt="Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front of a moon, on a blueprint with red rays."
-      title="Low-Tech & DIY — culture zUrp"
-      width={140}
-      widths={[140, 280]}
-      sizes="140px"
-      format="webp"
-      quality={72}
-      loading="lazy"
-      class="lowtech-panel"
-    />
+    <a class="lowtech-link" href="#top" aria-label="Back to top">
+      <Image
+        src={lowTechPoster}
+        alt="Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front of a moon, on a blueprint with red rays."
+        title="Low-Tech & DIY — culture zUrp"
+        width={140}
+        widths={[140, 280]}
+        sizes="140px"
+        format="webp"
+        quality={72}
+        loading="lazy"
+        class="lowtech-panel"
+      />
+    </a>
     <p class="v1-link"><a href="/alternate/">v1</a></p>
   </div>
 </footer>
@@ -71,8 +79,9 @@ const { productName } = Astro.props;
     background:
       radial-gradient(circle, rgba(255, 255, 255, 0.05) 0 1px, transparent 1.6px) 0 0 / 5px 5px,
       var(--z2-soot-deep);
-    border-top: 4px solid var(--z2-red);
-    box-shadow: 0 -8px 0 var(--z2-soot-deep), 0 -10px 0 var(--z2-red);
+    /* One thin, quiet rule between the page and the footer, in the dimmed cream of the home
+       page's hairline. The red belongs to the signature's two rules just below. */
+    border-top: 1px solid rgba(201, 187, 152, 0.35); /* --z2-cream-dim at 35 % */
   }
 
   .foot-inner {
@@ -109,14 +118,24 @@ const { productName } = Astro.props;
     font-size: 0.82rem !important;
   }
 
+  /* The back-to-top link wraps the panel tightly, so the focus ring (html.z2 a:focus-visible)
+     draws round it. */
+  .lowtech-link {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 1.75rem auto 0;
+    text-decoration: none;
+  }
+
   /* Footer signature, not a second poster: dimmed and slightly askew on the black band, it lights
-     up and straightens a little on hover (the v1 sticker's gesture, kept discreet). */
+     up and straightens a little on hover or keyboard focus (the v1 sticker's gesture, kept
+     discreet) — the only hint that it is clickable. */
   .lowtech-panel {
     display: block;
     width: 140px;
     max-width: 100%;
     height: auto;
-    margin: 1.75rem auto 0;
     border-radius: 3px;
     box-shadow: 0 0 0 1px rgba(236, 223, 191, 0.12), 0 6px 14px rgba(0, 0, 0, 0.55);
     opacity: 0.7;
@@ -125,7 +144,8 @@ const { productName } = Astro.props;
     transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
   }
 
-  .lowtech-panel:hover {
+  .lowtech-link:hover .lowtech-panel,
+  .lowtech-link:focus-visible .lowtech-panel {
     opacity: 1;
     filter: none;
     transform: scale(1.1) rotate(1deg);
@@ -133,7 +153,8 @@ const { productName } = Astro.props;
 
   @media (prefers-reduced-motion: reduce) {
     .lowtech-panel,
-    .lowtech-panel:hover {
+    .lowtech-link:hover .lowtech-panel,
+    .lowtech-link:focus-visible .lowtech-panel {
       transition: none;
       transform: rotate(-2deg);
     }

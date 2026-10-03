@@ -63,7 +63,8 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
     />
     <title>{title}</title>
   </head>
-  <body>
+  <body id="top">
+    <!-- id="top" on <body>: the target of the footer panel's "back to top" link (Footer.astro). -->
     <slot />
     <Footer productName={productName} />
     <div class="z2-stamp" aria-hidden="true">

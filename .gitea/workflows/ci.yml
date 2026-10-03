@@ -79,3 +79,7 @@ jobs:
       # `.github/workflows/deploy.yml`.
       - name: Build du site
         run: npm ci && npm run build
+      # Contrôle du build livré : aucune image de dist/ > 600 Ko, et exactement une page
+      # `<slug>/index.html` par produit de src/data/products.ts (+ index.html racine).
+      - name: Contrôle de dist (poids des images, pages produit)
+        run: node scripts/check-dist.mjs

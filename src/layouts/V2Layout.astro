@@ -4,11 +4,9 @@
 // DATE: 2026-10-03
 // STATUS: active
 //
-// Standalone on purpose: it does NOT wrap or import V1Layout.astro (the v1 archive under /alternate/).
-// The v1 layout ships its theme as global CSS (variables, html/body, h1-h3, a, .paper…); importing it
-// here would pull that CSS into the v2 pages. Same head contract as v1 (noindex, OG/Twitter, favicon, build stamp), its
-// own theme, and every global rule below is scoped under `html.z2` with `--z2-` variables, so
-// nothing here can reach a v1 page even if a bundler ever merged the stylesheets.
+// The site's only layout since the v1 archive (/alternate/, V1Layout.astro) was deleted (ticket #35).
+// Head contract: noindex, OG/Twitter, favicon, build stamp. Every global rule below is scoped under
+// `html.z2` with `--z2-` variables (a legacy of the v1/v2 coexistence, kept: harmless and stable).
 //
 // Common header (tickets #27, #31, src/components/v2/SiteHeader.astro): the compact bar (plate,
 // subtitle, hairline) is drawn HERE, before the page's slot, on every v2 page — sticky on product
@@ -20,6 +18,11 @@ import SiteHeader from '../components/v2/SiteHeader.astro';
 interface Props {
   title: string;
   description?: string;
+  /**
+   * Social card image. Every page passes its own JPEG (home: the Low-Tech & DIY poster, product
+   * page: its poster). The default is only a fallback for a future page that forgets: the worn
+   * Low-Tech & DIY panel at its stable URL (src/lib/brand-images.ts), always in dist/.
+   */
   ogImage?: string;
   /** Product line for the footer; omitted on the home page. */
   productName?: string;
@@ -30,7 +33,7 @@ interface Props {
 const {
   title,
   description = 'Low-tech, DIY, amateur astronomy hardware.',
-  ogImage = '/logo_zUrp-astronomics.png',
+  ogImage = '/brand/low-tech-diy.webp',
   productName,
   home = false,
 } = Astro.props;
@@ -92,7 +95,7 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
    * hang on: its ground matches the near-black corners baked (opaque) into every poster file, so the
    * square image edge disappears and the rounded plate reads on its own.
    *
-   * Readability rule, same as v1: an accent is a FILL, a BORDER, a RULE or a GLOW — never running
+   * Readability rule: an accent is a FILL, a BORDER, a RULE or a GLOW — never running
    * text. Running text is cream on soot (≈ 14:1) or ink on cream (≈ 13:1). Every grime layer sits
    * UNDER the text or is a few percent of opacity over it.
    */

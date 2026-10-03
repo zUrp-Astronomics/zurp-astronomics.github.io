@@ -5,7 +5,7 @@
 //
 // Published at https://zurp-astronomics.github.io/brand/social/<slug>.jpg — one 1280 × 640 px JPEG
 // per product of src/data/products.ts (<slug> = its `slug`), composed at build time from the
-// product's `poster2`, `name` and `slogan` (src/lib/social-card.ts). A new product gets its card
+// product's `poster`, `name` and `slogan` (src/lib/social-card.ts). A new product gets its card
 // with no change here. Uploaded by hand in each repository's Settings → Social preview (see
 // readme-kit/README.md): never move or rename. Convention: src/lib/brand-images.ts.
 import type { APIRoute } from 'astro';
@@ -17,4 +17,4 @@ export function getStaticPaths() {
 }
 
 export const GET: APIRoute<{ product: Product }> = ({ props }) =>
-  socialCard(props.product.poster2, props.product.name, props.product.slogan);
+  socialCard(props.product.poster, props.product.name, props.product.slogan);

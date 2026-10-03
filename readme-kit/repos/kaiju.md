@@ -3,7 +3,7 @@
 
 <a href="https://zurp-astronomics.github.io/kaiju/"><img src="https://zurp-astronomics.github.io/brand/posters/kaiju.webp" alt="Kaiju poster on a worn, chipped cream plate: a red-and-steel armoured mechanical kaiju with glowing red eyes roars in front of a pale full moon, one clawed hand thrust forward, between red rays and blueprint sketches of itself, above the slogan “Over-engineered by principle”." width="420"></a>
 
-# Kaiju
+# [Kaiju](https://zurp-astronomics.github.io/kaiju/)
 
 ***Over-engineered by principle***
 
@@ -12,8 +12,6 @@ Fully integrated harmonic alt-az mount for DSLR, like a SeeStar on steroids.
 ![status: WIP](https://img.shields.io/badge/status-WIP-orange)
 [![hardware: OCL v1.1](https://img.shields.io/badge/hardware-OCL%20v1.1-blue)](https://github.com/OpenCommunityLicence/OpenCommunityLicence)
 [![software: GPL-3.0](https://img.shields.io/badge/software-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
-
-[**🌐 zurp-astronomics.github.io/kaiju**](https://zurp-astronomics.github.io/kaiju/)
 
 </div>
 

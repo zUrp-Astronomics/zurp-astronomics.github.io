@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product (main site + /alternate/ archive), stable brand image URLs, GitHub social preview cards
+// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product, stable brand image URLs, GitHub social preview cards
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -11,17 +11,17 @@
 //   - an image file in dist/ (webp, jpg/jpeg, png, avif, gif, svg) weighs more than 600 KB
 //     (614 400 bytes);
 //   - dist/ does not hold EXACTLY this set of pages, no more, no less:
-//       main site (v2)       `index.html`            + `<slug>/index.html`           per product
-//       v1 archive           `alternate/index.html`  + `alternate/<slug>/index.html` per product
+//       `index.html` + `<slug>/index.html` per product
 //     Slugs are read FROM products.ts (never a hard-coded list), so a new product is checked as
-//     soon as it is added — in both versions;
-//   - a catalog tile on a home page (`index.html`, `alternate/index.html`) is wider than 600 px, in
-//     its `srcset` (`…w` descriptor) or its `width` attribute. Catalog tiles never get a variant
-//     beyond 600 px (weight budget). A tile is an <img> carrying the `data-catalog-tile` attribute
-//     (set by src/components/v1/ProductCard.astro and src/components/v2/PosterTile.astro). Other
-//     optimised images on a home page (the main site's header poster spans the container) are not
-//     tiles and may be wider; the 600 KB weight ceiling above still applies to them;
-//   - a home page does not hold exactly one tile per product: zero tiles means the marker or the
+//     soon as it is added. (The v1 archive under /alternate/ was deleted in ticket #35: a page left
+//     there is now an unexpected page.);
+//   - a catalog tile on the home page (`index.html`) is wider than 600 px, in its `srcset` (`…w`
+//     descriptor) or its `width` attribute. Catalog tiles never get a variant beyond 600 px (weight
+//     budget). A tile is an <img> carrying the `data-catalog-tile` attribute (set by
+//     src/components/v2/PosterTile.astro). Other optimised images on the home page (the header
+//     poster spans the container) are not tiles and may be wider; the 600 KB weight ceiling above
+//     still applies to them;
+//   - the home page does not hold exactly one tile per product: zero tiles means the marker or the
 //     parser drifted (fail loudly rather than pass an unchecked page), fewer means a tile lost
 //     its marker and escaped the width rule;
 //   - a stable-URL brand image linked by the GitHub READMEs is missing, is not a WebP, or is wider
@@ -42,7 +42,7 @@ import { fileURLToPath } from 'node:url';
 const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
 const MAX_TILE_WIDTH = 600; // px — widest variant allowed for a catalog tile
 const TILE_MARKER = /\sdata-catalog-tile(?:[\s=>/]|$)/i; // attribute on every catalog tile <img>
-const SITE_VERSIONS = ['', 'alternate/']; // main site (v2) at the root, v1 archive under /alternate/
+const HOME_PAGE = 'index.html'; // the only catalog page
 const IMAGE_EXT = /\.(webp|jpe?g|png|avif|gif|svg)$/i;
 // Stable brand URLs (README links). Mirror of src/lib/brand-images.ts.
 const BRAND_PANEL = { path: 'brand/low-tech-diy.webp', maxWidth: 800 };
@@ -107,12 +107,7 @@ if (slugs.length === 0) {
 const dupes = slugs.filter((s, i) => slugs.indexOf(s) !== i);
 if (dupes.length) errors.push(`duplicate slug(s) in products.ts: ${[...new Set(dupes)].join(', ')}`);
 
-const expected = new Set(
-  SITE_VERSIONS.flatMap((prefix) => [
-    `${prefix}index.html`,
-    ...slugs.map((s) => `${prefix}${s}/index.html`),
-  ]),
-);
+const expected = new Set([HOME_PAGE, ...slugs.map((s) => `${s}/index.html`)]);
 const found = new Set(files.map((f) => f.rel).filter((rel) => rel.endsWith('index.html')));
 
 for (const page of expected) {
@@ -123,7 +118,7 @@ for (const page of found) {
 }
 
 // --- 3. Catalog tiles: no variant wider than 600 px, one tile per product --------------------
-const catalogPages = SITE_VERSIONS.map((prefix) => `${prefix}index.html`).filter((p) => found.has(p));
+const catalogPages = [HOME_PAGE].filter((p) => found.has(p));
 let tileImages = 0;
 const otherImages = [];
 for (const page of catalogPages) {
@@ -248,4 +243,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, on the main site and in the /alternate/ archive, every stable brand image and social preview card in place.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, every stable brand image and social preview card in place.');

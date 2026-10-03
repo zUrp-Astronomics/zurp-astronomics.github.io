@@ -90,6 +90,9 @@ const socialUrl = (p) => `${SITE}/brand/social/${p.slug}.jpg`;
 const pageUrl = (p) => `${SITE}/${p.slug}/`;
 const siteHost = SITE.replace(/^https?:\/\//, '');
 
+/** A product with no dedicated repository yet has the organisation itself as its `repo`. */
+const hasRepo = (p) => p.repo.replace(/\/+$/, '') !== ORG_URL;
+
 // Alt text of the panel: the site's own, for the same drawing (src/components/v2/Footer.astro).
 const PANEL_ALT =
   'Worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front of a moon, on a blueprint with red rays.';
@@ -122,15 +125,20 @@ const GENERATED =
 
 // --- 1. Organisation README (zUrp-Astronomics/.github → profile/README.md) ---------------------------
 
+// LINK RULE (ticket #35, the human's): the thumbnail and the name both lead to the product's page on
+// the site; a small GitHub badge after the tagline, and it alone, leads to the repository. No badge
+// for a product without a dedicated repository (`hasRepo`). Same look as the badges at the top.
+const GITHUB_BADGE = 'https://img.shields.io/badge/-GitHub-181717?logo=github';
+const repoBadge = (p) => `<a href="${p.repo}"><img src="${GITHUB_BADGE}" alt="GitHub repository"></a>`;
+
 function projectTable(list) {
   const rows = list.map((p) => {
-    const extra = [p.basedOn && `Based on ${html(p.basedOn)}`, `🌐 <a href="${pageUrl(p)}">Product page</a>`]
-      .filter(Boolean)
-      .join(' · ');
+    const tagline = [html(p.tagline), hasRepo(p) && repoBadge(p)].filter(Boolean).join(' ');
+    const extra = p.basedOn ? `<br><sub>Based on ${html(p.basedOn)}</sub>` : '';
     return [
       '<tr>',
       `<td width="112"><a href="${pageUrl(p)}"><img src="${posterUrl(p)}" alt="${html(p.name)} poster" width="100"></a></td>`,
-      `<td><b><a href="${p.repo}">${html(p.name)}</a></b> — ${html(p.tagline)}<br><sub>${extra}</sub></td>`,
+      `<td><b><a href="${pageUrl(p)}">${html(p.name)}</a></b> — ${tagline}${extra}</td>`,
       '</tr>',
     ].join('\n');
   });
@@ -219,6 +227,9 @@ function licenceSentence(p) {
   return `**Licence.** This project publishes its ${rule}.`;
 }
 
+// Same link rule as the organisation README: the poster and the name lead to the product's page on
+// the site. No GitHub badge (the reader is already in the repository) and no separate
+// "product page" link (it would repeat the poster's and the name's).
 function repoHeader(p) {
   const status = STATUS[p.status] ?? { label: p.status, color: 'lightgrey' };
   const badges = [
@@ -229,17 +240,15 @@ function repoHeader(p) {
   return `<!-- ${BEGIN} — ${p.name} — ${GENERATED}. At the next update, replace everything from this line down to the ${END} marker. -->
 <div align="center">
 
-<a href="${pageUrl(p)}"><img src="${posterUrl(p)}" alt="${html(p.poster2Alt)}" width="420"></a>
+<a href="${pageUrl(p)}"><img src="${posterUrl(p)}" alt="${html(p.posterAlt)}" width="420"></a>
 
-# ${p.name}
+# [${p.name}](${pageUrl(p)})
 
 ***${p.slogan}***
 
 ${p.tagline}
 
 ${badges.join('\n')}
-
-[**🌐 ${siteHost}/${p.slug}**](${pageUrl(p)})
 
 </div>
 
@@ -253,11 +262,10 @@ ${licenceSentence(p)}
 
 function guide() {
   const rows = products.map((p) => {
-    const hasRepo = p.repo.replace(/\/+$/, '') !== ORG_URL;
-    const repo = hasRepo ? `[${p.repo.replace('https://github.com/', '')}](${p.repo})` : '*pas encore de dépôt*';
+    const repo = hasRepo(p) ? `[${p.repo.replace('https://github.com/', '')}](${p.repo})` : '*pas encore de dépôt*';
     return `| ${p.name} | [\`repos/${p.slug}.md\`](repos/${p.slug}.md) | ${repo} | ${socialUrl(p)} |`;
   });
-  const noRepo = products.filter((p) => p.repo.replace(/\/+$/, '') === ORG_URL).map((p) => p.name);
+  const noRepo = products.filter((p) => !hasRepo(p)).map((p) => p.name);
   const noRepoNote = noRepo.length
     ? noRepo.length > 1
       ? `\n${noRepo.join(', ')} n'ont pas encore de dépôt : leurs en-têtes et leurs cartes sont prêts pour le jour où ils seront créés.\n`
@@ -295,12 +303,22 @@ jeton : expiré, pas encore approuvé par l'organisation, ou branche protégée 
 L'en-tête affiche la plaque patinée Low-Tech & DIY depuis le site (${panelUrl}) : l'ancienne image
 \`profile/Low_tech_DIY.png\` du dépôt \`.github\` n'est plus utilisée par le README.
 
+**Où mènent les liens.** Dans la liste des projets, la miniature et le nom mènent tous deux à la page
+du produit sur le site (\`${SITE}/<produit>/\`). Le petit badge **GitHub** placé après l'accroche, et
+lui seul, mène au dépôt du produit. Un produit sans dépôt dédié (${products
+    .filter((p) => !hasRepo(p))
+    .map((p) => p.name)
+    .join(', ') || 'aucun aujourd’hui'}) n'a pas de badge.
+
 ## 2. En-tête de README de chaque produit
 
 Pour chaque produit, copie le bloc de \`repos/<produit>.md\` **en tête** du \`README.md\` de son dépôt.
 Le bloc va du commentaire \`<!-- ${BEGIN} … -->\` au commentaire \`<!-- ${END} -->\`, tous deux
 inclus. À la mise à jour suivante, remplace tout ce qui se trouve entre ces deux marqueurs (marqueurs
 compris) par le nouveau bloc : le reste du README du dépôt n'est pas touché.
+
+L'affiche et le nom du produit mènent à sa page sur le site. Pas de badge GitHub : on est déjà dans
+le dépôt.
 
 ## 3. Carte d'aperçu (Social preview) de chaque dépôt
 

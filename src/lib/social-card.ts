@@ -98,7 +98,7 @@ function wallSvg(blocks: string): Buffer {
 }
 
 /**
- * The social card of one product, as a JPEG endpoint Response. `poster` is the product's `poster2`
+ * The social card of one product, as a JPEG endpoint Response. `poster` is the product's `poster`
  * import: only its `fsPath` is read, for the reason given in src/lib/brand-images.ts (reading any
  * other property would make Astro copy the heavy original into dist/).
  */

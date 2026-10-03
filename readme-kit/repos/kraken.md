@@ -3,7 +3,7 @@
 
 <a href="https://zurp-astronomics.github.io/kraken/"><img src="https://zurp-astronomics.github.io/brand/posters/kraken.webp" alt="Kraken poster on a worn, chipped cream plate: a teal-plated mechanical kraken with a golden eye coils its riveted tentacles, lined with steel suckers, out of crashing waves in front of the full moon, teal rays and blueprint sketches, above the slogan “Power to the people”." width="420"></a>
 
-# Kraken
+# [Kraken](https://zurp-astronomics.github.io/kraken/)
 
 ***Power to the people***
 
@@ -13,8 +13,6 @@ Compact but efficient powerbox, in a Raspberry Pi case.
 [![hardware: OCL v1.1](https://img.shields.io/badge/hardware-OCL%20v1.1-blue)](https://github.com/OpenCommunityLicence/OpenCommunityLicence)
 [![software: GPL-3.0](https://img.shields.io/badge/software-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
 ![based on: NAFAbox / Astralim](https://img.shields.io/badge/based%20on-NAFAbox%20%2F%20Astralim-informational)
-
-[**🌐 zurp-astronomics.github.io/kraken**](https://zurp-astronomics.github.io/kraken/)
 
 </div>
 

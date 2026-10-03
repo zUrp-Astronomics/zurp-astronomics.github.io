@@ -3,7 +3,7 @@
 
 <a href="https://zurp-astronomics.github.io/maelstrom/"><img src="https://zurp-astronomics.github.io/brand/posters/maelstrom.webp" alt="Maelstrom poster on a worn, chipped cream plate: a steel mechanical sea dragon bristling with ice-blue crystal spikes, its eye glowing blue, bursts out of a churning wave in front of the full moon, ice-blue rays and blueprint sketches, above the slogan “Freeze the noise!”." width="420"></a>
 
-# Maelstrom
+# [Maelstrom](https://zurp-astronomics.github.io/maelstrom/)
 
 ***Freeze the noise!***
 
@@ -13,8 +13,6 @@ APS-C cooled astronomical camera, with Nikon D40 CCD sensor.
 [![hardware: OCL v1.1](https://img.shields.io/badge/hardware-OCL%20v1.1-blue)](https://github.com/OpenCommunityLicence/OpenCommunityLicence)
 [![software: GPL-3.0](https://img.shields.io/badge/software-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
 ![based on: Cam86 / Cam87](https://img.shields.io/badge/based%20on-Cam86%20%2F%20Cam87-informational)
-
-[**🌐 zurp-astronomics.github.io/maelstrom**](https://zurp-astronomics.github.io/maelstrom/)
 
 </div>
 

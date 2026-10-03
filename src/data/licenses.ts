@@ -1,4 +1,4 @@
-// SOURCE: zurp-astronomics-site — licence rule shown on every product page (main site and v1 archive)
+// SOURCE: zurp-astronomics-site — licence rule shown on every product page
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -8,8 +8,8 @@
 // project follows the upstream licence. The site states the RULE only: it never names the licence
 // of an upstream project (TeenAstro, NAFAbox / Astralim, Cam86 / Cam87, Pinefeat): none has been
 // checked, and the repositories are not necessarily up to date. The project's repository is the
-// reference. Rendered by src/components/LicenseText.astro (the sentence) and by both product pages
-// (the badges), so the main site and the v1 archive cannot drift apart on a legal statement.
+// reference. Rendered by src/components/LicenseText.astro (the sentence) and by the product page
+// (the badges), and by the README kit (scripts/readme-kit.mjs).
 
 export const licenses = {
   hardware: {

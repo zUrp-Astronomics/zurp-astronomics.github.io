@@ -5,7 +5,7 @@
 //
 // Published at https://zurp-astronomics.github.io/brand/posters/<slug>.webp — one 600 × 600 px
 // WebP per product of src/data/products.ts (<slug> = its `slug`), rendered at build time from the
-// product's `poster2`, the same source as the site. A new product gets its URL with no change here.
+// product's `poster`, the same source as the site. A new product gets its URL with no change here.
 // Linked by URL from the GitHub READMEs: never move or rename. Convention: src/lib/brand-images.ts.
 import type { APIRoute } from 'astro';
 import { products, type Product } from '../../../data/products';
@@ -16,4 +16,4 @@ export function getStaticPaths() {
 }
 
 export const GET: APIRoute<{ product: Product }> = ({ props }) =>
-  brandWebp(props.product.poster2, BRAND_POSTER_WIDTH, 78);
+  brandWebp(props.product.poster, BRAND_POSTER_WIDTH, 78);

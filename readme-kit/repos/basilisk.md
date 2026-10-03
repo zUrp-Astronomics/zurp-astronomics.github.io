@@ -3,7 +3,7 @@
 
 <a href="https://zurp-astronomics.github.io/basilisk/"><img src="https://zurp-astronomics.github.io/brand/posters/basilisk.webp" alt="Basilisk poster on a worn, chipped cream plate: a mechanical serpent with segmented steel coils and green crystal spines, a glowing green eye and a forked tongue, rears with fangs bared in front of the full moon, green rays and blueprint sketches of its head, above the slogan “Bend the glass to your will”." width="420"></a>
 
-# Basilisk
+# [Basilisk](https://zurp-astronomics.github.io/basilisk/)
 
 ***Bend the glass to your will***
 
@@ -13,8 +13,6 @@ Sleek but deadly Sony E adapter for astro cameras, bending glass to your will wi
 [![hardware: OCL v1.1](https://img.shields.io/badge/hardware-OCL%20v1.1-blue)](https://github.com/OpenCommunityLicence/OpenCommunityLicence)
 [![software: GPL-3.0](https://img.shields.io/badge/software-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
 ![based on: Pinefeat](https://img.shields.io/badge/based%20on-Pinefeat-informational)
-
-[**🌐 zurp-astronomics.github.io/basilisk**](https://zurp-astronomics.github.io/basilisk/)
 
 </div>
 

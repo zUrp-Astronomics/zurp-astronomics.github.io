@@ -3,7 +3,7 @@
 
 <a href="https://zurp-astronomics.github.io/wraith/"><img src="https://zurp-astronomics.github.io/brand/posters/wraith.webp" alt="Wraith poster on a worn, chipped cream plate: a hooded mechanical spectre with glowing white eyes, a skeletal clawed arm and floating curved armour plates dissolves into swirling mist in front of the full moon, grey rays and blueprint sketches of its mask, above the slogan “Ghost in the sky”." width="420"></a>
 
-# Wraith
+# [Wraith](https://zurp-astronomics.github.io/wraith/)
 
 ***Ghost in the sky***
 
@@ -12,8 +12,6 @@ All-in-One mount controller with a Compute Module 5.
 ![status: Future](https://img.shields.io/badge/status-Future-lightgrey)
 [![hardware: OCL v1.1](https://img.shields.io/badge/hardware-OCL%20v1.1-blue)](https://github.com/OpenCommunityLicence/OpenCommunityLicence)
 [![software: GPL-3.0](https://img.shields.io/badge/software-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
-
-[**🌐 zurp-astronomics.github.io/wraith**](https://zurp-astronomics.github.io/wraith/)
 
 </div>
 

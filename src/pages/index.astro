@@ -1,44 +1,99 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import ProductCard from '../components/ProductCard.astro';
+// SOURCE: zurp-astronomics-site — home of the main site (v2, at `/`): the "Low-Tech & DIY" poster pinned to the soot wall, series 2 catalog
+// AUTHOR: engineer
+// DATE: 2026-10-03
+// STATUS: active
+//
+// Same content as the v1 home, archived at /alternate/ (src/pages/alternate/index.astro): pitch,
+// catalog, manifesto, footer. The copy is v1's, word for word; the catalog comes from products.ts.
+// Do not reword it here: a change of copy belongs to both versions.
+//
+// Header: the drawing is a real poster taped to the wall (crooked, tape, drop shadow); the logo is
+// the h1, on a small enamel plate screwed above it; motto + pitch are the exhibition label (cartel)
+// pinned beside it. No rainbow trail leaving the poster: the human ruled it out.
+import { Image, getImage } from 'astro:assets';
+import V2Layout from '../layouts/V2Layout.astro';
+import PosterTile from '../components/v2/PosterTile.astro';
 import { products } from '../data/products';
+import lowTechPoster from '../assets/header/low-tech-diy-poster.webp';
 
-const cards = products.map((p) => ({
+// Social card: the poster itself, as a JPEG (widest support among link unfurlers), 1200 × 800.
+const ogPoster = await getImage({ src: lowTechPoster, width: 1200, format: 'jpg', quality: 78 });
+
+const tiles = products.map((p) => ({
   name: p.name,
   tagline: p.tagline,
   href: `/${p.slug}/`,
-  poster: p.poster,
-  posterAlt: p.posterAlt,
-  accent: p.accent,
+  poster: p.poster2,
+  posterAlt: p.poster2Alt,
+  accent: p.accent2,
 }));
 ---
 
-<Layout title="zUrp Astronomics">
+<V2Layout title="zUrp Astronomics" ogImage={ogPoster.src}>
   <header class="hero">
-    <div class="container">
-      <img
-        src="/logo_zUrp-astronomics.png"
-        alt="zUrp Astronomics corporate logotype"
-        class="hero-logo"
-      />
-      <p class="tagline">Low-tech, DIY, amateur astronomy hardware.</p>
-      <p class="pitch">
-        We build astronomy gear with harmonic drives, 3D printers, and stubbornness.
-        Open hardware by default, over-engineered by principle.
-      </p>
+    <div class="z2-container">
+      <div class="enamel">
+        <span class="screw tl" aria-hidden="true"></span>
+        <span class="screw tr" aria-hidden="true"></span>
+        <span class="screw bl" aria-hidden="true"></span>
+        <span class="screw br" aria-hidden="true"></span>
+        <h1>
+          <img
+            src="/logo_zUrp-astronomics.png"
+            alt="zUrp Astronomics corporate logotype"
+            class="logo"
+            width="4000"
+            height="1429"
+          />
+        </h1>
+      </div>
+
+      <div class="display">
+        <!-- The creases are in the image; the tape and the cast shadow make it read as paper.
+             Not a catalog tile (no data-catalog-tile): it spans the container, so it gets variants
+             wider than 600 px. Widest variant 1200 px (≈ 300 KB): the grainy print is heavy. -->
+        <figure class="affiche">
+          <Image
+            src={lowTechPoster}
+            alt="Worn, creased poster reading “Low-Tech & DIY”: a riveted Nyan Cat trailing a pixel rainbow in front of a moon, on a blueprint with red rays."
+            width={1200}
+            widths={[480, 800, 1200]}
+            sizes="(max-width: 760px) calc(100vw - 2rem), (max-width: 1140px) calc(76vw - 4rem), 770px"
+            format="webp"
+            quality={72}
+            loading="eager"
+            fetchpriority="high"
+            class="affiche-img"
+          />
+          <span class="tape tl" aria-hidden="true"></span>
+          <span class="tape tr" aria-hidden="true"></span>
+          <span class="tape bl" aria-hidden="true"></span>
+          <span class="tape br" aria-hidden="true"></span>
+        </figure>
+
+        <div class="cartel">
+          <span class="pin" aria-hidden="true"></span>
+          <p class="tagline">Low-tech, DIY, amateur astronomy hardware.</p>
+          <p class="pitch">
+            We build astronomy gear with harmonic drives, 3D printers, and stubbornness.
+            Open hardware by default, over-engineered by principle.
+          </p>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="container">
-    <section class="catalog">
-      <h2 class="banner">Catalog</h2>
+  <main class="z2-container">
+    <section class="catalog" aria-labelledby="catalog-title">
+      <h2 id="catalog-title" class="z2-band section-title">Catalog</h2>
       <div class="grid">
-        {cards.map((c) => <ProductCard {...c} />)}
+        {tiles.map((t) => <PosterTile {...t} />)}
       </div>
     </section>
 
-    <section class="manifesto paper">
-      <h2 class="banner">Manifesto</h2>
+    <section class="manifesto z2-plate" aria-labelledby="manifesto-title">
+      <h2 id="manifesto-title" class="z2-band section-title">Manifesto</h2>
       <p>
         Amateur astronomy, like open hardware, rewards patience. You don't ship a mount
         the month you think of it. You machine parts, mess up prints, tune harmonic drives
@@ -50,176 +105,292 @@ const cards = products.map((p) => ({
       </p>
     </section>
   </main>
-
-  <footer>
-    <div class="container footer-inner">
-      <p class="org-link">
-        GitHub · <a href="https://github.com/zUrp-Astronomics">@zUrp-Astronomics</a>
-      </p>
-      <p><em>zUrp Astronomics — a subsidiary of zUrp Industries.</em></p>
-      <p class="legalese">
-        Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
-        Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
-      </p>
-      <img
-        src="/Low_tech_DIY.png"
-        alt="Nyan Cat — Low-Tech & DIY internal sticker"
-        class="easter-egg"
-        title="Internal sticker — culture zUrp"
-      />
-    </div>
-  </footer>
-</Layout>
+</V2Layout>
 
 <style>
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-  }
+  /* --- The wall ------------------------------------------------------------------------------ */
 
-  /* Cream sheet with the posters' sun rays fanning up from below. */
   .hero {
-    background:
-      repeating-conic-gradient(
-        from 0deg at 50% 115%,
-        var(--paper) 0deg 5deg,
-        var(--paper-shade) 5deg 10deg
-      );
-    color: var(--ink);
-    padding: 5rem 0 4.5rem;
-    text-align: center;
-    border-bottom: 6px solid var(--ink);
-    box-shadow: 0 6px 0 var(--red);
+    position: relative;
+    isolation: isolate;
+    padding: 2.75rem 0 1.5rem;
   }
 
-  .hero-logo {
-    max-width: 520px;
-    width: 80%;
-    /* Black on white source: multiply drops the white onto the paper. */
+  /* Soot wall with a little poured-concrete mottling and a gallery light from above. Masked so it
+     fades into the page's own wall instead of ending on a hard edge. */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse 55% 60% at 50% 0%, rgba(255, 236, 200, 0.07), transparent 75%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .52 0 0 0 0 .47 0 0 0 -.7 .32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E") 0 0 / 480px 480px,
+      radial-gradient(circle, rgba(255, 255, 255, 0.035) 0 1px, transparent 1.5px) 0 0 / 7px 7px;
+    opacity: 0.45;
+    -webkit-mask-image: linear-gradient(#000 70%, transparent);
+    mask-image: linear-gradient(#000 70%, transparent);
+    pointer-events: none;
+  }
+
+  /* --- The logo: a small enamel plate screwed to the wall ------------------------------------ */
+
+  .enamel {
+    position: relative;
+    width: min(100%, 520px);
+    margin: 0 auto 2.75rem;
+    padding: 1rem 1.75rem;
+    background:
+      var(--z2-stains),
+      radial-gradient(ellipse at 30% 20%, var(--z2-cream-light), var(--z2-cream) 60%, var(--z2-cream-shade));
+    background-size: 600px 600px, auto;
+    border-radius: 12px;
+    box-shadow:
+      inset 0 0 0 3px var(--z2-cream-shade),
+      inset 0 0 0 5px rgba(29, 26, 22, 0.5),
+      0 0 0 2px var(--z2-soot-deep),
+      6px 9px 14px rgba(0, 0, 0, 0.55);
+    transform: rotate(0.6deg);
+  }
+
+  .enamel h1 {
+    line-height: 0;
+  }
+
+  /* Black on white source: multiply drops the white onto the enamel. */
+  .logo {
+    display: block;
+    width: 100%;
+    height: auto;
     mix-blend-mode: multiply;
-    margin-bottom: 2rem;
+    /* A touch of misregistration: the ink sits a hair off its own shadow. */
+    filter: drop-shadow(2px 1px 0 rgba(220, 42, 28, 0.35));
+  }
+
+  .screw {
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background:
+      linear-gradient(45deg, transparent 44%, rgba(16, 15, 14, 0.85) 44% 56%, transparent 56%),
+      radial-gradient(circle at 35% 35%, #9a9387, #4a453e 60%, #1f1d1a);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+  }
+
+  .screw.tl { top: 8px; left: 9px; }
+  .screw.tr { top: 8px; right: 9px; transform: rotate(70deg); }
+  .screw.bl { bottom: 8px; left: 9px; transform: rotate(20deg); }
+  .screw.br { bottom: 8px; right: 9px; transform: rotate(-35deg); }
+
+  /* --- The poster and its label --------------------------------------------------------------- */
+
+  .display {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(200px, 24%, 270px);
+    gap: clamp(2rem, 4.5vw, 3.5rem);
+    align-items: end;
+  }
+
+  .affiche {
+    position: relative;
+    margin: 0;
+    transform: rotate(-1.5deg);
+    /* Paper on a wall: a tight contact shadow plus a soft one cast down-right, so it lifts off. */
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.6),
+      0 12px 16px -8px rgba(0, 0, 0, 0.7),
+      16px 24px 38px -10px rgba(0, 0, 0, 0.6);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .affiche-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+  }
+
+  /* Light falling on paper that is not quite flat: brighter top, a hint of shade at the bottom. */
+  .affiche::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(172deg, rgba(255, 248, 230, 0.07), transparent 38%, transparent 70%, rgba(0, 0, 0, 0.16));
+    pointer-events: none;
+  }
+
+  /* Masking tape across each corner: translucent, a few fibres, torn ends. */
+  .tape {
+    --tape-w: clamp(64px, 10%, 104px);
+    position: absolute;
+    z-index: 1;
+    width: var(--tape-w);
+    height: calc(var(--tape-w) * 0.3);
+    background:
+      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 5px),
+      linear-gradient(rgba(236, 216, 168, 0.78), rgba(214, 192, 142, 0.74));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    clip-path: polygon(0 8%, 6% 0, 12% 10%, 18% 2%, 82% 0, 88% 9%, 94% 1%, 100% 6%, 100% 94%, 93% 100%, 87% 90%, 80% 100%, 20% 98%, 13% 90%, 7% 100%, 0 91%);
+  }
+
+  .tape.tl { top: 0; left: 0; transform: translate(-42%, -38%) rotate(-42deg); }
+  .tape.tr { top: 0; right: 0; transform: translate(40%, -42%) rotate(46deg); }
+  .tape.bl { bottom: 0; left: 0; transform: translate(-40%, 40%) rotate(40deg); }
+  .tape.br { bottom: 0; right: 0; transform: translate(42%, 36%) rotate(-44deg); }
+
+  /* The exhibition label: a cream card, typewritten, pinned to the wall. */
+  .cartel {
+    position: relative;
+    margin-bottom: 1.5rem;
+    padding: 1.6rem 1.25rem 1.3rem;
+    background:
+      var(--z2-stains),
+      linear-gradient(var(--z2-cream-light), var(--z2-cream));
+    background-size: 600px 600px, auto;
+    color: var(--z2-ink);
+    font-family: var(--z2-font-type);
+    border-radius: 2px;
+    transform: rotate(1.2deg);
+    box-shadow:
+      0 1px 1px rgba(0, 0, 0, 0.5),
+      5px 9px 16px -4px rgba(0, 0, 0, 0.6);
+  }
+
+  .pin {
+    position: absolute;
+    top: 0.45rem;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 32%, #ff8a70, var(--z2-red) 45%, #7c1309);
+    box-shadow:
+      1px 2px 0 rgba(0, 0, 0, 0.35),
+      3px 5px 5px rgba(0, 0, 0, 0.3);
   }
 
   .tagline {
-    display: inline-block;
-    font-family: var(--font-display);
-    font-size: 1.15rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    background: var(--red);
-    color: var(--paper-light);
-    border: var(--rule);
-    box-shadow: 5px 5px 0 var(--ink);
-    padding: 0.45rem 1.25rem;
-    margin-bottom: 1.75rem;
+    padding-bottom: 0.7rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px dashed rgba(74, 64, 51, 0.6);
+    font-size: 1.02rem;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
   }
 
   .pitch {
-    max-width: 620px;
-    margin: 0 auto;
-    font-size: 1.1rem;
-    color: var(--ink);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--z2-ink-muted);
   }
+
+  /* Hover: the poster straightens a little and comes off the wall. Only for users who accept
+     motion, and only where it hangs crooked (the phone layout hangs it straight). */
+  @media (prefers-reduced-motion: no-preference) and (min-width: 761px) {
+    .affiche:hover {
+      transform: rotate(-0.5deg) translate(-2px, -6px) scale(1.01);
+      box-shadow:
+        0 2px 3px rgba(0, 0, 0, 0.5),
+        0 22px 26px -10px rgba(0, 0, 0, 0.7),
+        26px 38px 54px -12px rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .affiche {
+      transition: none;
+    }
+  }
+
+  /* --- Below the header (unchanged) ----------------------------------------------------------- */
 
   section {
-    padding: 4rem 0;
+    padding: 4.5rem 0 0;
   }
 
-  /* Section titles as poster banners. */
-  .banner {
-    display: inline-block;
-    font-size: 2rem;
-    background: var(--red);
-    color: var(--paper-light);
-    border: var(--rule);
-    box-shadow: 6px 6px 0 var(--ink);
-    padding: 0.3rem 1.1rem;
-    margin-bottom: 2rem;
+  .section-title {
+    font-size: clamp(1.5rem, 7.5vw, 4.75rem);
+    margin: 0 0 2.5rem -0.2rem;
   }
 
   .grid {
     display: grid;
     /* min() keeps a single column from overflowing narrow phones. */
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-    gap: 1.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    gap: 2.75rem 2rem;
   }
 
   .manifesto {
-    padding: 2.5rem 2rem 1.5rem;
-    margin-bottom: 4rem;
+    margin-top: 5.5rem;
+    padding: 2.75rem 2.25rem 2rem;
+  }
+
+  /* The band straddles the plate's top rim. */
+  .manifesto .section-title {
+    margin-top: calc(-2.75rem - 0.8em);
   }
 
   .manifesto p {
     max-width: 720px;
     margin-bottom: 1.2rem;
-    color: var(--ink);
-    font-size: 1.05rem;
+    font-size: 1.07rem;
+    color: var(--z2-ink);
   }
 
-  footer {
-    background: var(--navy-deep);
-    border-top: 6px solid var(--ink);
-    padding: 3rem 0;
-    text-align: center;
-  }
-
-  .footer-inner p {
-    color: var(--fg-on-navy-muted);
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .org-link {
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    letter-spacing: 0.05em;
-    margin-bottom: 1.25rem !important;
-  }
-
-  .org-link a {
-    color: var(--fg-on-navy);
-  }
-
-  .legalese {
-    font-size: 0.8rem !important;
-    opacity: 0.8;
-  }
-
-  .easter-egg {
-    max-width: 140px;
-    margin-top: 1.5rem;
-    opacity: 0.6;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    cursor: pointer;
-  }
-
-  .easter-egg:hover {
-    opacity: 1;
-    transform: scale(1.1) rotate(-2deg);
+  /* Phones: the poster hangs straight across the full width, the label goes under it. Tape is
+     smaller and sits further in, so nothing pokes past the container's side padding. */
+  @media (max-width: 760px) {
+    .display {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2rem;
+    }
+    .affiche {
+      transform: none;
+      box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.6),
+        0 10px 14px -6px rgba(0, 0, 0, 0.7),
+        8px 14px 22px -8px rgba(0, 0, 0, 0.55);
+    }
+    .tape {
+      --tape-w: 52px;
+    }
+    .tape.tl { transform: translate(-22%, -30%) rotate(-42deg); }
+    .tape.tr { transform: translate(22%, -32%) rotate(46deg); }
+    .tape.bl { transform: translate(-22%, 30%) rotate(40deg); }
+    .tape.br { transform: translate(22%, 28%) rotate(-44deg); }
+    .cartel {
+      margin: 0 0.25rem;
+      transform: rotate(0.6deg);
+    }
   }
 
   @media (max-width: 640px) {
     .hero {
-      padding: 3.5rem 0 3rem;
+      padding-top: 1.5rem;
     }
-    .hero-logo {
-      max-width: 300px;
-      width: 90%;
+    .enamel {
+      width: min(100%, 360px);
+      margin-bottom: 2rem;
+      padding: 0.75rem 1.2rem;
     }
-    .tagline {
-      font-size: 0.95rem;
-      letter-spacing: 0.08em;
+    .screw {
+      width: 8px;
+      height: 8px;
     }
+    .screw.tl { top: 5px; left: 6px; }
+    .screw.tr { top: 5px; right: 6px; }
+    .screw.bl { bottom: 5px; left: 6px; }
+    .screw.br { bottom: 5px; right: 6px; }
     section {
-      padding: 3rem 0;
-    }
-    .banner {
-      font-size: 1.6rem;
+      padding-top: 3.5rem;
     }
     .manifesto {
-      padding: 2rem 1.25rem 1rem;
-      margin-bottom: 3rem;
+      padding: 2.25rem 1.25rem 1.25rem;
+    }
+    .manifesto .section-title {
+      margin-top: calc(-2.25rem - 0.8em);
     }
   }
 </style>

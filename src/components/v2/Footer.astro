@@ -1,12 +1,15 @@
 ---
-// SOURCE: zurp-astronomics-site — /alternate/ footer: the v1 footer copy (jokes, sticker) on a black band
+// SOURCE: zurp-astronomics-site — main site (v2) footer: the v1 footer copy (jokes) on a black band
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
 //
-// The copy is the v1 footer's, word for word (src/pages/index.astro and src/pages/[slug]/index.astro):
-// home line without a product, product line with one. The only addition is the discreet link back
-// to v1 that the brief allows (v1 must never link here).
+// The copy is the v1 footer's, word for word (v1 archive: src/pages/alternate/index.astro and
+// src/pages/alternate/[slug]/index.astro): home line without a product, product line with one.
+// No Nyan Cat sticker here: the "Low-Tech & DIY" poster is the home page header now, the sticker
+// would repeat it (the v1 archive keeps its own old sticker). The only addition to the v1 copy is
+// the discreet "v1" link to the archive under /alternate/ — the one bridge between the two versions
+// (v1 must never link back here).
 interface Props {
   productName?: string;
 }
@@ -35,14 +38,7 @@ const { productName } = Astro.props;
       Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
       Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
     </p>
-    <img
-      src="/Low_tech_DIY.png"
-      alt="Nyan Cat — Low-Tech & DIY internal sticker"
-      class="sticker"
-      title="Internal sticker — culture zUrp"
-      loading="lazy"
-    />
-    <p class="v1-link"><a href="/">v1</a></p>
+    <p class="v1-link"><a href="/alternate/">v1</a></p>
   </div>
 </footer>
 
@@ -91,23 +87,6 @@ const { productName } = Astro.props;
 
   .legalese {
     font-size: 0.82rem !important;
-  }
-
-  /* Slapped on slightly crooked, like a real sticker on a flight case. */
-  .sticker {
-    display: block;
-    max-width: 140px;
-    margin: 1.5rem auto 0;
-    transform: rotate(-4deg);
-    opacity: 0.75;
-    filter: sepia(0.25) contrast(0.95);
-    transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
-  }
-
-  .sticker:hover {
-    opacity: 1;
-    filter: none;
-    transform: rotate(-1deg) scale(1.08);
   }
 
   .foot .v1-link {

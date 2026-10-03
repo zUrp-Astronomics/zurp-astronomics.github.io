@@ -1,15 +1,15 @@
 ---
-// SOURCE: zurp-astronomics-site — layout of the /alternate/ version (series 2 posters, worn plate look)
+// SOURCE: zurp-astronomics-site — layout of the main site (v2, at `/`: series 2 posters, worn plate look)
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
 //
-// Standalone on purpose: it does NOT wrap or import the v1 Layout.astro. The v1 layout ships its
-// theme as global CSS (variables, html/body, h1-h3, a, .paper…); importing it here would pull that
-// CSS into the v2 pages. Same head contract as v1 (noindex, OG/Twitter, favicon, build stamp), its
+// Standalone on purpose: it does NOT wrap or import V1Layout.astro (the v1 archive under /alternate/).
+// The v1 layout ships its theme as global CSS (variables, html/body, h1-h3, a, .paper…); importing it
+// here would pull that CSS into the v2 pages. Same head contract as v1 (noindex, OG/Twitter, favicon, build stamp), its
 // own theme, and every global rule below is scoped under `html.z2` with `--z2-` variables, so
 // nothing here can reach a v1 page even if a bundler ever merged the stylesheets.
-import Footer from '../components/alternate/Footer.astro';
+import Footer from '../components/v2/Footer.astro';
 
 interface Props {
   title: string;

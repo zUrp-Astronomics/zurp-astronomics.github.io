@@ -1,8 +1,10 @@
 ---
-// SOURCE: zurp-astronomics-site — /alternate/ catalog tile: a series 2 poster hung on the soot wall, with a label strip
+// SOURCE: zurp-astronomics-site — main site (v2) catalog tile: a series 2 poster hung on the soot wall, with a label strip
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+//
+// `data-catalog-tile` on the <Image> is what scripts/check-dist.mjs keys its 600 px tile rule on.
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 
@@ -32,6 +34,7 @@ const { name, tagline, href, poster, posterAlt, accent } = Astro.props;
     format="webp"
     quality={78}
     class="poster"
+    data-catalog-tile
   />
   <span class="label">
     <span class="rule" aria-hidden="true"></span>

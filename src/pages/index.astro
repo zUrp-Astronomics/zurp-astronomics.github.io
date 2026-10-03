@@ -12,11 +12,12 @@
 // read from products.ts (`sections`, each product's `section`), never listed here. Inside a shelf,
 // products keep their products.ts order. A section with no product is not drawn. The v1 archive
 // keeps its single flat grid.
-// Shelves flow through ONE continuous grid (ticket #23): each shelf spans as many columns as it has
-// products (capped by the grid's column count at the current width), its title over its own tiles,
-// so a one-tile shelf no longer leaves two thirds of a row empty. The spans are computed below from
-// the tile counts, never written per product; a shelf wider than the grid wraps inside its span.
-// Shelf titles sit on the left: a short red tab, the name, a red rule about one tile long.
+// Shelves are stacked, one per row (ticket #25: the continuous grid of #23, which put Cameras beside
+// Mounts, is abandoned — the human wants Cameras in the stack). Each shelf lays its tiles left-aligned
+// on the usual 3/2/1-column grid; a one-tile shelf leaves the rest of its row empty, by design.
+// Shelf titles sit on the left: a short red tab, the name, a red rule; the whole title line is
+// exactly one tile column wide at every screen width (ticket #25), the rule filling up to the first
+// tile's right edge.
 //
 // Header: a title, then an illustration. The title (the h1) is the photographed zUrp enamel plate
 // (src/assets/header/zurp-astronomics-plate.webp, from ready-room f92ca1e), hung straight, kept
@@ -40,9 +41,6 @@ import plate from '../assets/header/zurp-astronomics-plate.webp';
 // Social card: the poster itself, as a JPEG (widest support among link unfurlers), 1200 × 800.
 const ogPoster = await getImage({ src: lowTechPoster, width: 1200, format: 'jpg', quality: 78 });
 
-// Widest catalog grid: 3 columns on desktop, 2 in between, 1 on phones (see .shelves below).
-const GRID_COLUMNS = [1, 2, 3];
-
 const shelves = sections
   .map((section) => ({
     ...section,
@@ -57,13 +55,7 @@ const shelves = sections
         accent: p.accent2,
       })),
   }))
-  .filter((shelf) => shelf.tiles.length > 0)
-  .map((shelf) => ({
-    ...shelf,
-    // One custom property per grid width: how many columns this shelf spans when the grid has
-    // that many. e.g. 3 tiles → --span-1: 1; --span-2: 2; --span-3: 3.
-    spans: GRID_COLUMNS.map((cols) => `--span-${cols}: ${Math.min(shelf.tiles.length, cols)}`).join('; '),
-  }));
+  .filter((shelf) => shelf.tiles.length > 0);
 ---
 
 <V2Layout title="zUrp Astronomics" ogImage={ogPoster.src}>
@@ -141,7 +133,7 @@ const shelves = sections
       <div class="shelves">
         {
           shelves.map((shelf) => (
-            <section class="shelf" aria-labelledby={`shelf-${shelf.id}`} style={shelf.spans}>
+            <section class="shelf" aria-labelledby={`shelf-${shelf.id}`}>
               <h3 id={`shelf-${shelf.id}`} class="z2-signature shelf-title">
                 <span>{shelf.title}</span>
               </h3>
@@ -437,24 +429,19 @@ const shelves = sections
     margin: 0 0 2.5rem -0.2rem;
   }
 
-  /* The catalog is ONE grid of --cols columns (1 on phones, 2 in between, 3 on desktop: the
-     breakpoints keep a column at 300 px or more, as the old auto-fill grid did). Each shelf spans
-     --span-<cols> columns, set inline from its tile count, and lays its tiles out on that many
-     columns with the same column gap: its tiles sit exactly on the outer grid's tracks, and a shelf
-     with more tiles than columns wraps inside its own span. Shelves are placed in order, row by row:
-     on desktop Mounts (2) + Cameras (1), then Gadgets (3), then Future (1). */
+  /* The catalog is a stack of shelves, one per row (ticket #25). Every shelf lays its tiles on the
+     same grid of --cols columns (1 on phones, 2 in between, 3 on desktop: the breakpoints keep a
+     column at 300 px or more, as the old auto-fill grid did), left-aligned; a shelf with fewer tiles
+     than columns leaves the rest of its row empty, one with more wraps. */
   .shelves {
     --cols: 1;
     --col-gap: 2rem;
-    display: grid;
-    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-    gap: 4rem var(--col-gap);
-    align-items: start;
+    display: flex;
+    flex-direction: column;
+    row-gap: 4rem;
   }
 
   .shelf {
-    --span: var(--span-1, 1);
-    grid-column: span var(--span);
     min-width: 0;
     padding: 0;
   }
@@ -463,24 +450,22 @@ const shelves = sections
     .shelves {
       --cols: 2;
     }
-    .shelf {
-      --span: var(--span-2, 1);
-    }
   }
 
   @media (min-width: 1012px) {
     .shelves {
       --cols: 3;
     }
-    .shelf {
-      --span: var(--span-3, 1);
-    }
   }
 
   /* A shelf's title: on the left edge of its tiles, a short red tab, the name in wide-tracked
-     capitals, then a red rule about one tile long (never the full width) — the posters' signature
-     rules, re-cut (ticket #23: the centred, full-width version was judged ugly). */
+     capitals, then a red rule — the posters' signature rules, re-cut (ticket #23: the centred,
+     full-width version was judged ugly). The whole line is exactly one tile column wide (ticket
+     #25): the width below is the .grid track width, from the same --cols and --col-gap, so it
+     follows the real column at every screen width (full width on phones), and the rule stretches
+     to the first tile's right edge. */
   .shelf-title {
+    width: calc((100% - (var(--cols) - 1) * var(--col-gap)) / var(--cols));
     margin: 0 0 2rem;
     color: var(--z2-cream);
     font-stretch: 125%;
@@ -500,7 +485,7 @@ const shelves = sections
   }
 
   .shelves .shelf-title::after {
-    flex: 0 1 18rem;
+    flex: 1 1 0;
     min-width: 1.5rem;
   }
 
@@ -511,7 +496,7 @@ const shelves = sections
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(var(--span), minmax(0, 1fr));
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
     gap: 2.75rem var(--col-gap);
   }
 

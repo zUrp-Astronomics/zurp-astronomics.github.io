@@ -6,7 +6,7 @@
 **Référencé par** : `.gitea/workflows/ci.yml` (étape « Kit README à jour »), `.github/workflows/org-readme.yml` (synchronisation de `profile/README.md`)
 
 Ce répertoire contient ce qui est publié sur GitHub : le README de l'organisation s'y synchronise
-seul (section 1), le reste se recopie à la main (sections 2 et 3). Tout y est **généré** depuis
+seul (section 1), le reste se recopie à la main (sections 2 à 4). Tout y est **généré** depuis
 `src/data/products.ts`, la source du catalogue du site : noms, accroches, slogans, statuts,
 sections, « based on », licences et liens sont ceux du site. Pour changer un texte, modifie
 `products.ts` (ou le script), régénère, commite : n'édite jamais ces fichiers directement.
@@ -63,7 +63,14 @@ site déployé.
 
 Cyclops, Wraith n'ont pas encore de dépôt : leurs en-têtes et leurs cartes sont prêts pour le jour où ils seront créés.
 
-## 4. Régénérer
+## 4. Avatar de l'organisation
+
+L'avatar (le télescope steampunk, dessin complet, 480 × 480 px, PNG) est servi par le site à
+https://zurp-astronomics.github.io/brand/avatar.png : enregistre l'image, puis téléverse-la dans les **Settings** de l'organisation
+(https://github.com/organizations/zUrp-Astronomics/settings/profile), rubrique **Profile picture** (**Edit → Upload a photo…**). Il est produit
+par le build du site : en ligne une fois le site déployé.
+
+## 5. Régénérer
 
 Après `npm ci` (le script lit `products.ts` avec esbuild, fourni avec Astro) :
 
@@ -73,5 +80,5 @@ Après `npm ci` (le script lit `products.ts` avec esbuild, fourni avec Astro) :
   (`.gitea/workflows/ci.yml`, job `build`) le lance : modifier `products.ts` sans régénérer la fait
   échouer.
 
-Les images (plaque, affiches, cartes) ne sont pas dans ce répertoire : le site les sert, et le
+Les images (plaque, affiches, cartes, avatar) ne sont pas dans ce répertoire : le site les sert, et le
 contrôle `scripts/check-dist.mjs` fait échouer le build si l'une manque.

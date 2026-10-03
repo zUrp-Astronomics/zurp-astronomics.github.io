@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product, stable brand image URLs, GitHub social preview cards
+// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product, stable brand image URLs, GitHub social preview cards, site icons and organisation avatar
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -8,7 +8,7 @@
 // Runs after `npm run build` in CI. No dependencies: node built-ins only.
 //
 // Fails (exit 1) when:
-//   - an image file in dist/ (webp, jpg/jpeg, png, avif, gif, svg) weighs more than 600 KB
+//   - an image file in dist/ (webp, jpg/jpeg, png, avif, gif, svg, ico) weighs more than 600 KB
 //     (614 400 bytes);
 //   - dist/ does not hold EXACTLY this set of pages, no more, no less:
 //       `index.html` + `<slug>/index.html` per product
@@ -33,7 +33,14 @@
 //   - a GitHub social preview card (uploaded by hand in each product repository, linked from
 //     readme-kit/README.md) is missing, is not a JPEG, or is not exactly 1280 × 640 px:
 //       `brand/social/<slug>.jpg` per product        (GitHub's recommended size)
-//     Its weight is held by the 600 KB ceiling above, well under GitHub's 1 MB limit.
+//     Its weight is held by the 600 KB ceiling above, well under GitHub's 1 MB limit;
+//   - a site icon or the organisation avatar is missing, is not a PNG (an ICO for favicon.ico), is
+//     not square, or is not exactly its size (convention: src/lib/site-icons.ts, mirrored below):
+//       `favicon.ico`            16 and 32 px entries   `favicon-16.png`  16 × 16
+//       `favicon-32.png`         32 × 32                `icon-192.png`    192 × 192
+//       `apple-touch-icon.png`   180 × 180              `brand/avatar.png` 480 × 480 (GitHub org avatar)
+//   - a page does not declare an icon (`<link rel="icon">`) AND an `apple-touch-icon`, declares one
+//     whose file is missing from dist/, or declares `sizes="WxH"` that the file does not have.
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
@@ -43,12 +50,21 @@ const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
 const MAX_TILE_WIDTH = 600; // px — widest variant allowed for a catalog tile
 const TILE_MARKER = /\sdata-catalog-tile(?:[\s=>/]|$)/i; // attribute on every catalog tile <img>
 const HOME_PAGE = 'index.html'; // the only catalog page
-const IMAGE_EXT = /\.(webp|jpe?g|png|avif|gif|svg)$/i;
+const IMAGE_EXT = /\.(webp|jpe?g|png|avif|gif|svg|ico)$/i;
 // Stable brand URLs (README links). Mirror of src/lib/brand-images.ts.
 const BRAND_PANEL = { path: 'brand/low-tech-diy.webp', maxWidth: 800 };
 const brandPoster = (slug) => ({ path: `brand/posters/${slug}.webp`, maxWidth: 600 });
 const SOCIAL_CARD = { width: 1280, height: 640 };
 const socialCard = (slug) => `brand/social/${slug}.jpg`;
+// Site icons and the organisation avatar. Mirror of src/lib/site-icons.ts.
+const SITE_ICONS = [
+  { path: 'favicon-16.png', size: 16 },
+  { path: 'favicon-32.png', size: 32 },
+  { path: 'icon-192.png', size: 192 },
+  { path: 'apple-touch-icon.png', size: 180 },
+  { path: 'brand/avatar.png', size: 480 },
+];
+const FAVICON_ICO = { path: 'favicon.ico', sizes: [16, 32] };
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = resolve(process.argv[2] ?? join(repoRoot, 'dist'));
@@ -237,10 +253,122 @@ for (const path of slugs.map(socialCard)) {
 console.log(`GitHub social preview cards: ${slugs.length} expected (${SOCIAL_CARD.width} × ${SOCIAL_CARD.height} JPEG)`);
 for (const line of cardReport) console.log(line);
 
+// --- 6. Site icons, organisation avatar, and their declaration on every page --------------------
+// Size of a PNG from its IHDR chunk; null if the buffer is not a PNG.
+function pngSize(buf) {
+  const SIG = '89504e470d0a1a0a';
+  if (buf.length < 24 || buf.toString('hex', 0, 8) !== SIG || buf.toString('ascii', 12, 16) !== 'IHDR') return null;
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+// Entries of an ICO file: the size in its directory and, for a PNG entry, the size of the PNG
+// itself; null if the buffer is not an ICO.
+function icoEntries(buf) {
+  if (buf.length < 6 || buf.readUInt16LE(0) !== 0 || buf.readUInt16LE(2) !== 1) return null;
+  const count = buf.readUInt16LE(4);
+  if (count === 0 || buf.length < 6 + 16 * count) return null;
+  const entries = [];
+  for (let i = 0; i < count; i++) {
+    const e = 6 + 16 * i;
+    const width = buf[e] || 256;
+    const height = buf[e + 1] || 256;
+    const length = buf.readUInt32LE(e + 8);
+    const offset = buf.readUInt32LE(e + 12);
+    if (offset + length > buf.length) return null;
+    entries.push({ width, height, png: pngSize(buf.subarray(offset, offset + length)) });
+  }
+  return entries;
+}
+
+const iconReport = [];
+for (const { path, size } of SITE_ICONS) {
+  const abs = join(distDir, path);
+  if (!existsSync(abs)) {
+    errors.push(`missing site icon: dist/${path}`);
+    iconReport.push(`  MISSING  dist/${path}`);
+    continue;
+  }
+  const buf = readFileSync(abs);
+  const dims = pngSize(buf);
+  if (dims === null) {
+    errors.push(`site icon is not a PNG: dist/${path}`);
+  } else if (dims.width !== dims.height) {
+    errors.push(`site icon is not square: dist/${path} is ${dims.width} × ${dims.height} px`);
+  } else if (dims.width !== size) {
+    errors.push(`site icon has the wrong size: dist/${path} is ${dims.width} × ${dims.height} px, expected ${size} × ${size}`);
+  }
+  const shown = dims ? `${dims.width}×${dims.height}` : '?';
+  iconReport.push(`  ${String(buf.length).padStart(9)} bytes  ${shown.padStart(9)}  dist/${path}`);
+}
+{
+  const { path, sizes } = FAVICON_ICO;
+  const abs = join(distDir, path);
+  if (!existsSync(abs)) {
+    errors.push(`missing site icon: dist/${path}`);
+    iconReport.push(`  MISSING  dist/${path}`);
+  } else {
+    const buf = readFileSync(abs);
+    const entries = icoEntries(buf);
+    if (entries === null) {
+      errors.push(`site icon is not an ICO: dist/${path}`);
+    } else {
+      for (const e of entries) {
+        if (e.width !== e.height) errors.push(`favicon entry is not square: dist/${path} holds ${e.width} × ${e.height} px`);
+        if (e.png && (e.png.width !== e.width || e.png.height !== e.height)) {
+          errors.push(`favicon entry disagrees with its image: dist/${path} declares ${e.width} × ${e.height}, its PNG is ${e.png.width} × ${e.png.height}`);
+        }
+      }
+      const have = entries.map((e) => e.width);
+      for (const s of sizes) {
+        if (!entries.some((e) => e.width === s && e.height === s)) {
+          errors.push(`favicon has no ${s} × ${s} entry: dist/${path} holds ${have.join(', ') || 'nothing'}`);
+        }
+      }
+    }
+    const shown = entries ? entries.map((e) => `${e.width}×${e.height}`).join('+') : '?';
+    iconReport.push(`  ${String(buf.length).padStart(9)} bytes  ${shown.padStart(9)}  dist/${path}`);
+  }
+}
+console.log(`Site icons and organisation avatar: ${SITE_ICONS.length + 1} expected (square, exact size)`);
+for (const line of iconReport) console.log(line);
+
+// Every page declares a tab icon and an apple-touch-icon, and every declared icon is in dist/.
+const attr = (tag, name) => tag.match(new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, 'i'))?.[1] ?? null;
+let declared = 0;
+for (const page of [...found].sort()) {
+  const html = readFileSync(join(distDir, page), 'utf8');
+  const links = [...html.matchAll(/<link\b[^>]*>/gi)]
+    .map(([tag]) => ({ tag, rel: (attr(tag, 'rel') ?? '').toLowerCase().split(/\s+/) }))
+    .filter(({ rel }) => rel.includes('icon') || rel.includes('apple-touch-icon'));
+  if (!links.some(({ rel }) => rel.includes('icon'))) errors.push(`no <link rel="icon"> in dist/${page}`);
+  if (!links.some(({ rel }) => rel.includes('apple-touch-icon'))) errors.push(`no <link rel="apple-touch-icon"> in dist/${page}`);
+  for (const { tag } of links) {
+    declared++;
+    const href = attr(tag, 'href');
+    if (!href || !href.startsWith('/') || href.startsWith('//')) {
+      errors.push(`icon link without a site-root href in dist/${page}: ${tag}`);
+      continue;
+    }
+    const path = href.slice(1).split(/[?#]/)[0];
+    const abs = join(distDir, path);
+    if (!existsSync(abs)) {
+      errors.push(`declared icon missing from dist/: ${href} (declared in dist/${page})`);
+      continue;
+    }
+    const sizes = attr(tag, 'sizes');
+    const dims = pngSize(readFileSync(abs));
+    const m = sizes?.match(/^(\d+)x(\d+)$/i);
+    if (m && dims && (dims.width !== Number(m[1]) || dims.height !== Number(m[2]))) {
+      errors.push(`declared icon has the wrong size: ${href} is ${dims.width} × ${dims.height} px, declared sizes="${sizes}" in dist/${page}`);
+    }
+  }
+}
+console.log(`Icon links checked on ${found.size} page(s): ${declared}`);
+
 // --- Verdict -----------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, every stable brand image and social preview card in place.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, every stable brand image, social preview card, site icon and the organisation avatar in place.');

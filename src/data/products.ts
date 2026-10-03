@@ -1,4 +1,4 @@
-// SOURCE: zurp-astronomics-site — product catalog data (posters, alt texts, accents)
+// SOURCE: zurp-astronomics-site — product catalog data (posters, alt texts, accents, catalog sections)
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -26,11 +26,28 @@ import basiliskPoster2 from '../assets/posters-2/2_basilisk.webp';
 
 export type ProductStatus = 'wip' | 'future' | 'released';
 
+/**
+ * Catalog sections of the main site's home page, in display order. Taken from the README of the
+ * zUrp-Astronomics GitHub organisation; the next ticket generates the READMEs back from here, so
+ * this list (and each product's `section`) is the single source. Inside a section, products keep
+ * their order in `products` below. The v1 archive ignores sections (one flat grid, frozen).
+ */
+export const sections = [
+  { id: 'mounts', title: 'Mounts' },
+  { id: 'cameras', title: 'Cameras' },
+  { id: 'gadgets', title: 'Gadgets' },
+  { id: 'future', title: 'Future' },
+] as const;
+
+export type ProductSection = (typeof sections)[number]['id'];
+
 export interface Product {
   slug: string;
   name: string;
   tagline: string;
   category: string;
+  /** Catalog section on the main site's home page (see `sections`). */
+  section: ProductSection;
   repo: string;
   status: ProductStatus;
   description: string[];
@@ -55,6 +72,7 @@ export const products: Product[] = [
     name: 'Kaiju',
     tagline: 'Fully integrated harmonic alt-az mount for DSLR, like a SeeStar on steroids.',
     category: 'Mount',
+    section: 'mounts',
     repo: 'https://github.com/zUrp-Astronomics/kaiju',
     status: 'wip',
     description: [
@@ -75,6 +93,7 @@ export const products: Product[] = [
     name: 'Berserker',
     tagline: 'State-of-the-art harmonic equatorial mount, 3D printed with CNC machined core.',
     category: 'Mount',
+    section: 'mounts',
     repo: 'https://github.com/zUrp-Astronomics/berserker',
     status: 'wip',
     description: [
@@ -95,6 +114,7 @@ export const products: Product[] = [
     name: 'Unicorn',
     tagline: 'Small but effective controller for astronomical mount, in a Tic-Tac box size.',
     category: 'Controller',
+    section: 'gadgets',
     repo: 'https://github.com/zUrp-Astronomics/unicorn',
     status: 'wip',
     basedOn: 'TeenAstro',
@@ -116,6 +136,7 @@ export const products: Product[] = [
     name: 'Kraken',
     tagline: 'Compact but efficient powerbox, in a Raspberry Pi case.',
     category: 'Powerbox',
+    section: 'gadgets',
     repo: 'https://github.com/zUrp-Astronomics/kraken',
     status: 'wip',
     basedOn: 'NAFAbox / Astralim',
@@ -137,6 +158,7 @@ export const products: Product[] = [
     name: 'Maelstrom',
     tagline: 'APS-C cooled astronomical camera, with Nikon D40 CCD sensor.',
     category: 'Camera',
+    section: 'cameras',
     repo: 'https://github.com/zUrp-Astronomics/maelstrom',
     status: 'wip',
     basedOn: 'Cam86 / Cam87',
@@ -158,6 +180,7 @@ export const products: Product[] = [
     name: 'Wraith',
     tagline: 'All-in-One mount controller with a Compute Module 5.',
     category: 'Controller',
+    section: 'future',
     repo: 'https://github.com/zUrp-Astronomics',
     status: 'future',
     description: [
@@ -179,12 +202,13 @@ export const products: Product[] = [
     tagline:
       'Sleek but deadly Sony E adapter for astro cameras, bending glass to your will without leaving the warm room.',
     category: 'Adapter',
+    section: 'gadgets',
     repo: 'https://github.com/zUrp-Astronomics/basilisk',
     status: 'wip',
     basedOn: 'Pinefeat',
     description: [
       'Basilisk is a Sony E adapter for astro cameras: put a Sony E lens on your astro camera and drive it remotely. The glass bends to your will, and you never leave the warm room.',
-      'Based on the Pinefeat project, with the zUrp treatment. Open hardware like the rest of the catalog, under GPL-3.0.',
+      'Based on the Pinefeat project, with the zUrp treatment. Open hardware like the rest of the catalog.',
     ],
     poster: basiliskPoster,
     posterAlt:

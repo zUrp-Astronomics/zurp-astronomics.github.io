@@ -3,10 +3,15 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: archived — v1, frozen; only its route changed (it used to live at /<slug>/)
+//
+// One exception to the freeze (ticket #16, legal information, not design): the licence badges and
+// the Source sentence follow the licence rule (src/data/licenses.ts), shared with the main site.
 import { Image, getImage } from 'astro:assets';
 import V1Layout from '../../../layouts/V1Layout.astro';
 import { products } from '../../../data/products';
 import { onAccent } from '../../../lib/color';
+import { licenses } from '../../../data/licenses';
+import LicenseText from '../../../components/LicenseText.astro';
 
 export function getStaticPaths() {
   return products.map((p) => ({
@@ -62,7 +67,8 @@ const tint = `--accent: ${product.accent}; --on-accent: ${onAccent(product.accen
 
         <div class="badges">
           <span class={`badge badge-${product.status}`}>{statusLabel[product.status]}</span>
-          <span class="badge badge-license">GPL-3.0</span>
+          <span class="badge badge-license" title={licenses.hardware.name}>{licenses.hardware.badge}</span>
+          <span class="badge badge-license" title={licenses.software.name}>{licenses.software.badge}</span>
           {product.basedOn && <span class="badge badge-based">based on {product.basedOn}</span>}
         </div>
       </div>
@@ -86,7 +92,7 @@ const tint = `--accent: ${product.accent}; --on-accent: ${onAccent(product.accen
             <span class="repo-url">{product.repo.replace('https://github.com/', 'github.com/')}</span>
           </a>
           <p class="repo-note">
-            Open hardware — BOM, 3D files, firmware, docs. All under GPL-3.0.
+            <LicenseText />
           </p>
         </section>
       </div>

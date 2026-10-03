@@ -7,10 +7,10 @@
 // The copy is the v1 footer's, word for word (v1 archive: src/pages/alternate/index.astro and
 // src/pages/alternate/[slug]/index.astro): home line without a product, product line with one.
 // The "Low-Tech & DIY" panel (the worn version, src/assets/header/low-tech-diy-poster.webp) signs
-// the footer of the PRODUCT pages only, small (~140 px, the size of the v1 sticker). It is left out
-// of the home page, whose header already shows the same poster full size: the `productName` prop
-// is what tells the two apart (set by src/pages/[slug]/index.astro, absent on the home page), so a
-// new product page gets the panel with no list to maintain. The old flat sticker
+// the footer of EVERY page of the main site, home included, small (~140 px, the size of the v1
+// sticker). Ticket #14 had left it out of the home page (its header shows the same poster full
+// size); the human found the gap odd, and ticket #16 put it back: do not reintroduce a condition on
+// `productName` here, which only picks the footer's copy line. The old flat sticker
 // (public/Low_tech_DIY.png) stays with the v1 archive. Variants at 140 and 280 px (1x / 2x) only:
 // it is never displayed wider. The only other addition to the v1 copy is the discreet "v1" link to
 // the archive under /alternate/ — the one bridge between the two versions (v1 must never link back
@@ -46,22 +46,18 @@ const { productName } = Astro.props;
       Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
       Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
     </p>
-    {
-      productName && (
-        <Image
-          src={lowTechPoster}
-          alt="Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front of a moon, on a blueprint with red rays."
-          title="Low-Tech & DIY — culture zUrp"
-          width={140}
-          widths={[140, 280]}
-          sizes="140px"
-          format="webp"
-          quality={72}
-          loading="lazy"
-          class="lowtech-panel"
-        />
-      )
-    }
+    <Image
+      src={lowTechPoster}
+      alt="Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front of a moon, on a blueprint with red rays."
+      title="Low-Tech & DIY — culture zUrp"
+      width={140}
+      widths={[140, 280]}
+      sizes="140px"
+      format="webp"
+      quality={72}
+      loading="lazy"
+      class="lowtech-panel"
+    />
     <p class="v1-link"><a href="/alternate/">v1</a></p>
   </div>
 </footer>

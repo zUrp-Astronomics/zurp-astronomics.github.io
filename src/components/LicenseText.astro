@@ -1,0 +1,19 @@
+---
+// SOURCE: zurp-astronomics-site — the licence sentence of the product pages' Source section (main site and v1 archive)
+// AUTHOR: engineer
+// DATE: 2026-10-03
+// STATUS: active
+//
+// Inline content only (text + two links), no wrapper and no style: each product page puts it in
+// its own `<p class="repo-note">`, so the page's scoped styles still dress the paragraph. Shared
+// by src/pages/[slug]/index.astro and src/pages/alternate/[slug]/index.astro on purpose: it is a
+// legal statement, both versions must say the same thing. Rule and sources: src/data/licenses.ts.
+import { licenses } from '../data/licenses';
+
+const { hardware, software } = licenses;
+---
+
+Open hardware — BOM, 3D files, firmware, docs. Hardware (BOM, 3D/CAD files, PCB, mechanics) is
+under <a href={hardware.url} title={hardware.name}>{hardware.short}</a>, software and firmware under
+<a href={software.url} title={software.name}>{software.short}</a>. A project derived from upstream
+work follows its upstream licence: the project's repository has the final word.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product (main site + /alternate/ archive)
+// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product (main site + /alternate/ archive), stable brand image URLs
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -23,7 +23,13 @@
 //     tiles and may be wider; the 600 KB weight ceiling above still applies to them;
 //   - a home page does not hold exactly one tile per product: zero tiles means the marker or the
 //     parser drifted (fail loudly rather than pass an unchecked page), fewer means a tile lost
-//     its marker and escaped the width rule.
+//     its marker and escaped the width rule;
+//   - a stable-URL brand image linked by the GitHub READMEs is missing, is not a WebP, or is wider
+//     than its README size:
+//       `brand/low-tech-diy.webp`                    the Low-Tech & DIY panel   (≤ 800 px wide)
+//       `brand/posters/<slug>.webp` per product       its series 2 poster        (≤ 600 px wide)
+//     Slugs again come from products.ts. The convention is defined (and documented) in
+//     src/lib/brand-images.ts; the paths below mirror it — change both together, or never.
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
@@ -34,6 +40,9 @@ const MAX_TILE_WIDTH = 600; // px — widest variant allowed for a catalog tile
 const TILE_MARKER = /\sdata-catalog-tile(?:[\s=>/]|$)/i; // attribute on every catalog tile <img>
 const SITE_VERSIONS = ['', 'alternate/']; // main site (v2) at the root, v1 archive under /alternate/
 const IMAGE_EXT = /\.(webp|jpe?g|png|avif|gif|svg)$/i;
+// Stable brand URLs (README links). Mirror of src/lib/brand-images.ts.
+const BRAND_PANEL = { path: 'brand/low-tech-diy.webp', maxWidth: 800 };
+const brandPoster = (slug) => ({ path: `brand/posters/${slug}.webp`, maxWidth: 600 });
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = resolve(process.argv[2] ?? join(repoRoot, 'dist'));
@@ -152,10 +161,43 @@ for (const page of [...found].sort()) {
   console.log(`  ${expected.has(page) ? 'ok ' : '?? '} dist/${page}`);
 }
 
+// --- 4. Stable brand images (README links) ----------------------------------------------------
+// Width of a WebP file from its header (lossy VP8, lossless VP8L, extended VP8X); null if the file
+// is not a WebP the parser understands.
+function webpWidth(buf) {
+  if (buf.length < 30 || buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WEBP') return null;
+  const chunk = buf.toString('ascii', 12, 16);
+  if (chunk === 'VP8 ') return buf.readUInt16LE(26) & 0x3fff;
+  if (chunk === 'VP8L') return 1 + (buf.readUInt16LE(21) & 0x3fff);
+  if (chunk === 'VP8X') return 1 + buf.readUIntLE(24, 3);
+  return null;
+}
+
+const brandImages = [BRAND_PANEL, ...slugs.map(brandPoster)];
+const brandReport = [];
+for (const { path, maxWidth } of brandImages) {
+  const abs = join(distDir, path);
+  if (!existsSync(abs)) {
+    errors.push(`missing stable brand image: dist/${path} (linked by URL from the GitHub READMEs)`);
+    brandReport.push(`  MISSING  dist/${path}`);
+    continue;
+  }
+  const buf = readFileSync(abs);
+  const width = webpWidth(buf);
+  if (width === null) {
+    errors.push(`stable brand image is not a WebP: dist/${path}`);
+  } else if (width > maxWidth) {
+    errors.push(`stable brand image too wide: dist/${path} is ${width} px > ${maxWidth} px (README size)`);
+  }
+  brandReport.push(`  ${String(buf.length).padStart(9)} bytes  ${String(width ?? '?').padStart(4)} px  dist/${path}`);
+}
+console.log(`Stable brand images (README URLs): ${brandImages.length} expected`);
+for (const line of brandReport) console.log(line);
+
 // --- Verdict -----------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, on the main site and in the /alternate/ archive.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, on the main site and in the /alternate/ archive, every stable brand image in place.');

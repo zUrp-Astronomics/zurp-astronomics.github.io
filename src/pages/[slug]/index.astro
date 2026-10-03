@@ -5,12 +5,15 @@
 // STATUS: active
 //
 // Same content as the v1 product page, archived at /alternate/<slug>/ (src/pages/alternate/[slug]/index.astro):
-// tagline, category, badges (status, GPL-3.0, based on), About, Source + repo link, footer. Copy from
-// products.ts and from the v1 page, word for word.
+// tagline, category, badges (status, hardware + software licences, based on), About, Source + repo
+// link, footer. Copy from products.ts and from the v1 page, word for word. The licence badges and
+// sentence come from src/data/licenses.ts / src/components/LicenseText.astro, shared with v1.
 import { Image, getImage } from 'astro:assets';
 import V2Layout from '../../layouts/V2Layout.astro';
 import { products } from '../../data/products';
-import { onAccent } from '../../lib/color';
+import { accessibleFill, onAccent } from '../../lib/color';
+import { licenses } from '../../data/licenses';
+import LicenseText from '../../components/LicenseText.astro';
 
 export function getStaticPaths() {
   return products.map((p) => ({
@@ -31,7 +34,15 @@ const statusLabel = {
 // at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.
 const ogPoster = await getImage({ src: product.poster2, width: 1000, format: 'jpg', quality: 78 });
 
-const tint = `--z2-accent: ${product.accent2}; --z2-on-accent: ${onAccent(product.accent2)};`;
+// The status badge carries text on the accent: its fill is the accent nudged (only if needed) to
+// reach 4.5:1 with its text. Kaiju's red is the one that needs it; the others pass as they are.
+const badge = accessibleFill(product.accent2);
+const tint = [
+  `--z2-accent: ${product.accent2}`,
+  `--z2-on-accent: ${onAccent(product.accent2)}`,
+  `--z2-badge-fill: ${badge.fill}`,
+  `--z2-on-badge: ${badge.text}`,
+].join('; ');
 ---
 
 <V2Layout
@@ -75,7 +86,8 @@ const tint = `--z2-accent: ${product.accent2}; --z2-on-accent: ${onAccent(produc
 
         <div class="badges">
           <span class={`badge badge-${product.status}`}>{statusLabel[product.status]}</span>
-          <span class="badge badge-license">GPL-3.0</span>
+          <span class="badge badge-license" title={licenses.hardware.name}>{licenses.hardware.badge}</span>
+          <span class="badge badge-license" title={licenses.software.name}>{licenses.software.badge}</span>
           {product.basedOn && <span class="badge badge-based">based on {product.basedOn}</span>}
         </div>
       </div>
@@ -99,7 +111,7 @@ const tint = `--z2-accent: ${product.accent2}; --z2-on-accent: ${onAccent(produc
             <span class="repo-url">{product.repo.replace('https://github.com/', 'github.com/')}</span>
           </a>
           <p class="repo-note">
-            Open hardware — BOM, 3D files, firmware, docs. All under GPL-3.0.
+            <LicenseText />
           </p>
         </section>
       </div>
@@ -232,9 +244,14 @@ const tint = `--z2-accent: ${product.accent2}; --z2-on-accent: ${onAccent(produc
     transform: rotate(-0.5deg);
   }
 
+  .badge:nth-child(4) {
+    transform: rotate(0.8deg);
+  }
+
+  /* Fill and text from accessibleFill() (≥ 4.5:1); the outer ring keeps the true accent. */
   .badge-wip {
-    background: var(--z2-accent);
-    color: var(--z2-on-accent);
+    background: var(--z2-badge-fill);
+    color: var(--z2-on-badge);
     border-color: var(--z2-soot-deep);
     box-shadow: 0 0 0 2px var(--z2-accent);
   }

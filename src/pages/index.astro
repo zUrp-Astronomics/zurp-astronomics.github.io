@@ -21,10 +21,13 @@
 //
 // Header: a title, then an illustration. The title block — the photographed zUrp enamel plate (the
 // h1 on this page), the subtitle "Because buying is cheating." and the hairline that detaches it
-// from the poster (tickets #20, #23) — is no longer drawn here: since ticket #27 it is the site's
-// common sticky header, src/components/v2/SiteHeader.astro, drawn by V2Layout (`home` makes it full
-// size at the top of this page and keeps the plate as the h1). The wide gap between the hairline and
-// the poster is now the hero's top padding.
+// from the poster (tickets #20, #23) — is the big header of src/components/v2/SiteHeader.astro
+// (part="full"), drawn here as the first thing in the hero: it scrolls away with the page and fades
+// out as the compact bar (drawn by V2Layout, `home`) fades in (ticket #31). The wide gap between the
+// hairline and the poster is the top padding of `.hero-body`.
+// The wall (ticket #31, back to ticket #20): the hero's `.hero::before` paints the concrete mottling,
+// dot screen and gallery light from the top of the page, behind the big header and the poster, and
+// fades out just under the poster and its label; the rest of the page is the plain soot wall.
 // The drawing is a real poster taped to the wall (crooked, tape, drop shadow); motto + pitch are the
 // exhibition label (cartel) pinned beside it. No rainbow trail leaving the poster: the human ruled
 // it out. The label is centred on the poster's height (the human's call), and
@@ -33,6 +36,7 @@
 // not shared, so the product pages render exactly as before).
 import { Image, getImage } from 'astro:assets';
 import V2Layout from '../layouts/V2Layout.astro';
+import SiteHeader from '../components/v2/SiteHeader.astro';
 import PosterTile from '../components/v2/PosterTile.astro';
 import { products, sections } from '../data/products';
 import lowTechPoster from '../assets/header/low-tech-diy-poster.webp';
@@ -58,10 +62,12 @@ const shelves = sections
 ---
 
 <V2Layout title="zUrp Astronomics" ogImage={ogPoster.src} home>
-  <!-- The title (plate h1, subtitle, hairline) is the common header, drawn by V2Layout. A <div>, not
-       a <header>: the site header is the page's one banner. -->
+  <!-- A <div>, not a <header>: the big header inside it is the page's one banner. -->
   <div class="hero">
-    <div class="z2-container">
+    <!-- The title (plate h1, subtitle, hairline): the site's big header, on this hero's wall. -->
+    <SiteHeader part="full" />
+
+    <div class="z2-container hero-body">
       <div class="display">
         <!-- The creases are in the image; the tape and the cast shadow make it read as paper.
              Not a catalog tile (no data-catalog-tile): it spans the container, so it gets variants
@@ -143,17 +149,35 @@ const shelves = sections
 <style>
   /* --- The wall ------------------------------------------------------------------------------ */
 
-  /* The top padding is the wide gap under the header's hairline (ticket #20; it was the rule's
-     own bottom margin before the header moved to SiteHeader.astro, ticket #27). */
+  /* From the top of the page (the big header is its first child) to just under the poster. */
   .hero {
     position: relative;
     isolation: isolate;
-    padding: 4rem 0 1.5rem;
+    padding: 0 0 1.5rem;
   }
 
-  /* The concrete wall (mottling, dot screen, gallery light from above) that used to be painted here,
-     around the poster only, is now the ground of the whole page: V2Layout.astro (`--z2-wall-*`,
-     ticket #29). So the band the condensed header uncovers is the same wall, with no seam. */
+  /* Soot wall with a little poured-concrete mottling and a gallery light from above. Masked so it
+     fades into the page's own wall instead of ending on a hard edge. (Ticket #31: restored as it was
+     after ticket #20; it covers the big header too, which is the hero's first child.) */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse 55% 60% at 50% 0%, rgba(255, 236, 200, 0.07), transparent 75%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .52 0 0 0 0 .47 0 0 0 -.7 .32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E") 0 0 / 480px 480px,
+      radial-gradient(circle, rgba(255, 255, 255, 0.035) 0 1px, transparent 1.5px) 0 0 / 7px 7px;
+    opacity: 0.45;
+    -webkit-mask-image: linear-gradient(#000 70%, transparent);
+    mask-image: linear-gradient(#000 70%, transparent);
+    pointer-events: none;
+  }
+
+  /* The top padding is the wide gap under the header's hairline (ticket #20). */
+  .hero-body {
+    padding-top: 4rem;
+  }
 
   /* --- The poster and its label --------------------------------------------------------------- */
 
@@ -462,7 +486,7 @@ const shelves = sections
   }
 
   @media (max-width: 640px) {
-    .hero {
+    .hero-body {
       padding-top: 2.75rem;
     }
     section {

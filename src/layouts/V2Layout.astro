@@ -10,12 +10,10 @@
 // own theme, and every global rule below is scoped under `html.z2` with `--z2-` variables, so
 // nothing here can reach a v1 page even if a bundler ever merged the stylesheets.
 //
-// Ticket #27: the common header (plate, subtitle, hairline — sticky, shadowed, condensed on scroll)
-// is drawn HERE, before the page's slot, for every v2 page: see src/components/v2/SiteHeader.astro.
-// Pages never draw their own; the home page passes `home` (full-size header, the plate is its h1).
-// Ticket #29: the concrete wall (mottling, dot screen, gallery light from the top of the page) is
-// the ground of the whole page here (`--z2-wall-*`), no longer a patch behind the home poster, and
-// the header bar repeats it, so the band the condensed header uncovers is the same wall.
+// Common header (tickets #27, #31, src/components/v2/SiteHeader.astro): the compact bar (plate,
+// subtitle, hairline) is drawn HERE, before the page's slot, on every v2 page — sticky on product
+// pages; on the home page (`home`) fixed and faded in by the scroll. The home page's big header
+// (the plate is its h1) is drawn by the page itself, inside its hero, on the hero's concrete wall.
 import Footer from '../components/v2/Footer.astro';
 import SiteHeader from '../components/v2/SiteHeader.astro';
 
@@ -25,7 +23,7 @@ interface Props {
   ogImage?: string;
   /** Product line for the footer; omitted on the home page. */
   productName?: string;
-  /** Home page: full-size header that condenses on scroll, plate as the h1. */
+  /** Home page: the compact bar is fixed and faded in by the scroll (the page draws its big header). */
   home?: boolean;
 }
 
@@ -122,21 +120,6 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
     --z2-stains: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .3 0 0 0 0 .14 0 0 0 -1.5 .62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
     /* Halftone dots, for bands and rays. */
     --z2-halftone: radial-gradient(circle, rgba(0, 0, 0, 0.55) 0 1px, transparent 1.6px) 0 0 / 5px 5px;
-    /*
-     * The wall (ticket #29): poured-concrete mottling, a faint dot screen and a gallery light from
-     * above — what the home's `.hero::before` painted around the Low-Tech & DIY poster, now the
-     * ground of the WHOLE v2 page (body, below) so whatever the header uncovers is the same wall.
-     * Same layers and strength as that pseudo-element (its 0.45 opacity is folded into each alpha).
-     * Every layer is anchored at the page's top-left corner (0 0, px sizes), and so is the header bar
-     * that repeats them (SiteHeader.astro): at the top of the page the bar and the wall line up.
-     */
-    --z2-wall-light: radial-gradient(ellipse 55% 60% at 50% 0%, rgba(255, 236, 200, 0.045), transparent 75%) 0 0 / 100% 1100px no-repeat;
-    --z2-wall-concrete: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .52 0 0 0 0 .47 0 0 0 -.315 .144'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E") 0 0 / 480px 480px;
-    --z2-wall-dots: radial-gradient(circle, rgba(255, 255, 255, 0.016) 0 1px, transparent 1.5px) 0 0 / 7px 7px;
-    /* The page's blueprint grid, shared with the header bar for the same reason. */
-    --z2-wall-grid:
-      linear-gradient(rgba(140, 170, 230, 0.05) 1px, transparent 1px) 0 0 / 120px 120px,
-      linear-gradient(90deg, rgba(140, 170, 230, 0.05) 1px, transparent 1px) 0 0 / 120px 120px;
 
     color-scheme: dark;
     font-family: var(--z2-font-body);
@@ -157,15 +140,13 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
     line-height: 1.6;
     font-size: 1rem;
     overflow-x: hidden;
-    /* Soot wall: gallery light, concrete mottling and dot screen (ticket #29, see the tokens
-       above), faint blueprint grid, water marks, grime. One continuous wall, top to bottom. */
+    /* Soot wall: faint blueprint grid, water marks, grime. (The concrete mottling is a patch at the
+       top of the home page only, `.hero::before` in index.astro — ticket #31, back to ticket #20.) */
     background:
-      var(--z2-wall-light),
-      var(--z2-wall-concrete),
-      var(--z2-wall-dots),
       radial-gradient(ellipse 60% 40% at 12% 8%, rgba(120, 90, 50, 0.1), transparent 70%),
       radial-gradient(ellipse 50% 35% at 88% 60%, rgba(120, 90, 50, 0.08), transparent 70%),
-      var(--z2-wall-grid),
+      linear-gradient(rgba(140, 170, 230, 0.05) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(90deg, rgba(140, 170, 230, 0.05) 1px, transparent 1px) 0 0 / 120px 120px,
       var(--z2-soot);
   }
 

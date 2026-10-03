@@ -1,0 +1,124 @@
+---
+// SOURCE: zurp-astronomics-site — /alternate/ footer: the v1 footer copy (jokes, sticker) on a black band
+// AUTHOR: engineer
+// DATE: 2026-10-03
+// STATUS: active
+//
+// The copy is the v1 footer's, word for word (src/pages/index.astro and src/pages/[slug]/index.astro):
+// home line without a product, product line with one. The only addition is the discreet link back
+// to v1 that the brief allows (v1 must never link here).
+interface Props {
+  productName?: string;
+}
+
+const { productName } = Astro.props;
+---
+
+<footer class="foot">
+  <div class="z2-container foot-inner">
+    <p class="z2-signature foot-sig" aria-hidden="true"><span>zUrp Astronomics</span></p>
+    <p class="org-link">
+      GitHub · <a href="https://github.com/zUrp-Astronomics">@zUrp-Astronomics</a>
+    </p>
+    {
+      productName ? (
+        <p>
+          <em>{productName} — a product of zUrp Astronomics, a subsidiary of zUrp Industries.</em>
+        </p>
+      ) : (
+        <p>
+          <em>zUrp Astronomics — a subsidiary of zUrp Industries.</em>
+        </p>
+      )
+    }
+    <p class="legalese">
+      Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
+      Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
+    </p>
+    <img
+      src="/Low_tech_DIY.png"
+      alt="Nyan Cat — Low-Tech & DIY internal sticker"
+      class="sticker"
+      title="Internal sticker — culture zUrp"
+      loading="lazy"
+    />
+    <p class="v1-link"><a href="/">v1</a></p>
+  </div>
+</footer>
+
+<style>
+  .foot {
+    position: relative;
+    margin-top: 5rem;
+    padding: 3.25rem 0 2.5rem;
+    text-align: center;
+    background:
+      radial-gradient(circle, rgba(255, 255, 255, 0.05) 0 1px, transparent 1.6px) 0 0 / 5px 5px,
+      var(--z2-soot-deep);
+    border-top: 4px solid var(--z2-red);
+    box-shadow: 0 -8px 0 var(--z2-soot-deep), 0 -10px 0 var(--z2-red);
+  }
+
+  .foot-inner {
+    max-width: 760px;
+  }
+
+  .foot-sig {
+    justify-content: center;
+    color: var(--z2-cream);
+    font-size: 0.95rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .foot p {
+    color: var(--z2-cream-dim);
+    font-size: 0.92rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .foot .foot-sig {
+    color: var(--z2-cream);
+  }
+
+  .org-link {
+    font-family: var(--z2-font-type);
+    letter-spacing: 0.05em;
+  }
+
+  .org-link a {
+    color: var(--z2-cream);
+  }
+
+  .legalese {
+    font-size: 0.82rem !important;
+  }
+
+  /* Slapped on slightly crooked, like a real sticker on a flight case. */
+  .sticker {
+    display: block;
+    max-width: 140px;
+    margin: 1.5rem auto 0;
+    transform: rotate(-4deg);
+    opacity: 0.75;
+    filter: sepia(0.25) contrast(0.95);
+    transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+  }
+
+  .sticker:hover {
+    opacity: 1;
+    filter: none;
+    transform: rotate(-1deg) scale(1.08);
+  }
+
+  .foot .v1-link {
+    margin: 1.75rem 0 0;
+    font-family: var(--z2-font-type);
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  .v1-link a {
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 1px;
+  }
+</style>

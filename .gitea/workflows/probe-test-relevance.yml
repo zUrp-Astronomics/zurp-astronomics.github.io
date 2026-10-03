@@ -67,6 +67,7 @@ on:
 jobs:
   relevance:
     runs-on: shell
+    container: catthehacker/ubuntu:act-latest
     # ⚠ LE PLAFOND PROTÈGE TON PROJET, PAS LA FLOTTE. La sonde joue TA suite, deux fois. Une suite
     # qui ne termine jamais — boucle, attente réseau, prompt — ferait tourner ce job indéfiniment
     # sur TON runner : le rail, lui, abandonne son attente au bout de deux minutes et n'a aucun

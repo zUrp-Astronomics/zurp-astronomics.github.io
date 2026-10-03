@@ -13,7 +13,9 @@ import maelstromPoster from '../assets/posters/maelstrom.webp';
 import wraithPoster from '../assets/posters/wraith.webp';
 import basiliskPoster from '../assets/posters/basilisk.webp';
 
-// Series 2 posters (worn enamel-plate style), used by the /alternate/ version of the site only.
+// Series 2 posters (worn enamel-plate style), used by the main site (v2, at `/`) only.
+// The `poster2` / `poster2Alt` / `accent2` field names predate the swap that made v2 the main site
+// (v1 is archived under /alternate/). They are kept on purpose: renaming them would be churn.
 import kaijuPoster2 from '../assets/posters-2/2_kaiju.webp';
 import berserkerPoster2 from '../assets/posters-2/2_berserker.webp';
 import unicornPoster2 from '../assets/posters-2/2_unicorn.webp';
@@ -33,17 +35,17 @@ export interface Product {
   status: ProductStatus;
   description: string[];
   basedOn?: string;
-  /** Square propaganda poster (1254×1254 source), shown uncropped. */
+  /** Square propaganda poster (1254×1254 source), shown uncropped. v1 archive (/alternate/) only. */
   poster: ImageMetadata;
   /** What the poster shows — used as the image's alt text. */
   posterAlt: string;
-  /** The poster's accent colour, read off the artwork. Tints the product page. */
+  /** The poster's accent colour, read off the artwork. Tints the v1 archive's product page. */
   accent: string;
-  /** Series 2 poster (1254×1254 source, worn plate with near-black opaque corners), /alternate/ only. */
+  /** Series 2 poster (1254×1254 source, worn plate with near-black opaque corners), main site (v2) only. */
   poster2: ImageMetadata;
   /** What the series 2 poster shows — its own creature and slogan. */
   poster2Alt: string;
-  /** Series 2 accent, read off the poster's rays. Tints the /alternate/ product page. */
+  /** Series 2 accent, read off the poster's rays. Tints the main site's (v2) product page. */
   accent2: string;
 }
 

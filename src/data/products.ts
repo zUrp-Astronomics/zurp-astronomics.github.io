@@ -62,7 +62,7 @@ export const products: Product[] = [
     ],
     poster: berserkerPoster,
     posterAlt:
-      'Berserker poster: an orange-plated mechanical lion with a fiery mane roars from a rocky peak in a riveted porthole against the stars, under the slogan “Forward to the stars, Monique!”.',
+      'Berserker poster: an orange-plated mechanical centaur archer with antlers and a mane of flames looses a laser arrow at the stars, its hooves on shattered rocks, in a riveted porthole, under the slogan “Forward to the stars”.',
     accent: '#f25a0a',
   },
   {
@@ -96,8 +96,8 @@ export const products: Product[] = [
     ],
     poster: krakenPoster,
     posterAlt:
-      'Kraken poster: a green mechanical kraken coils its riveted tentacles through the clouds in a porthole against the stars, under the slogan “Power to the people”.',
-    accent: '#0c8a58',
+      'Kraken poster: a teal mechanical kraken with a golden eye coils its riveted tentacles through the clouds in a porthole against the stars and a moon, under the slogan “Power to the people”.',
+    accent: '#094a47',
   },
   {
     slug: 'maelstrom',
@@ -129,7 +129,7 @@ export const products: Product[] = [
     ],
     poster: wraithPoster,
     posterAlt:
-      'Wraith poster: a ghostly steel-grey mechanical dragon dissolving into mist emerges from a riveted porthole against the stars, under the slogan “Soon, comrades”.',
+      'Wraith poster: a hooded steel-grey mechanical spectre with a glowing-eyed mask, a frame of gears and tubes, skeletal arms and floating armour plates dissolves into mist in a riveted porthole against the stars and a moon, under the slogan “Ghost in the sky”.',
     accent: '#8c8c8c',
   },
   {

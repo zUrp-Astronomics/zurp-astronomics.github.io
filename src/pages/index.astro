@@ -8,26 +8,38 @@
 // catalog, manifesto, footer. The copy is v1's, word for word; the catalog comes from products.ts.
 // Do not reword it here: a change of copy belongs to both versions.
 //
+// Catalog: one titled shelf per section (Mounts, Cameras, Gadgets, Future), sections and their order
+// read from products.ts (`sections`, each product's `section`), never listed here. Inside a shelf,
+// products keep their products.ts order. A section with no product is not drawn. The v1 archive
+// keeps its single flat grid.
+//
 // Header: the drawing is a real poster taped to the wall (crooked, tape, drop shadow); the logo is
 // the h1, on a small enamel plate screwed above it; motto + pitch are the exhibition label (cartel)
 // pinned beside it. No rainbow trail leaving the poster: the human ruled it out.
 import { Image, getImage } from 'astro:assets';
 import V2Layout from '../layouts/V2Layout.astro';
 import PosterTile from '../components/v2/PosterTile.astro';
-import { products } from '../data/products';
+import { products, sections } from '../data/products';
 import lowTechPoster from '../assets/header/low-tech-diy-poster.webp';
 
 // Social card: the poster itself, as a JPEG (widest support among link unfurlers), 1200 × 800.
 const ogPoster = await getImage({ src: lowTechPoster, width: 1200, format: 'jpg', quality: 78 });
 
-const tiles = products.map((p) => ({
-  name: p.name,
-  tagline: p.tagline,
-  href: `/${p.slug}/`,
-  poster: p.poster2,
-  posterAlt: p.poster2Alt,
-  accent: p.accent2,
-}));
+const shelves = sections
+  .map((section) => ({
+    ...section,
+    tiles: products
+      .filter((p) => p.section === section.id)
+      .map((p) => ({
+        name: p.name,
+        tagline: p.tagline,
+        href: `/${p.slug}/`,
+        poster: p.poster2,
+        posterAlt: p.poster2Alt,
+        accent: p.accent2,
+      })),
+  }))
+  .filter((shelf) => shelf.tiles.length > 0);
 ---
 
 <V2Layout title="zUrp Astronomics" ogImage={ogPoster.src}>
@@ -87,9 +99,20 @@ const tiles = products.map((p) => ({
   <main class="z2-container">
     <section class="catalog" aria-labelledby="catalog-title">
       <h2 id="catalog-title" class="z2-band section-title">Catalog</h2>
-      <div class="grid">
-        {tiles.map((t) => <PosterTile {...t} />)}
-      </div>
+      {
+        shelves.map((shelf) => (
+          <section class="shelf" aria-labelledby={`shelf-${shelf.id}`}>
+            <h3 id={`shelf-${shelf.id}`} class="z2-signature shelf-title">
+              <span>{shelf.title}</span>
+            </h3>
+            <div class="grid">
+              {shelf.tiles.map((t) => (
+                <PosterTile {...t} />
+              ))}
+            </div>
+          </section>
+        ))
+      }
     </section>
 
     <section class="manifesto z2-plate" aria-labelledby="manifesto-title">
@@ -163,8 +186,8 @@ const tiles = products.map((p) => ({
     width: 100%;
     height: auto;
     mix-blend-mode: multiply;
-    /* A touch of misregistration: the ink sits a hair off its own shadow. */
-    filter: drop-shadow(2px 1px 0 rgba(220, 42, 28, 0.35));
+    /* No drop-shadow here: a red one offset down-right (a "misregistration" touch) drew a red
+       rim along the logo's bottom and right edges on the enamel. Removed in ticket #16. */
   }
 
   .screw {
@@ -315,6 +338,30 @@ const tiles = products.map((p) => ({
     margin: 0 0 2.5rem -0.2rem;
   }
 
+  /* A shelf of the catalog: its title is a wide-tracked stencil line between two red rules (the
+     posters' signature), well below the "Catalog" band in the hierarchy. */
+  .shelf {
+    padding: 0;
+  }
+
+  .shelf + .shelf {
+    margin-top: 4rem;
+  }
+
+  .shelf-title {
+    margin: 0 0 2rem;
+    color: var(--z2-cream);
+    font-stretch: 125%;
+    font-size: clamp(1rem, 3.2vw, 1.35rem);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+  }
+
+  /* The trailing tracking would push the word off-centre between the rules. */
+  .shelf-title span {
+    margin-right: -0.32em;
+  }
+
   .grid {
     display: grid;
     /* min() keeps a single column from overflowing narrow phones. */
@@ -385,6 +432,12 @@ const tiles = products.map((p) => ({
     .screw.br { bottom: 5px; right: 6px; }
     section {
       padding-top: 3.5rem;
+    }
+    .shelf {
+      padding-top: 0;
+    }
+    .shelf + .shelf {
+      margin-top: 3rem;
     }
     .manifesto {
       padding: 2.25rem 1.25rem 1.25rem;

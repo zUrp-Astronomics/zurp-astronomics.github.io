@@ -3,19 +3,31 @@
 **Date** : 2026-10-03
 **Dernière révision** : 2026-10-03
 **Statut** : généré par `scripts/readme-kit.mjs` depuis `src/data/products.ts` — ne pas éditer à la main
-**Référencé par** : `.gitea/workflows/ci.yml` (étape « Kit README à jour »)
+**Référencé par** : `.gitea/workflows/ci.yml` (étape « Kit README à jour »), `.github/workflows/org-readme.yml` (synchronisation de `profile/README.md`)
 
-Ce répertoire contient ce que tu recopies à la main sur GitHub. Tout y est **généré** depuis
+Ce répertoire contient ce qui est publié sur GitHub : le README de l'organisation s'y synchronise
+seul (section 1), le reste se recopie à la main (sections 2 et 3). Tout y est **généré** depuis
 `src/data/products.ts`, la source du catalogue du site : noms, accroches, slogans, statuts,
 sections, « based on », licences et liens sont ceux du site. Pour changer un texte, modifie
 `products.ts` (ou le script), régénère, commite : n'édite jamais ces fichiers directement.
 
 ## 1. README de l'organisation
 
-Copie **tout** [`profile/README.md`](profile/README.md) à la place du fichier `profile/README.md` du
-dépôt [zUrp-Astronomics/.github](https://github.com/zUrp-Astronomics/.github). L'en-tête affiche la plaque patinée Low-Tech & DIY
-depuis le site (https://zurp-astronomics.github.io/brand/low-tech-diy.webp) : l'ancienne image `profile/Low_tech_DIY.png` du dépôt `.github` n'est
-plus utilisée par le README.
+[`profile/README.md`](profile/README.md) est **synchronisé automatiquement** dans le fichier
+`profile/README.md` du dépôt [zUrp-Astronomics/.github](https://github.com/zUrp-Astronomics/.github) par le workflow GitHub
+Actions `.github/workflows/org-readme.yml` : à chaque push sur `main` qui modifie `readme-kit/profile/`,
+ou à la main depuis l'onglet **Actions** du dépôt du site (« README de l'org » → **Run workflow**).
+Il ne commite dans `.github` que si le fichier a changé, et n'écrit jamais dans le dépôt du site.
+
+**Ne le recopie plus à la main** : une modification faite directement dans `.github` serait écrasée à
+la synchronisation suivante. Pour changer ce README, modifie `products.ts` (ou le script) et régénère.
+
+Le workflow s'authentifie avec le secret d'Actions `README_SYNC_TOKEN` (jeton à accès fin, Contents en
+lecture-écriture sur le seul dépôt `.github`). Si la synchronisation échoue, c'est probablement le
+jeton : expiré, pas encore approuvé par l'organisation, ou branche protégée dans `.github`.
+
+L'en-tête affiche la plaque patinée Low-Tech & DIY depuis le site (https://zurp-astronomics.github.io/brand/low-tech-diy.webp) : l'ancienne image
+`profile/Low_tech_DIY.png` du dépôt `.github` n'est plus utilisée par le README.
 
 ## 2. En-tête de README de chaque produit
 

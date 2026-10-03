@@ -8,6 +8,11 @@
 // tagline, category, badges (status, hardware + software licences, based on), About, Source + repo
 // link, footer. Copy from products.ts and from the v1 page, word for word. The licence badges and
 // sentence come from src/data/licenses.ts / src/components/LicenseText.astro, shared with v1.
+//
+// Ticket #27: no breadcrumb any more. The site's common header (src/components/v2/SiteHeader.astro,
+// drawn by V2Layout, compact and sticky on this page) carries the zUrp plate, a link to `/`, and
+// the poster already says the product's name. The page's only h1 is the product name below
+// (visually hidden); the header's plate is not a heading here.
 import { Image, getImage } from 'astro:assets';
 import V2Layout from '../../layouts/V2Layout.astro';
 import { products } from '../../data/products';
@@ -52,14 +57,9 @@ const tint = [
   productName={product.name}
 >
   <div class="page" style={tint}>
-    <header class="hero">
+    <!-- A <div>, not a <header>: the site header (V2Layout) is the page's one banner. -->
+    <div class="hero">
       <div class="z2-container">
-        <p class="breadcrumb">
-          <a href="/">zUrp Astronomics</a>
-          <span class="sep" aria-hidden="true">/</span>
-          <span class="current">{product.name}</span>
-        </p>
-
         <!-- The poster is the page title: it carries the name. The h1 stays for a11y / SEO. -->
         <h1 class="z2-sr-only">{product.name}</h1>
 
@@ -91,7 +91,7 @@ const tint = [
           {product.basedOn && <span class="badge badge-based">based on {product.basedOn}</span>}
         </div>
       </div>
-    </header>
+    </div>
 
     <main class="z2-container">
       <div class="sheet z2-plate">
@@ -120,10 +120,12 @@ const tint = [
 </V2Layout>
 
 <style>
+  /* Top padding: the gap under the common header's hairline (the breadcrumb that used to sit
+     here is gone, ticket #27). */
   .hero {
     position: relative;
     isolation: isolate;
-    padding: 2rem 0 2.5rem;
+    padding: 2.5rem 0 2.5rem;
     text-align: center;
     overflow: hidden;
   }
@@ -144,27 +146,6 @@ const tint = [
       );
     -webkit-mask-image: radial-gradient(ellipse 70% 62% at 50% 44%, #000 30%, transparent 80%);
     mask-image: radial-gradient(ellipse 70% 62% at 50% 44%, #000 30%, transparent 80%);
-  }
-
-  .breadcrumb {
-    font-family: var(--z2-font-type);
-    font-size: 0.9rem;
-    color: var(--z2-cream-dim);
-    margin-bottom: 1.75rem;
-    letter-spacing: 0.05em;
-  }
-
-  .breadcrumb a {
-    color: var(--z2-cream);
-  }
-
-  .breadcrumb .sep {
-    margin: 0 0.5rem;
-    opacity: 0.6;
-  }
-
-  .breadcrumb .current {
-    color: var(--z2-cream-light);
   }
 
   .mount {
@@ -374,7 +355,7 @@ const tint = [
 
   @media (max-width: 640px) {
     .hero {
-      padding: 1.25rem 0 2rem;
+      padding: 1.75rem 0 2rem;
     }
     .mount {
       padding: 12px;

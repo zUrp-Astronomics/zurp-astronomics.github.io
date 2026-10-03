@@ -1,0 +1,307 @@
+---
+// SOURCE: zurp-astronomics-site — the main site's (v2) common header: photographed zUrp plate, subtitle, hairline; sticky, shadowed, condensed on scroll
+// AUTHOR: engineer
+// DATE: 2026-10-03
+// STATUS: active
+//
+// Ticket #27. Rendered by V2Layout.astro on EVERY v2 page (home `/` and the product pages
+// `/<slug>/`), never by a page itself. Everything above the hairline, hairline included, is the
+// header: the plate (src/assets/header/zurp-astronomics-plate.webp, a link to `/`), the subtitle
+// "Because buying is cheating." and the rule. It stays visible while scrolling (position: sticky
+// on a direct child of <body>: it keeps its own room in the flow, so nothing is ever hidden under
+// it on load), on an opaque soot ground with a soft drop shadow under it.
+//
+// Two sizes:
+//   - full    — top of the home page only: plate 440 px max (300 px on phones), as before #27;
+//   - compact — as soon as the home page scrolls, and from the start on product pages: plate
+//               168 px (120 px on phones), small subtitle; ≈ 97 px high on desktop, ≈ 70 px on
+//               phones (budget from the architect: 100 / 72 px max).
+// The switch is a small script (IntersectionObserver on a 4 px sentinel at the top of the page,
+// no dependency). Without JavaScript the home header stays full size and simply scrolls away
+// (not sticky: `.is-sticky` is set by the script), product pages are compact and sticky in plain
+// CSS. Sizes ease over 0.25 s; under prefers-reduced-motion the change is instant.
+//
+// Why an outer box and an inner bar: when the home header condenses, the outer box (sticky,
+// transparent, pointer-events: none) keeps the full header's height in the flow (the script locks
+// its min-height), and only the inner bar shrinks. So the page below never jumps when the header
+// changes size — no reflow, no scroll feedback loop — and the content simply slides under the bar.
+//
+// h1 semantics (ticket #27, deliberate): on the home page the plate IS the page's h1, as before;
+// on a product page the h1 is the product name (visually hidden, in src/pages/[slug]/index.astro)
+// and the plate sits in a plain <div>. One h1 per page.
+import { Image } from 'astro:assets';
+import plate from '../../assets/header/zurp-astronomics-plate.webp';
+
+interface Props {
+  /** Home page: full size at the top, condenses on scroll, the plate is the h1. */
+  home?: boolean;
+}
+
+const { home = false } = Astro.props;
+const Title = home ? 'h1' : 'div';
+---
+
+<header class:list={['site-head', { 'is-compact': !home }]} data-condense={home ? '' : undefined}>
+  <div class="site-head-bar">
+    <div class="z2-container site-head-inner">
+      <!-- The plate is a real enamel plate, photographed (screws, rust and chips are in the image,
+           so no CSS frame around it), hung straight. 1x/2x variants up to 880 px. -->
+      <Title class="site-head-title">
+        <a
+          class="site-head-home"
+          href="/"
+          aria-label="zUrp Astronomics — home"
+          aria-current={home ? 'page' : undefined}
+        >
+          <Image
+            src={plate}
+            alt="zUrp Astronomics"
+            width={880}
+            widths={[300, 440, 600, 880]}
+            sizes={home ? '(max-width: 640px) min(82vw, 300px), 440px' : '(max-width: 640px) 120px, 168px'}
+            format="webp"
+            quality={80}
+            loading="eager"
+            class="site-head-plate"
+          />
+        </a>
+      </Title>
+
+      <!-- The subtitle: part of the title block, not of the h1 (the plate stays alone in it). -->
+      <p class="site-head-subtitle">Because buying is cheating.</p>
+
+      <!-- The hairline closes the header. Decorative only. -->
+      <hr class="site-head-rule" aria-hidden="true" />
+    </div>
+  </div>
+</header>
+
+<script>
+  // Home page only: condense the header as soon as the page leaves its very top. A 4 px sentinel at
+  // the top of the document goes out of view on the first scroll step; back in view, the header
+  // returns to full size. No IntersectionObserver (very old browser): the header stays as rendered
+  // without JS, full size and not sticky.
+  const head = document.querySelector<HTMLElement>('.site-head[data-condense]');
+  if (head && 'IntersectionObserver' in window) {
+    const sentinel = document.createElement('div');
+    sentinel.className = 'site-head-sentinel';
+    sentinel.setAttribute('aria-hidden', 'true');
+    document.body.prepend(sentinel);
+    head.classList.add('is-sticky');
+
+    // Keep the full header's height in the flow while it is (or is becoming) compact: the bar
+    // shrinks inside it, the page below does not move.
+    const release = () => {
+      if (!head.classList.contains('is-compact')) head.style.minHeight = '';
+    };
+    head.addEventListener('transitionend', (event) => {
+      if ((event.target as Element).classList.contains('site-head-home') && event.propertyName === 'width') release();
+    });
+    window.addEventListener('resize', release);
+
+    new IntersectionObserver(([entry]) => {
+      const compact = !entry.isIntersecting;
+      if (compact === head.classList.contains('is-compact')) return;
+      if (compact) head.style.minHeight = `${head.offsetHeight}px`;
+      head.classList.toggle('is-compact', compact);
+      // No transition to wait for (reduced motion, or nothing to animate): release at once.
+      if (!compact && getComputedStyle(head.querySelector('.site-head-home')!).transitionDuration.split(',').every((d) => parseFloat(d) === 0)) {
+        release();
+      }
+    }).observe(sentinel);
+  }
+</script>
+
+<style is:global>
+  /*
+   * Global (under html.z2) on purpose: the script adds `.is-sticky` / `.is-compact` at run time and
+   * creates the sentinel itself; scoped selectors would still work for the classes, but the
+   * sentinel has no scope attribute. Everything stays under html.z2, out of the v1 archive's reach.
+   */
+
+  /* Anchor jumps and focus scrolling land below the compact header, never under it. (The footer's
+     "back to top" link targets <body id="top">: it lands at 0, where the home header is full size.) */
+  html.z2 {
+    scroll-padding-top: 7rem;
+  }
+
+  html.z2 .site-head-sentinel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 4px;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* The outer box: sticky, transparent, lets clicks through (it may be taller than the bar while
+     the home header is compact, see the script). Sticky works because it is a direct child of
+     <body> and <body>'s `overflow-x: hidden` is propagated to the viewport (html.z2 sets no
+     overflow), so no ancestor clips it. Under the grain overlay (body::after, z-index 50) so the
+     header is printed on the same paper as the rest, under the build stamp (100). */
+  html.z2 .site-head {
+    position: relative;
+    z-index: 40;
+    pointer-events: none;
+  }
+
+  html.z2 .site-head.is-compact,
+  html.z2 .site-head.is-sticky {
+    position: sticky;
+    top: 0;
+  }
+
+  /* The bar: the soot wall itself (opaque), lit from above like a gallery wall, a faint concrete
+     mottling, and a soft shadow cast under it — relief, not a halo. */
+  html.z2 .site-head-bar {
+    position: relative;
+    pointer-events: auto;
+    background:
+      radial-gradient(ellipse 55% 120% at 50% 0%, rgba(255, 236, 200, 0.06), transparent 75%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .52 0 0 0 0 .47 0 0 0 -.7 .14'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E") 0 0 / 480px 480px,
+      var(--z2-soot);
+    box-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.35),
+      0 6px 12px -4px rgba(0, 0, 0, 0.55);
+    padding-top: 2.75rem;
+    transition: padding 0.25s ease;
+  }
+
+  html.z2 .site-head-inner {
+    text-align: center;
+  }
+
+  html.z2 .site-head-title {
+    margin: 0;
+    line-height: 0;
+  }
+
+  /* The plate: 440 px at most, hung straight, the shadow of a plate standing off a wall. The link
+     carries the size, so the image only fills it. */
+  html.z2 .site-head-home {
+    display: block;
+    width: min(100%, 440px);
+    margin: 0 auto;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: width 0.25s ease;
+  }
+
+  html.z2 .site-head-plate {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 1;
+    border-radius: 6px;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.6),
+      5px 8px 14px rgba(0, 0, 0, 0.55);
+    transition: box-shadow 0.25s ease;
+  }
+
+  /* The subtitle: the posters' slogan type (Archivo 800, 125 % wide, cream capitals, wide
+     tracking) without its black band. Never wider than the plate at full size. */
+  html.z2 .site-head-subtitle {
+    width: min(100%, 440px);
+    margin: 0.85rem auto 0;
+    /* The trailing tracking would push the line off-centre: balance it on the left. */
+    padding-left: 0.24em;
+    color: var(--z2-cream);
+    font-family: var(--z2-font-body);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    letter-spacing: 0.24em;
+    text-align: center;
+    text-transform: uppercase;
+    text-wrap: balance;
+    transition: margin 0.25s ease, font-size 0.25s ease;
+  }
+
+  /* The hairline, across the container, in the page's cream, dimmed: the header's lower edge. */
+  html.z2 .site-head-rule {
+    height: 0;
+    margin: 2.5rem 0 0;
+    border: 0;
+    border-top: 1px solid var(--z2-cream-dim);
+    opacity: 0.35;
+    transition: margin 0.25s ease;
+  }
+
+  /* --- Compact ------------------------------------------------------------------------------ */
+
+  html.z2 .site-head.is-compact .site-head-bar {
+    padding-top: 0.7rem;
+  }
+
+  html.z2 .site-head.is-compact .site-head-home {
+    width: 168px;
+  }
+
+  html.z2 .site-head.is-compact .site-head-plate {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.6),
+      2px 3px 6px rgba(0, 0, 0, 0.5);
+  }
+
+  html.z2 .site-head.is-compact .site-head-subtitle {
+    width: auto;
+    margin-top: 0.4rem;
+    font-size: 0.62rem;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  html.z2 .site-head.is-compact .site-head-rule {
+    margin-top: 0.6rem;
+  }
+
+  @media (max-width: 640px) {
+    html.z2 {
+      scroll-padding-top: 5.5rem;
+    }
+    html.z2 .site-head-bar {
+      padding-top: 1.5rem;
+    }
+    html.z2 .site-head-home {
+      width: min(82%, 300px);
+    }
+    html.z2 .site-head-subtitle {
+      width: min(82%, 300px);
+      margin-top: 0.75rem;
+      padding-left: 0.14em;
+      font-size: 0.85rem;
+      letter-spacing: 0.14em;
+    }
+    html.z2 .site-head-rule {
+      margin-top: 1.75rem;
+    }
+
+    html.z2 .site-head.is-compact .site-head-bar {
+      padding-top: 0.45rem;
+    }
+    html.z2 .site-head.is-compact .site-head-home {
+      width: 120px;
+    }
+    html.z2 .site-head.is-compact .site-head-subtitle {
+      margin-top: 0.25rem;
+      font-size: 0.56rem;
+      line-height: 1.35;
+    }
+    html.z2 .site-head.is-compact .site-head-rule {
+      margin-top: 0.45rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html.z2 .site-head-bar,
+    html.z2 .site-head-home,
+    html.z2 .site-head-plate,
+    html.z2 .site-head-subtitle,
+    html.z2 .site-head-rule {
+      transition: none;
+    }
+  }
+</style>

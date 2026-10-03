@@ -19,15 +19,15 @@
 // exactly one tile column wide at every screen width (ticket #25), the rule filling up to the first
 // tile's right edge.
 //
-// Header: a title, then an illustration. The title (the h1) is the photographed zUrp enamel plate
-// (src/assets/header/zurp-astronomics-plate.webp, from ready-room f92ca1e), hung straight, kept
-// smallish and set well apart from the poster by a hairline rule (ticket #20: the human wanted it
-// detached, not two plates side by side). The drawing is a real poster taped to the wall (crooked,
-// tape, drop shadow); motto + pitch are the exhibition label (cartel) pinned beside it. No rainbow
-// trail leaving the poster: the human ruled it out.
-// Under the plate, the subtitle "Because buying is cheating." (the human's words, ticket #23), in the
-// posters' slogan type (Archivo, wide cream capitals), NOT in the h1: plate + subtitle are the title
-// block, the hairline closes it. The label is centred on the poster's height (the human's call), and
+// Header: a title, then an illustration. The title block — the photographed zUrp enamel plate (the
+// h1 on this page), the subtitle "Because buying is cheating." and the hairline that detaches it
+// from the poster (tickets #20, #23) — is no longer drawn here: since ticket #27 it is the site's
+// common sticky header, src/components/v2/SiteHeader.astro, drawn by V2Layout (`home` makes it full
+// size at the top of this page and keeps the plate as the h1). The wide gap between the hairline and
+// the poster is now the hero's top padding.
+// The drawing is a real poster taped to the wall (crooked, tape, drop shadow); motto + pitch are the
+// exhibition label (cartel) pinned beside it. No rainbow trail leaving the poster: the human ruled
+// it out. The label is centred on the poster's height (the human's call), and
 // under it hangs a separate rubber stamp "=> GitHub" linking to the organisation, drawn like the
 // licence stamps of the product pages (.badge-license in src/pages/[slug]/index.astro; copied here,
 // not shared, so the product pages render exactly as before).
@@ -36,7 +36,6 @@ import V2Layout from '../layouts/V2Layout.astro';
 import PosterTile from '../components/v2/PosterTile.astro';
 import { products, sections } from '../data/products';
 import lowTechPoster from '../assets/header/low-tech-diy-poster.webp';
-import plate from '../assets/header/zurp-astronomics-plate.webp';
 
 // Social card: the poster itself, as a JPEG (widest support among link unfurlers), 1200 × 800.
 const ogPoster = await getImage({ src: lowTechPoster, width: 1200, format: 'jpg', quality: 78 });
@@ -58,33 +57,11 @@ const shelves = sections
   .filter((shelf) => shelf.tiles.length > 0);
 ---
 
-<V2Layout title="zUrp Astronomics" ogImage={ogPoster.src}>
-  <header class="hero">
+<V2Layout title="zUrp Astronomics" ogImage={ogPoster.src} home>
+  <!-- The title (plate h1, subtitle, hairline) is the common header, drawn by V2Layout. A <div>, not
+       a <header>: the site header is the page's one banner. -->
+  <div class="hero">
     <div class="z2-container">
-      <!-- The title: a real enamel plate, photographed (screws, rust and chips are in the image,
-           so no CSS frame around it). Hung straight on purpose: the crooked poster below is the
-           illustration, the straight plate is the title. Shown at 440 px at most (300 px on
-           phones): 1x/2x variants up to 880 px. -->
-      <h1 class="masthead">
-        <Image
-          src={plate}
-          alt="zUrp Astronomics"
-          width={880}
-          widths={[300, 440, 600, 880]}
-          sizes="(max-width: 640px) min(82vw, 300px), 440px"
-          format="webp"
-          quality={80}
-          loading="eager"
-          class="plate"
-        />
-      </h1>
-
-      <!-- The subtitle: part of the title block, not of the h1 (the plate stays alone in it). -->
-      <p class="subtitle">Because buying is cheating.</p>
-
-      <!-- A plain hairline cuts the title off from the illustration. Decorative only. -->
-      <hr class="masthead-rule" aria-hidden="true" />
-
       <div class="display">
         <!-- The creases are in the image; the tape and the cast shadow make it read as paper.
              Not a catalog tile (no data-catalog-tile): it spans the container, so it gets variants
@@ -125,7 +102,7 @@ const shelves = sections
         </div>
       </div>
     </div>
-  </header>
+  </div>
 
   <main class="z2-container">
     <section class="catalog" aria-labelledby="catalog-title">
@@ -166,10 +143,12 @@ const shelves = sections
 <style>
   /* --- The wall ------------------------------------------------------------------------------ */
 
+  /* The top padding is the wide gap under the header's hairline (ticket #20; it was the rule's
+     own bottom margin before the header moved to SiteHeader.astro, ticket #27). */
   .hero {
     position: relative;
     isolation: isolate;
-    padding: 2.75rem 0 1.5rem;
+    padding: 4rem 0 1.5rem;
   }
 
   /* Soot wall with a little poured-concrete mottling and a gallery light from above. Masked so it
@@ -187,60 +166,6 @@ const shelves = sections
     -webkit-mask-image: linear-gradient(#000 70%, transparent);
     mask-image: linear-gradient(#000 70%, transparent);
     pointer-events: none;
-  }
-
-  /* --- The title: the photographed enamel plate, then a hairline ------------------------------ */
-
-  /* Smaller than the poster by far (440 px at most, was a 520 px CSS plate) and hung straight: it
-     reads as the page's title, the crooked poster below as its illustration. The screws, rim, rust
-     and chips are in the photograph: no CSS frame, only the shadow of a plate standing off a wall. */
-  .masthead {
-    width: min(100%, 440px);
-    margin: 0 auto;
-    line-height: 0;
-  }
-
-  .plate {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 3 / 1;
-    border-radius: 6px;
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.6),
-      5px 8px 14px rgba(0, 0, 0, 0.55);
-  }
-
-  /* The subtitle: the posters' slogan type (as .z2-slogan: Archivo 800, 125 % wide, cream
-     capitals, wide tracking) without its black band — on the soot wall the letters are enough.
-     Small, never wider than the plate, close under it; the plate-to-rule gap below is unchanged
-     (it is the rule's own top margin). Neither the typewriter of the label nor the stencil of the
-     headings: it must not compete with either. */
-  .subtitle {
-    width: min(100%, 440px);
-    margin: 0.85rem auto 0;
-    /* The trailing tracking would push the line off-centre: balance it on the left. */
-    padding-left: 0.24em;
-    color: var(--z2-cream);
-    font-family: var(--z2-font-body);
-    font-weight: 800;
-    font-stretch: 125%;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    letter-spacing: 0.24em;
-    text-align: center;
-    text-transform: uppercase;
-    text-wrap: balance;
-  }
-
-  /* A plain rule across the container, in the cream of the page's text, dimmed: no effect, it only
-     cuts the title off from what hangs below. The wide gap under it is the point of ticket #20. */
-  .masthead-rule {
-    height: 0;
-    margin: 2.5rem 0 4rem;
-    border: 0;
-    border-top: 1px solid var(--z2-cream-dim);
-    opacity: 0.35;
   }
 
   /* --- The poster and its label --------------------------------------------------------------- */
@@ -551,20 +476,7 @@ const shelves = sections
 
   @media (max-width: 640px) {
     .hero {
-      padding-top: 1.5rem;
-    }
-    .masthead {
-      width: min(82%, 300px);
-    }
-    .subtitle {
-      width: min(82%, 300px);
-      margin-top: 0.75rem;
-      padding-left: 0.14em;
-      font-size: 0.85rem;
-      letter-spacing: 0.14em;
-    }
-    .masthead-rule {
-      margin: 1.75rem 0 2.75rem;
+      padding-top: 2.75rem;
     }
     section {
       padding-top: 3.5rem;

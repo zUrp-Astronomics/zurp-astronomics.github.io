@@ -9,7 +9,12 @@
 // here would pull that CSS into the v2 pages. Same head contract as v1 (noindex, OG/Twitter, favicon, build stamp), its
 // own theme, and every global rule below is scoped under `html.z2` with `--z2-` variables, so
 // nothing here can reach a v1 page even if a bundler ever merged the stylesheets.
+//
+// Ticket #27: the common header (plate, subtitle, hairline — sticky, shadowed, condensed on scroll)
+// is drawn HERE, before the page's slot, for every v2 page: see src/components/v2/SiteHeader.astro.
+// Pages never draw their own; the home page passes `home` (full-size header, the plate is its h1).
 import Footer from '../components/v2/Footer.astro';
+import SiteHeader from '../components/v2/SiteHeader.astro';
 
 interface Props {
   title: string;
@@ -17,6 +22,8 @@ interface Props {
   ogImage?: string;
   /** Product line for the footer; omitted on the home page. */
   productName?: string;
+  /** Home page: full-size header that condenses on scroll, plate as the h1. */
+  home?: boolean;
 }
 
 const {
@@ -24,6 +31,7 @@ const {
   description = 'Low-tech, DIY, amateur astronomy hardware.',
   ogImage = '/logo_zUrp-astronomics.png',
   productName,
+  home = false,
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://zurp-astronomics.github.io').toString();
@@ -65,6 +73,7 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
   </head>
   <body id="top">
     <!-- id="top" on <body>: the target of the footer panel's "back to top" link (Footer.astro). -->
+    <SiteHeader home={home} />
     <slot />
     <Footer productName={productName} />
     <div class="z2-stamp" aria-hidden="true">

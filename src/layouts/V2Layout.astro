@@ -5,7 +5,7 @@
 // STATUS: active
 //
 // The site's only layout since the v1 archive (/alternate/, V1Layout.astro) was deleted (ticket #35).
-// Head contract: noindex, OG/Twitter, favicon, build stamp. Every global rule below is scoped under
+// Head contract: noindex, OG/Twitter, icons (favicon + apple-touch-icon, src/lib/site-icons.ts), build stamp. Every global rule below is scoped under
 // `html.z2` with `--z2-` variables (a legacy of the v1/v2 coexistence, kept: harmless and stable).
 //
 // Common header (tickets #27, #31, src/components/v2/SiteHeader.astro): the compact bar (plate,
@@ -52,7 +52,13 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#1a1917" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- Icons (src/lib/site-icons.ts): the large one first, the tab sizes last — Firefox has long
+         taken the last declared icon whatever its `sizes`, so the 32 px crop must close the list.
+         /favicon.ico (16 + 32) is not declared: it is there for clients that request it on their own. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="generator" content={Astro.generator} />
 
     <meta property="og:type" content="website" />

@@ -1,0 +1,392 @@
+---
+// SOURCE: zurp-astronomics-site — /alternate/<slug>/ product page: series 2 poster on a riveted mount, worn plate sheet
+// AUTHOR: engineer
+// DATE: 2026-10-03
+// STATUS: active
+//
+// Same content as the v1 product page (src/pages/[slug]/index.astro): tagline, category, badges
+// (status, GPL-3.0, based on), About, Source + repo link, footer. Copy from products.ts and from
+// the v1 page, word for word.
+import { Image, getImage } from 'astro:assets';
+import AltLayout from '../../../layouts/AltLayout.astro';
+import { products } from '../../../data/products';
+import { onAccent } from '../../../lib/color';
+
+export function getStaticPaths() {
+  return products.map((p) => ({
+    params: { slug: p.slug },
+    props: { product: p },
+  }));
+}
+
+const { product } = Astro.props;
+
+const statusLabel = {
+  wip: 'WIP',
+  future: 'Future',
+  released: 'Released',
+};
+
+// Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than the v1 art
+// at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.
+const ogPoster = await getImage({ src: product.poster2, width: 1000, format: 'jpg', quality: 78 });
+
+const tint = `--z2-accent: ${product.accent2}; --z2-on-accent: ${onAccent(product.accent2)};`;
+---
+
+<AltLayout
+  title={`${product.name} — zUrp Astronomics`}
+  description={product.tagline}
+  ogImage={ogPoster.src}
+  productName={product.name}
+>
+  <div class="page" style={tint}>
+    <header class="hero">
+      <div class="z2-container">
+        <p class="breadcrumb">
+          <a href="/alternate/">zUrp Astronomics</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <span class="current">{product.name}</span>
+        </p>
+
+        <!-- The poster is the page title: it carries the name. The h1 stays for a11y / SEO. -->
+        <h1 class="z2-sr-only">{product.name}</h1>
+
+        <!-- Riveted soot mount: it absorbs the poster's opaque near-black corners, so the rays
+             behind never meet the square image edge. The poster itself is never cropped. -->
+        <div class="mount">
+          <span class="rivet tl" aria-hidden="true"></span>
+          <span class="rivet tr" aria-hidden="true"></span>
+          <span class="rivet bl" aria-hidden="true"></span>
+          <span class="rivet br" aria-hidden="true"></span>
+          <Image
+            src={product.poster2}
+            alt={product.poster2Alt}
+            widths={[400, 640, 960, 1254]}
+            sizes="(max-width: 720px) calc(100vw - 4rem), 660px"
+            format="webp"
+            quality={76}
+            loading="eager"
+            class="poster"
+          />
+        </div>
+
+        <p class="category">{product.category.toUpperCase()}</p>
+
+        <div class="badges">
+          <span class={`badge badge-${product.status}`}>{statusLabel[product.status]}</span>
+          <span class="badge badge-license">GPL-3.0</span>
+          {product.basedOn && <span class="badge badge-based">based on {product.basedOn}</span>}
+        </div>
+      </div>
+    </header>
+
+    <main class="z2-container">
+      <div class="sheet z2-plate">
+        <section class="lead">
+          <p class="pitch">{product.tagline}</p>
+        </section>
+
+        <section class="description">
+          <h2 class="z2-band">About</h2>
+          {product.description.map((paragraph) => <p>{paragraph}</p>)}
+        </section>
+
+        <section class="repo">
+          <h2 class="z2-band">Source</h2>
+          <a class="repo-link" href={product.repo}>
+            <span class="repo-icon" aria-hidden="true">⟶</span>
+            <span class="repo-url">{product.repo.replace('https://github.com/', 'github.com/')}</span>
+          </a>
+          <p class="repo-note">
+            Open hardware — BOM, 3D files, firmware, docs. All under GPL-3.0.
+          </p>
+        </section>
+      </div>
+    </main>
+  </div>
+</AltLayout>
+
+<style>
+  .hero {
+    position: relative;
+    isolation: isolate;
+    padding: 2rem 0 2.5rem;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  /* Accent rays fanning out behind the mount, worn down by a halftone screen. Masked (not painted
+     over) so they fade into the wall itself instead of ending on a flat soot edge. */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      var(--z2-halftone),
+      repeating-conic-gradient(
+        from 4deg at 50% 44%,
+        color-mix(in srgb, var(--z2-accent) 55%, transparent) 0deg 8deg,
+        transparent 8deg 30deg
+      );
+    -webkit-mask-image: radial-gradient(ellipse 70% 62% at 50% 44%, #000 30%, transparent 80%);
+    mask-image: radial-gradient(ellipse 70% 62% at 50% 44%, #000 30%, transparent 80%);
+  }
+
+  .breadcrumb {
+    font-family: var(--z2-font-type);
+    font-size: 0.9rem;
+    color: var(--z2-cream-dim);
+    margin-bottom: 1.75rem;
+    letter-spacing: 0.05em;
+  }
+
+  .breadcrumb a {
+    color: var(--z2-cream);
+  }
+
+  .breadcrumb .sep {
+    margin: 0 0.5rem;
+    opacity: 0.6;
+  }
+
+  .breadcrumb .current {
+    color: var(--z2-cream-light);
+  }
+
+  .mount {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto 2rem;
+    padding: 20px;
+    border-radius: 26px;
+    /* Flat, and exactly the poster's corner black: the image's square edge must not show. */
+    background: var(--z2-soot);
+    box-shadow:
+      inset 0 0 0 1px rgba(236, 223, 191, 0.1),
+      0 0 0 3px var(--z2-soot-deep),
+      0 0 0 6px color-mix(in srgb, var(--z2-accent) 80%, black),
+      14px 16px 0 6px rgba(0, 0, 0, 0.55);
+  }
+
+  .rivet {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #8d877c, #3a3631 60%, #1a1816);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+  }
+
+  .rivet.tl { top: 6px; left: 6px; }
+  .rivet.tr { top: 6px; right: 6px; }
+  .rivet.bl { bottom: 6px; left: 6px; }
+  .rivet.br { bottom: 6px; right: 6px; }
+
+  /* Square, whole poster — never cropped. The 5 % radius only trims its dark outer margin. */
+  .poster {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 5%;
+  }
+
+  .category {
+    font-family: var(--z2-font-body);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: 0.95rem;
+    letter-spacing: 0.3em;
+    color: var(--z2-cream);
+    margin-bottom: 1.1rem;
+  }
+
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+  }
+
+  /* Rubber stamps: slightly crooked, inked unevenly. */
+  .badge {
+    position: relative;
+    font-family: var(--z2-font-type);
+    font-size: 0.85rem;
+    padding: 0.3rem 0.8rem 0.2rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 2px solid currentColor;
+    border-radius: 4px;
+    transform: rotate(-1.5deg);
+  }
+
+  .badge:nth-child(2) {
+    transform: rotate(1deg);
+  }
+
+  .badge:nth-child(3) {
+    transform: rotate(-0.5deg);
+  }
+
+  .badge-wip {
+    background: var(--z2-accent);
+    color: var(--z2-on-accent);
+    border-color: var(--z2-soot-deep);
+    box-shadow: 0 0 0 2px var(--z2-accent);
+  }
+
+  .badge-future {
+    background: var(--z2-soot-deep);
+    color: var(--z2-cream);
+    border-color: var(--z2-accent);
+  }
+
+  .badge-released {
+    background: #2f9e44;
+    color: var(--z2-cream-light);
+    border-color: var(--z2-soot-deep);
+  }
+
+  .badge-license,
+  .badge-based {
+    background: rgba(16, 15, 14, 0.7);
+    color: var(--z2-cream);
+    border-style: double;
+    border-width: 4px;
+  }
+
+  .sheet {
+    margin: 2.5rem auto 0;
+    max-width: 900px;
+    padding: 0 2.25rem 0.5rem;
+    border-top: 0;
+  }
+
+  /* Accent band across the top of the plate, scuffed by the halftone. */
+  .sheet::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 22px;
+    right: 22px;
+    height: 10px;
+    background: var(--z2-halftone), var(--z2-accent);
+    border-radius: 0 0 4px 4px;
+  }
+
+  section {
+    padding: 2.5rem 0;
+  }
+
+  section + section {
+    border-top: 2px dashed rgba(74, 64, 51, 0.55);
+  }
+
+  section h2 {
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    margin-bottom: 1.6rem;
+    margin-left: -0.15rem;
+  }
+
+  .lead {
+    padding-top: 3rem;
+  }
+
+  .lead .pitch {
+    font-size: 1.3rem;
+    line-height: 1.45;
+    max-width: 680px;
+    font-weight: 700;
+    color: var(--z2-ink);
+  }
+
+  .description p {
+    color: var(--z2-ink);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin-bottom: 1.2rem;
+    max-width: 680px;
+  }
+
+  .repo-link {
+    display: inline-flex;
+    align-items: stretch;
+    max-width: 100%;
+    background: var(--z2-soot-deep);
+    color: var(--z2-cream);
+    font-family: var(--z2-font-type);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .repo-icon {
+    display: grid;
+    place-items: center;
+    padding: 0 0.9rem;
+    background: var(--z2-accent);
+    color: var(--z2-on-accent);
+    font-size: 1.3rem;
+  }
+
+  .repo-url {
+    padding: 0.95rem 1.3rem 0.85rem;
+    font-size: 1rem;
+    letter-spacing: 0.03em;
+  }
+
+  .repo-link:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 rgba(29, 26, 22, 0.45);
+  }
+
+  .repo-link:focus-visible {
+    outline-color: var(--z2-ink);
+  }
+
+  .repo-note {
+    margin-top: 1.3rem;
+    color: var(--z2-ink-muted);
+    font-size: 0.93rem;
+  }
+
+  @media (max-width: 640px) {
+    .hero {
+      padding: 1.25rem 0 2rem;
+    }
+    .mount {
+      padding: 12px;
+      border-radius: 18px;
+      box-shadow:
+        inset 0 0 0 1px rgba(236, 223, 191, 0.1),
+        0 0 0 3px var(--z2-soot-deep),
+        0 0 0 5px color-mix(in srgb, var(--z2-accent) 80%, black),
+        8px 10px 0 4px rgba(0, 0, 0, 0.55);
+    }
+    .rivet {
+      width: 7px;
+      height: 7px;
+    }
+    .rivet.tl { top: 3px; left: 3px; }
+    .rivet.tr { top: 3px; right: 3px; }
+    .rivet.bl { bottom: 3px; left: 3px; }
+    .rivet.br { bottom: 3px; right: 3px; }
+    .sheet {
+      padding: 0 1.25rem 0.25rem;
+    }
+    section {
+      padding: 2rem 0;
+    }
+    .lead {
+      padding-top: 2.5rem;
+    }
+    .lead .pitch {
+      font-size: 1.12rem;
+    }
+  }
+</style>

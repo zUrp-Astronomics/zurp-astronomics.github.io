@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling + one page per product
+// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product (v1 + /alternate/)
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -10,15 +10,22 @@
 // Fails (exit 1) when:
 //   - an image file in dist/ (webp, jpg/jpeg, png, avif, gif, svg) weighs more than 600 KB
 //     (614 400 bytes);
-//   - dist/ does not hold exactly one `<slug>/index.html` per product of src/data/products.ts,
-//     plus `index.html` at the root. Slugs are read FROM products.ts (never a hard-coded list),
-//     so a new product is checked as soon as it is added.
+//   - dist/ does not hold EXACTLY this set of pages, no more, no less:
+//       v1          `index.html`            + `<slug>/index.html`           per product
+//       /alternate/ `alternate/index.html`  + `alternate/<slug>/index.html` per product
+//     Slugs are read FROM products.ts (never a hard-coded list), so a new product is checked as
+//     soon as it is added — in both versions;
+//   - a catalog page (`index.html`, `alternate/index.html`) references an optimised image
+//     (/_astro/…) wider than 600 px, in a `srcset` (`…w` descriptor) or in a `width` attribute.
+//     Catalog tiles never get a variant beyond 600 px (weight budget).
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
+const MAX_TILE_WIDTH = 600; // px — widest variant allowed on a catalog page
+const SITE_VERSIONS = ['', 'alternate/']; // v1 at the root, v2 under /alternate/
 const IMAGE_EXT = /\.(webp|jpe?g|png|avif|gif|svg)$/i;
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,7 +85,12 @@ if (slugs.length === 0) {
 const dupes = slugs.filter((s, i) => slugs.indexOf(s) !== i);
 if (dupes.length) errors.push(`duplicate slug(s) in products.ts: ${[...new Set(dupes)].join(', ')}`);
 
-const expected = new Set(['index.html', ...slugs.map((s) => `${s}/index.html`)]);
+const expected = new Set(
+  SITE_VERSIONS.flatMap((prefix) => [
+    `${prefix}index.html`,
+    ...slugs.map((s) => `${prefix}${s}/index.html`),
+  ]),
+);
 const found = new Set(files.map((f) => f.rel).filter((rel) => rel.endsWith('index.html')));
 
 for (const page of expected) {
@@ -88,7 +100,35 @@ for (const page of found) {
   if (!expected.has(page)) errors.push(`unexpected page (no matching product in products.ts): dist/${page}`);
 }
 
+// --- 3. Catalog tiles: no optimised variant wider than 600 px on a catalog page ----------------
+const catalogPages = SITE_VERSIONS.map((prefix) => `${prefix}index.html`).filter((p) => found.has(p));
+let tileImages = 0;
+for (const page of catalogPages) {
+  const html = readFileSync(join(distDir, page), 'utf8');
+  let onPage = 0;
+  for (const [tag] of html.matchAll(/<img\b[^>]*>/gi)) {
+    const src = tag.match(/\ssrc="([^"]*)"/i)?.[1] ?? '';
+    if (!src.startsWith('/_astro/')) continue; // public/ assets (logo, sticker) are not tiles
+    onPage++;
+    const width = Number(tag.match(/\swidth="(\d+)"/i)?.[1] ?? NaN);
+    if (!(width <= MAX_TILE_WIDTH)) {
+      errors.push(`catalog tile too wide: dist/${page} <img src="${src}"> width=${width} > ${MAX_TILE_WIDTH}`);
+    }
+    const srcset = tag.match(/\ssrcset="([^"]*)"/i)?.[1] ?? '';
+    for (const [, w] of srcset.matchAll(/\s(\d+)w\b/g)) {
+      if (Number(w) > MAX_TILE_WIDTH) {
+        errors.push(`catalog tile variant too wide: dist/${page} srcset of ${src} offers ${w}w > ${MAX_TILE_WIDTH}w`);
+      }
+    }
+  }
+  // A catalog page with no optimised image means the parser above no longer sees the tiles:
+  // fail loudly rather than pass an unchecked page.
+  if (onPage === 0) errors.push(`no catalog tile (<img src="/_astro/…">) found in dist/${page} — parser out of sync?`);
+  tileImages += onPage;
+}
+
 console.log(`Products in src/data/products.ts: ${slugs.length} (${slugs.join(', ')})`);
+console.log(`Catalog tiles checked (≤ ${MAX_TILE_WIDTH} px): ${tileImages} on ${catalogPages.join(', ')}`);
 console.log(`Pages found (index.html): ${found.size}, expected: ${expected.size}`);
 for (const page of [...found].sort()) {
   console.log(`  ${expected.has(page) ? 'ok ' : '?? '} dist/${page}`);
@@ -100,4 +140,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, one page per product + home page.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, in v1 and /alternate/.');

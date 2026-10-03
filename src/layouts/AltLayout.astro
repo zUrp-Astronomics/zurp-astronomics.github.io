@@ -1,0 +1,350 @@
+---
+// SOURCE: zurp-astronomics-site — layout of the /alternate/ version (series 2 posters, worn plate look)
+// AUTHOR: engineer
+// DATE: 2026-10-03
+// STATUS: active
+//
+// Standalone on purpose: it does NOT wrap or import the v1 Layout.astro. The v1 layout ships its
+// theme as global CSS (variables, html/body, h1-h3, a, .paper…); importing it here would pull that
+// CSS into the v2 pages. Same head contract as v1 (noindex, OG/Twitter, favicon, build stamp), its
+// own theme, and every global rule below is scoped under `html.z2` with `--z2-` variables, so
+// nothing here can reach a v1 page even if a bundler ever merged the stylesheets.
+import Footer from '../components/alternate/Footer.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  /** Product line for the footer; omitted on the home page. */
+  productName?: string;
+}
+
+const {
+  title,
+  description = 'Low-tech, DIY, amateur astronomy hardware.',
+  ogImage = '/logo_zUrp-astronomics.png',
+  productName,
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://zurp-astronomics.github.io').toString();
+const ogImageURL = new URL(ogImage, Astro.site ?? 'https://zurp-astronomics.github.io').toString();
+const commitHash = import.meta.env.PUBLIC_COMMIT_HASH;
+const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
+---
+
+<!doctype html>
+<html lang="en" class="z2">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#1a1917" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="generator" content={Astro.generator} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content={ogImageURL} />
+    <meta property="og:site_name" content="zUrp Astronomics" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageURL} />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Black+Ops+One&family=Special+Elite&display=swap"
+      rel="stylesheet"
+    />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+    <Footer productName={productName} />
+    <div class="z2-stamp" aria-hidden="true">
+      <code>{commitHash}</code>
+      <span class="sep">·</span>
+      <span>{buildDate}</span>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  /*
+   * Theme — series 2: the posters are worn enamel plates (chipped cream rim, blueprint field,
+   * screen-printed creature, red name block on a black band). The page is the soot-black wall they
+   * hang on: its ground matches the near-black corners baked (opaque) into every poster file, so the
+   * square image edge disappears and the rounded plate reads on its own.
+   *
+   * Readability rule, same as v1: an accent is a FILL, a BORDER, a RULE or a GLOW — never running
+   * text. Running text is cream on soot (≈ 14:1) or ink on cream (≈ 13:1). Every grime layer sits
+   * UNDER the text or is a few percent of opacity over it.
+   */
+  html.z2 {
+    --z2-soot: #1b1a18; /* = the near-black corners baked into the series 2 poster files */
+    --z2-soot-deep: #100f0e;
+    --z2-soot-lift: #24221f;
+    --z2-cream: #ecdfbf;
+    --z2-cream-light: #f4ead0;
+    --z2-cream-dim: #c9bb98;
+    --z2-cream-shade: #d8c79e;
+    --z2-ink: #1d1a16;
+    --z2-ink-muted: #4a4033;
+    --z2-red: #dc2a1c;
+    --z2-blueprint: #1d3f86;
+    --z2-blueprint-deep: #142e66;
+    --z2-accent: var(--z2-red);
+    --z2-on-accent: var(--z2-cream-light);
+    --z2-font-display: 'Black Ops One', 'Arial Black', Impact, sans-serif;
+    --z2-font-body: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+    --z2-font-type: 'Special Elite', 'Courier New', ui-monospace, monospace;
+    /* Paper fibre / screen grain, as an SVG turbulence tile (no image request, no weight). */
+    --z2-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    /* Big blotchy stains (low frequency turbulence), brown on transparent. */
+    --z2-stains: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .3 0 0 0 0 .14 0 0 0 -1.5 .62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+    /* Halftone dots, for bands and rays. */
+    --z2-halftone: radial-gradient(circle, rgba(0, 0, 0, 0.55) 0 1px, transparent 1.6px) 0 0 / 5px 5px;
+
+    color-scheme: dark;
+    font-family: var(--z2-font-body);
+    color: var(--z2-cream);
+    background-color: var(--z2-soot);
+    scroll-behavior: smooth;
+  }
+
+  html.z2 *,
+  html.z2 *::before,
+  html.z2 *::after {
+    box-sizing: border-box;
+  }
+
+  html.z2 body {
+    margin: 0;
+    min-height: 100vh;
+    line-height: 1.6;
+    font-size: 1rem;
+    overflow-x: hidden;
+    /* Soot wall: faint blueprint grid, water marks, grime. */
+    background:
+      radial-gradient(ellipse 60% 40% at 12% 8%, rgba(120, 90, 50, 0.1), transparent 70%),
+      radial-gradient(ellipse 50% 35% at 88% 60%, rgba(120, 90, 50, 0.08), transparent 70%),
+      linear-gradient(rgba(140, 170, 230, 0.05) 1px, transparent 1px) 0 0 / 120px 120px,
+      linear-gradient(90deg, rgba(140, 170, 230, 0.05) 1px, transparent 1px) 0 0 / 120px 120px,
+      var(--z2-soot);
+  }
+
+  /* Grain over everything, posters included: it ties the art and the page into one print. */
+  html.z2 body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: var(--z2-grain);
+    opacity: 0.12;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  html.z2 :where(h1, h2, h3, p, ul, figure) {
+    margin: 0;
+  }
+
+  html.z2 :where(h1, h2, h3) {
+    font-family: var(--z2-font-display);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  html.z2 a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--z2-accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  html.z2 a:hover {
+    text-decoration-thickness: 4px;
+  }
+
+  html.z2 a:focus-visible {
+    outline: 3px dashed var(--z2-cream);
+    outline-offset: 4px;
+  }
+
+  html.z2 img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  html.z2 code {
+    font-family: var(--z2-font-type);
+  }
+
+  html.z2 .z2-container {
+    width: 100%;
+    max-width: 1140px;
+    margin: 0 auto;
+    padding-inline: 1.5rem;
+  }
+
+  /*
+   * The worn plate — a cream enamel sign with a chipped rim and stains, like the posters' border.
+   * The stains layer is a background (under the text); the chipped rim is an inset dashed border
+   * plus an irregular clip of the outer edge.
+   */
+  html.z2 .z2-plate {
+    position: relative;
+    color: var(--z2-ink);
+    background:
+      var(--z2-stains),
+      radial-gradient(ellipse at 30% 20%, var(--z2-cream-light), var(--z2-cream) 55%, var(--z2-cream-shade));
+    background-size: 600px 600px, auto;
+    border-radius: 22px;
+    box-shadow:
+      inset 0 0 0 6px var(--z2-cream-shade),
+      inset 0 0 0 8px rgba(29, 26, 22, 0.55),
+      inset 0 0 40px rgba(110, 80, 40, 0.28);
+  }
+
+  html.z2 .z2-plate::before {
+    /* Scratches and grain on the enamel, kept faint enough to stay out of the text's way. */
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      repeating-linear-gradient(-28deg, transparent 0 37px, rgba(60, 40, 20, 0.07) 37px 38px, transparent 38px 91px),
+      repeating-linear-gradient(64deg, transparent 0 53px, rgba(255, 255, 255, 0.18) 53px 54px, transparent 54px 140px),
+      var(--z2-grain);
+    opacity: 0.22;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+
+  html.z2 .z2-plate > * {
+    position: relative;
+  }
+
+  /*
+   * The red name block on a black band, cut on the bias — the posters' signature move.
+   * Red letters on black: large display text only (≈ 4.5:1), with a misregistered cream ghost.
+   */
+  html.z2 .z2-band {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.35em 0.7em 0.25em;
+    background:
+      var(--z2-halftone),
+      linear-gradient(var(--z2-soot-deep), var(--z2-soot-deep));
+    color: var(--z2-red);
+    font-family: var(--z2-font-display);
+    text-shadow:
+      -2px 1px 0 rgba(236, 223, 191, 0.18),
+      2px -1px 0 rgba(0, 0, 0, 0.6);
+    transform: rotate(-2.2deg);
+    clip-path: polygon(0 6%, 9% 0, 31% 4%, 54% 1%, 78% 5%, 100% 0, 99% 47%, 100% 94%, 72% 100%, 47% 95%, 22% 100%, 1% 96%, 0 52%);
+    overflow-wrap: anywhere;
+  }
+
+  /* The slogan line: cream capitals, very wide tracking, black band. */
+  html.z2 .z2-slogan {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.4rem 1rem 0.35rem;
+    background: var(--z2-soot-deep);
+    color: var(--z2-cream);
+    font-family: var(--z2-font-body);
+    font-weight: 800;
+    font-stretch: 125%;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  /* "zUrp Astronomics" between two red rules. */
+  html.z2 .z2-signature {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    font-family: var(--z2-font-body);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  html.z2 .z2-signature::before,
+  html.z2 .z2-signature::after {
+    content: '';
+    flex: 1;
+    height: 3px;
+    background: var(--z2-red);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  /* Visually hidden, still read by screen readers and crawlers. */
+  html.z2 .z2-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  html.z2 .z2-stamp {
+    position: fixed;
+    bottom: 0.5rem;
+    right: 0.75rem;
+    font-family: var(--z2-font-type);
+    font-size: 0.72rem;
+    color: var(--z2-cream-dim);
+    opacity: 0.5;
+    letter-spacing: 0.03em;
+    pointer-events: none;
+    user-select: none;
+    z-index: 100;
+  }
+
+  html.z2 .z2-stamp code {
+    color: var(--z2-cream);
+  }
+
+  html.z2 .z2-stamp .sep {
+    margin: 0 0.35rem;
+    opacity: 0.5;
+  }
+
+  @media (max-width: 640px) {
+    html.z2 .z2-container {
+      padding-inline: 1rem;
+    }
+    html.z2 .z2-stamp {
+      display: none;
+    }
+    html.z2 .z2-slogan {
+      letter-spacing: 0.14em;
+      padding-inline: 0.7rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html.z2 {
+      scroll-behavior: auto;
+    }
+    html.z2 *,
+    html.z2 *::before,
+    html.z2 *::after {
+      transition: none !important;
+    }
+  }
+</style>

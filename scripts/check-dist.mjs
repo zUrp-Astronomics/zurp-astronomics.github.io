@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product (main site + /alternate/ archive), stable brand image URLs
+// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product (main site + /alternate/ archive), stable brand image URLs, GitHub social preview cards
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -29,7 +29,11 @@
 //       `brand/low-tech-diy.webp`                    the Low-Tech & DIY panel   (≤ 800 px wide)
 //       `brand/posters/<slug>.webp` per product       its series 2 poster        (≤ 600 px wide)
 //     Slugs again come from products.ts. The convention is defined (and documented) in
-//     src/lib/brand-images.ts; the paths below mirror it — change both together, or never.
+//     src/lib/brand-images.ts; the paths below mirror it — change both together, or never;
+//   - a GitHub social preview card (uploaded by hand in each product repository, linked from
+//     readme-kit/README.md) is missing, is not a JPEG, or is not exactly 1280 × 640 px:
+//       `brand/social/<slug>.jpg` per product        (GitHub's recommended size)
+//     Its weight is held by the 600 KB ceiling above, well under GitHub's 1 MB limit.
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
@@ -43,6 +47,8 @@ const IMAGE_EXT = /\.(webp|jpe?g|png|avif|gif|svg)$/i;
 // Stable brand URLs (README links). Mirror of src/lib/brand-images.ts.
 const BRAND_PANEL = { path: 'brand/low-tech-diy.webp', maxWidth: 800 };
 const brandPoster = (slug) => ({ path: `brand/posters/${slug}.webp`, maxWidth: 600 });
+const SOCIAL_CARD = { width: 1280, height: 640 };
+const socialCard = (slug) => `brand/social/${slug}.jpg`;
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = resolve(process.argv[2] ?? join(repoRoot, 'dist'));
@@ -194,10 +200,52 @@ for (const { path, maxWidth } of brandImages) {
 console.log(`Stable brand images (README URLs): ${brandImages.length} expected`);
 for (const line of brandReport) console.log(line);
 
+// --- 5. GitHub social preview cards ------------------------------------------------------------
+// Size of a JPEG from its first SOF (start of frame) marker; null if the file is not a JPEG.
+function jpegSize(buf) {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) return null;
+    const marker = buf[i + 1];
+    if (marker === 0xff) { i++; continue; } // fill byte
+    const length = buf.readUInt16BE(i + 2);
+    // SOF0..SOF15, except DHT (C4), JPG (C8) and DAC (CC), which share the range.
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    }
+    i += 2 + length;
+  }
+  return null;
+}
+
+const cardReport = [];
+for (const path of slugs.map(socialCard)) {
+  const abs = join(distDir, path);
+  if (!existsSync(abs)) {
+    errors.push(`missing social preview card: dist/${path} (uploaded to the product's GitHub repository)`);
+    cardReport.push(`  MISSING  dist/${path}`);
+    continue;
+  }
+  const buf = readFileSync(abs);
+  const size = jpegSize(buf);
+  if (size === null) {
+    errors.push(`social preview card is not a JPEG: dist/${path}`);
+  } else if (size.width !== SOCIAL_CARD.width || size.height !== SOCIAL_CARD.height) {
+    errors.push(
+      `social preview card has the wrong size: dist/${path} is ${size.width} × ${size.height} px, expected ${SOCIAL_CARD.width} × ${SOCIAL_CARD.height}`,
+    );
+  }
+  const dims = size ? `${size.width}×${size.height}` : '?';
+  cardReport.push(`  ${String(buf.length).padStart(9)} bytes  ${dims.padStart(9)}  dist/${path}`);
+}
+console.log(`GitHub social preview cards: ${slugs.length} expected (${SOCIAL_CARD.width} × ${SOCIAL_CARD.height} JPEG)`);
+for (const line of cardReport) console.log(line);
+
 // --- Verdict -----------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, on the main site and in the /alternate/ archive, every stable brand image in place.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, on the main site and in the /alternate/ archive, every stable brand image and social preview card in place.');

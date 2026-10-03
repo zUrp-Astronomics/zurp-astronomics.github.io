@@ -81,5 +81,12 @@ jobs:
         run: npm ci && npm run build
       # Contrôle du build livré : aucune image de dist/ > 600 Ko, et exactement une page
       # `<slug>/index.html` par produit de src/data/products.ts (+ index.html racine).
+      # Aussi : les images à URL stable des README (brand/) et une carte d'aperçu GitHub par produit
+      # (brand/social/<slug>.jpg, JPEG 1280 × 640).
       - name: Contrôle de dist (poids des images, pages produit)
         run: node scripts/check-dist.mjs
+      # Le kit README (readme-kit/, recopié à la main sur GitHub) est généré depuis products.ts :
+      # on le régénère en mémoire et on échoue s'il diffère de ce qui est commité. Modifier
+      # products.ts sans `npm run readme-kit` fait rougir la CI.
+      - name: Kit README à jour
+        run: npm run readme-kit:check

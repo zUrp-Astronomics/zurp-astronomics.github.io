@@ -1,4 +1,4 @@
-// SOURCE: zurp-astronomics-site — product catalog data (posters, alt texts, accents, catalog sections)
+// SOURCE: zurp-astronomics-site — product catalog data (posters, alt texts, accents, catalog sections, poster slogans)
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
@@ -45,6 +45,11 @@ export interface Product {
   slug: string;
   name: string;
   tagline: string;
+  /**
+   * The slogan printed on the series 2 poster, transcribed from the artwork (the poster sets it in
+   * capitals). Used by the README kit (scripts/readme-kit.mjs) and the GitHub social preview cards.
+   */
+  slogan: string;
   category: string;
   /** Catalog section on the main site's home page (see `sections`). */
   section: ProductSection;
@@ -71,6 +76,7 @@ export const products: Product[] = [
     slug: 'kaiju',
     name: 'Kaiju',
     tagline: 'Fully integrated harmonic alt-az mount for DSLR, like a SeeStar on steroids.',
+    slogan: 'Over-engineered by principle',
     category: 'Mount',
     section: 'mounts',
     repo: 'https://github.com/zUrp-Astronomics/kaiju',
@@ -92,6 +98,7 @@ export const products: Product[] = [
     slug: 'berserker',
     name: 'Berserker',
     tagline: 'State-of-the-art harmonic equatorial mount, 3D printed with CNC machined core.',
+    slogan: 'Forward to the stars',
     category: 'Mount',
     section: 'mounts',
     repo: 'https://github.com/zUrp-Astronomics/berserker',
@@ -113,6 +120,7 @@ export const products: Product[] = [
     slug: 'unicorn',
     name: 'Unicorn',
     tagline: 'Small but effective controller for astronomical mount, in a Tic-Tac box size.',
+    slogan: 'Small but effective',
     category: 'Controller',
     section: 'gadgets',
     repo: 'https://github.com/zUrp-Astronomics/unicorn',
@@ -135,6 +143,7 @@ export const products: Product[] = [
     slug: 'kraken',
     name: 'Kraken',
     tagline: 'Compact but efficient powerbox, in a Raspberry Pi case.',
+    slogan: 'Power to the people',
     category: 'Powerbox',
     section: 'gadgets',
     repo: 'https://github.com/zUrp-Astronomics/kraken',
@@ -157,6 +166,7 @@ export const products: Product[] = [
     slug: 'maelstrom',
     name: 'Maelstrom',
     tagline: 'APS-C cooled astronomical camera, with Nikon D40 CCD sensor.',
+    slogan: 'Freeze the noise!',
     category: 'Camera',
     section: 'cameras',
     repo: 'https://github.com/zUrp-Astronomics/maelstrom',
@@ -179,6 +189,7 @@ export const products: Product[] = [
     slug: 'wraith',
     name: 'Wraith',
     tagline: 'All-in-One mount controller with a Compute Module 5.',
+    slogan: 'Ghost in the sky',
     category: 'Controller',
     section: 'future',
     repo: 'https://github.com/zUrp-Astronomics',
@@ -201,6 +212,7 @@ export const products: Product[] = [
     name: 'Basilisk',
     tagline:
       'Sleek but deadly Sony E adapter for astro cameras, bending glass to your will without leaving the warm room.',
+    slogan: 'Bend the glass to your will',
     category: 'Adapter',
     section: 'gadgets',
     repo: 'https://github.com/zUrp-Astronomics/basilisk',

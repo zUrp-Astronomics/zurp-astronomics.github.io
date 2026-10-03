@@ -14,13 +14,22 @@
 //   https://zurp-astronomics.github.io/brand/posters/<slug>.webp      series 2 poster of one product
 //                                                                     600 × 600 px, <slug> = the
 //                                                                     product's `slug` in products.ts
+//   https://zurp-astronomics.github.io/brand/social/<slug>.jpg        GitHub "Social preview" card of
+//                                                                     one product's repository,
+//                                                                     1280 × 640 px JPEG (GitHub's
+//                                                                     recommended size, < 1 MB)
 //
-// All WebP, each well under the 614 400-byte ceiling of scripts/check-dist.mjs.
+// Panel and posters are WebP; the social cards are JPEG (GitHub's upload form takes PNG, JPG or
+// GIF). All well under the 614 400-byte ceiling of scripts/check-dist.mjs.
 //
-// HOW. Two static endpoints write them at build time, from the SAME sources as the site, so they
+// HOW. Static endpoints write them at build time, from the SAME sources as the site, so they
 // follow the next poster change on their own (nothing is copied by hand):
 //   src/pages/brand/low-tech-diy.webp.ts        ← src/assets/header/low-tech-diy-poster.webp
 //   src/pages/brand/posters/[slug].webp.ts      ← each product's `poster2` in src/data/products.ts
+//   src/pages/brand/social/[slug].jpg.ts        ← each product's `poster2`, `name`, `slogan`
+//                                                 (composition: src/lib/social-card.ts)
+// The README kit (scripts/readme-kit.mjs → readme-kit/) links these URLs; it mirrors the paths
+// below — change both together, or never.
 // The pixels go through Astro's own configured image service (sharp), the one the pages use.
 // scripts/check-dist.mjs fails the build when one of these files is missing from dist/, with the
 // slugs read from products.ts: a broken README link turns CI red.
@@ -32,6 +41,7 @@ import { getConfiguredImageService, imageConfig } from 'astro:assets';
 /** Published paths, relative to the site root. */
 export const BRAND_PANEL_PATH = 'brand/low-tech-diy.webp';
 export const brandPosterPath = (slug: string) => `brand/posters/${slug}.webp`;
+export const brandSocialPath = (slug: string) => `brand/social/${slug}.jpg`;
 
 /** README sizes: posters ~600 px (a README column), the panel a header-wide 800 px. */
 export const BRAND_POSTER_WIDTH = 600;

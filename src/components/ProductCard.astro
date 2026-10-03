@@ -20,10 +20,13 @@ const { name, tagline, href, poster, posterAlt, accent } = Astro.props;
 
 <a class="card" href={href} style={`--card-accent: ${accent}`}>
   <!-- Square frame, no cropping: the poster carries text (name, slogan, signature) to its edges.
-       Tiles never get a variant wider than 600 px (weight budget); `sizes` is capped to match. -->
+       Tiles never get a variant wider than 600 px (weight budget); `sizes` is capped to match.
+       `width` is required too: with `widths` alone, Astro emits the fallback `src` at the source
+       width (1254 px). -->
   <Image
     src={poster}
     alt={posterAlt}
+    width={600}
     widths={[320, 480, 600]}
     sizes="(max-width: 640px) min(calc(100vw - 3rem), 600px), (max-width: 1100px) 45vw, 340px"
     format="webp"

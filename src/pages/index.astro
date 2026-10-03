@@ -4,14 +4,12 @@
 // DATE: 2026-10-03
 // STATUS: active
 //
-// Same content as the v1 home, archived at /alternate/ (src/pages/alternate/index.astro): pitch,
-// catalog, manifesto, footer. The copy is v1's, word for word; the catalog comes from products.ts.
-// Do not reword it here: a change of copy belongs to both versions.
+// Content: pitch, catalog, manifesto, footer. The copy began as the v1 home's (v1 deleted in
+// ticket #35); the catalog comes from products.ts.
 //
 // Catalog: one titled shelf per section (Mounts, Cameras, Gadgets, Future), sections and their order
 // read from products.ts (`sections`, each product's `section`), never listed here. Inside a shelf,
-// products keep their products.ts order. A section with no product is not drawn. The v1 archive
-// keeps its single flat grid.
+// products keep their products.ts order. A section with no product is not drawn.
 // Shelves are stacked, one per row (ticket #25: the continuous grid of #23, which put Cameras beside
 // Mounts, is abandoned — the human wants Cameras in the stack). Each shelf lays its tiles left-aligned
 // on the usual 3/2/1-column grid; a one-tile shelf leaves the rest of its row empty, by design.
@@ -53,9 +51,9 @@ const shelves = sections
         name: p.name,
         tagline: p.tagline,
         href: `/${p.slug}/`,
-        poster: p.poster2,
-        posterAlt: p.poster2Alt,
-        accent: p.accent2,
+        poster: p.poster,
+        posterAlt: p.posterAlt,
+        accent: p.accent,
       })),
   }))
   .filter((shelf) => shelf.tiles.length > 0);

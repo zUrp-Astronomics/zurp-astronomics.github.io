@@ -1,20 +1,17 @@
 ---
-// SOURCE: zurp-astronomics-site — main site (v2) footer: the v1 footer copy (jokes) on a black band
+// SOURCE: zurp-astronomics-site — main site (v2) footer: the footer copy (jokes) on a black band
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
 //
-// The copy is the v1 footer's, word for word (v1 archive: src/pages/alternate/index.astro and
-// src/pages/alternate/[slug]/index.astro): home line without a product, product line with one.
+// The copy began as the v1 footer's, word for word (v1 deleted in ticket #35): home line without a
+// product, product line with one.
 // The "Low-Tech & DIY" panel (the worn version, src/assets/header/low-tech-diy-poster.webp) signs
 // the footer of EVERY page of the main site, home included, small (~140 px, the size of the v1
 // sticker). Ticket #14 had left it out of the home page (its header shows the same poster full
 // size); the human found the gap odd, and ticket #16 put it back: do not reintroduce a condition on
-// `productName` here, which only picks the footer's copy line. The old flat sticker
-// (public/Low_tech_DIY.png) stays with the v1 archive. Variants at 140 and 280 px (1x / 2x) only:
-// it is never displayed wider. The only other addition to the v1 copy is the discreet "v1" link to
-// the archive under /alternate/ — the one bridge between the two versions (v1 must never link back
-// here).
+// `productName` here, which only picks the footer's copy line. Variants at 140 and 280 px (1x / 2x)
+// only: it is never displayed wider. Ticket #35 removed the "v1" link with the v1 archive it led to.
 // Ticket #23: the panel is a link back to the top of the page (`#top`, the id on <body> in
 // V2Layout.astro), with nothing visible added — no text, no icon: the human wanted it unannounced,
 // the existing hover is the hint. Its accessible name is "Back to top" (aria-label), so it is not
@@ -66,7 +63,6 @@ const { productName } = Astro.props;
         class="lowtech-panel"
       />
     </a>
-    <p class="v1-link"><a href="/alternate/">v1</a></p>
   </div>
 </footer>
 
@@ -158,17 +154,5 @@ const { productName } = Astro.props;
       transition: none;
       transform: rotate(-2deg);
     }
-  }
-
-  .foot .v1-link {
-    margin: 1.75rem 0 0;
-    font-family: var(--z2-font-type);
-    font-size: 0.75rem;
-    opacity: 0.7;
-  }
-
-  .v1-link a {
-    text-decoration-color: currentColor;
-    text-decoration-thickness: 1px;
   }
 </style>

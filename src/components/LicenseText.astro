@@ -1,13 +1,12 @@
 ---
-// SOURCE: zurp-astronomics-site — the licence sentence of the product pages' Source section (main site and v1 archive)
+// SOURCE: zurp-astronomics-site — the licence sentence of the product pages' Source section
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
 //
 // Inline content only (text + two links), no wrapper and no style: each product page puts it in
-// its own `<p class="repo-note">`, so the page's scoped styles still dress the paragraph. Shared
-// by src/pages/[slug]/index.astro and src/pages/alternate/[slug]/index.astro on purpose: it is a
-// legal statement, both versions must say the same thing. Rule and sources: src/data/licenses.ts.
+// its own `<p class="repo-note">`, so the page's scoped styles still dress the paragraph. Used by
+// src/pages/[slug]/index.astro. Rule and sources: src/data/licenses.ts.
 import { licenses } from '../data/licenses';
 
 const { hardware, software } = licenses;

@@ -3,7 +3,7 @@
 
 <a href="https://zurp-astronomics.github.io/berserker/"><img src="https://zurp-astronomics.github.io/brand/posters/berserker.webp" alt="Berserker poster on a worn, chipped cream plate: an orange-plated mechanical centaur archer with antlers, glowing eyes and a mane of orange flames draws its bow and looses a laser arrow, hooves on rocky ground, in front of the full moon, orange rays and blueprint sketches, above the slogan “Forward to the stars”." width="420"></a>
 
-# Berserker
+# [Berserker](https://zurp-astronomics.github.io/berserker/)
 
 ***Forward to the stars***
 
@@ -12,8 +12,6 @@ State-of-the-art harmonic equatorial mount, 3D printed with CNC machined core.
 ![status: WIP](https://img.shields.io/badge/status-WIP-orange)
 [![hardware: OCL v1.1](https://img.shields.io/badge/hardware-OCL%20v1.1-blue)](https://github.com/OpenCommunityLicence/OpenCommunityLicence)
 [![software: GPL-3.0](https://img.shields.io/badge/software-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
-
-[**🌐 zurp-astronomics.github.io/berserker**](https://zurp-astronomics.github.io/berserker/)
 
 </div>
 

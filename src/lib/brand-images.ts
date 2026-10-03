@@ -4,7 +4,7 @@
 // STATUS: active
 //
 // WHY. Astro serves optimised images under /_astro/<name>.<hash>.webp: the address changes every
-// time the image does. The READMEs of the GitHub organisation and of the 7 product repositories
+// time the image does. The READMEs of the GitHub organisation and of the product repositories
 // link brand images BY URL, so they need addresses that never depend on the content.
 //
 // THE CONVENTION (what the READMEs link to — keep it stable, a README link is never updated):
@@ -25,8 +25,8 @@
 // HOW. Static endpoints write them at build time, from the SAME sources as the site, so they
 // follow the next poster change on their own (nothing is copied by hand):
 //   src/pages/brand/low-tech-diy.webp.ts        ← src/assets/header/low-tech-diy-poster.webp
-//   src/pages/brand/posters/[slug].webp.ts      ← each product's `poster2` in src/data/products.ts
-//   src/pages/brand/social/[slug].jpg.ts        ← each product's `poster2`, `name`, `slogan`
+//   src/pages/brand/posters/[slug].webp.ts      ← each product's `poster` in src/data/products.ts
+//   src/pages/brand/social/[slug].jpg.ts        ← each product's `poster`, `name`, `slogan`
 //                                                 (composition: src/lib/social-card.ts)
 // The README kit (scripts/readme-kit.mjs → readme-kit/) links these URLs; it mirrors the paths
 // below — change both together, or never.

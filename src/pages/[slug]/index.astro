@@ -4,10 +4,10 @@
 // DATE: 2026-10-03
 // STATUS: active
 //
-// Same content as the v1 product page, archived at /alternate/<slug>/ (src/pages/alternate/[slug]/index.astro):
-// tagline, category, badges (status, hardware + software licences, based on), About, Source + repo
-// link, footer. Copy from products.ts and from the v1 page, word for word. The licence badges and
-// sentence come from src/data/licenses.ts / src/components/LicenseText.astro, shared with v1.
+// Content: tagline, category, badges (status, hardware + software licences, based on), About,
+// Source + repo link, footer. Copy from products.ts, word for word (it began as the v1 page's,
+// deleted with the v1 archive in ticket #35). The licence badges and sentence come from
+// src/data/licenses.ts / src/components/LicenseText.astro.
 //
 // Ticket #27: no breadcrumb any more. The site's common header (src/components/v2/SiteHeader.astro,
 // drawn by V2Layout, compact and sticky on this page) carries the zUrp plate, a link to `/`, and
@@ -35,16 +35,16 @@ const statusLabel = {
   released: 'Released',
 };
 
-// Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than the v1 art
-// at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.
-const ogPoster = await getImage({ src: product.poster2, width: 1000, format: 'jpg', quality: 78 });
+// Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than a flat
+// drawing at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.
+const ogPoster = await getImage({ src: product.poster, width: 1000, format: 'jpg', quality: 78 });
 
 // The status badge carries text on the accent: its fill is the accent nudged (only if needed) to
 // reach 4.5:1 with its text. Kaiju's red is the one that needs it; the others pass as they are.
-const badge = accessibleFill(product.accent2);
+const badge = accessibleFill(product.accent);
 const tint = [
-  `--z2-accent: ${product.accent2}`,
-  `--z2-on-accent: ${onAccent(product.accent2)}`,
+  `--z2-accent: ${product.accent}`,
+  `--z2-on-accent: ${onAccent(product.accent)}`,
   `--z2-badge-fill: ${badge.fill}`,
   `--z2-on-badge: ${badge.text}`,
 ].join('; ');
@@ -71,8 +71,8 @@ const tint = [
           <span class="rivet bl" aria-hidden="true"></span>
           <span class="rivet br" aria-hidden="true"></span>
           <Image
-            src={product.poster2}
-            alt={product.poster2Alt}
+            src={product.poster}
+            alt={product.posterAlt}
             widths={[400, 640, 960, 1254]}
             sizes="(max-width: 720px) calc(100vw - 4rem), 660px"
             format="webp"

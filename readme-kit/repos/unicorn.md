@@ -3,7 +3,7 @@
 
 <a href="https://zurp-astronomics.github.io/unicorn/"><img src="https://zurp-astronomics.github.io/brand/posters/unicorn.webp" alt="Unicorn poster on a worn, chipped cream plate: a rearing mechanical unicorn with cream armour plates, brass gears, a spiralled violet horn, a glowing violet eye and a flowing magenta-and-violet mane, in front of the full moon, violet rays and a blueprint sketch of a horse head, above the slogan “Small but effective”." width="420"></a>
 
-# Unicorn
+# [Unicorn](https://zurp-astronomics.github.io/unicorn/)
 
 ***Small but effective***
 
@@ -13,8 +13,6 @@ Small but effective controller for astronomical mount, in a Tic-Tac box size.
 [![hardware: OCL v1.1](https://img.shields.io/badge/hardware-OCL%20v1.1-blue)](https://github.com/OpenCommunityLicence/OpenCommunityLicence)
 [![software: GPL-3.0](https://img.shields.io/badge/software-GPL--3.0-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
 ![based on: TeenAstro](https://img.shields.io/badge/based%20on-TeenAstro-informational)
-
-[**🌐 zurp-astronomics.github.io/unicorn**](https://zurp-astronomics.github.io/unicorn/)
 
 </div>
 

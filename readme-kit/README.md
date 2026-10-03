@@ -29,12 +29,19 @@ jeton : expiré, pas encore approuvé par l'organisation, ou branche protégée 
 L'en-tête affiche la plaque patinée Low-Tech & DIY depuis le site (https://zurp-astronomics.github.io/brand/low-tech-diy.webp) : l'ancienne image
 `profile/Low_tech_DIY.png` du dépôt `.github` n'est plus utilisée par le README.
 
+**Où mènent les liens.** Dans la liste des projets, la miniature et le nom mènent tous deux à la page
+du produit sur le site (`https://zurp-astronomics.github.io/<produit>/`). Le petit badge **GitHub** placé après l'accroche, et
+lui seul, mène au dépôt du produit. Un produit sans dépôt dédié (Cyclops, Wraith) n'a pas de badge.
+
 ## 2. En-tête de README de chaque produit
 
 Pour chaque produit, copie le bloc de `repos/<produit>.md` **en tête** du `README.md` de son dépôt.
 Le bloc va du commentaire `<!-- zurp-readme-header:begin … -->` au commentaire `<!-- zurp-readme-header:end -->`, tous deux
 inclus. À la mise à jour suivante, remplace tout ce qui se trouve entre ces deux marqueurs (marqueurs
 compris) par le nouveau bloc : le reste du README du dépôt n'est pas touché.
+
+L'affiche et le nom du produit mènent à sa page sur le site. Pas de badge GitHub : on est déjà dans
+le dépôt.
 
 ## 3. Carte d'aperçu (Social preview) de chaque dépôt
 
@@ -50,10 +57,11 @@ site déployé.
 | Unicorn | [`repos/unicorn.md`](repos/unicorn.md) | [zUrp-Astronomics/unicorn](https://github.com/zUrp-Astronomics/unicorn) | https://zurp-astronomics.github.io/brand/social/unicorn.jpg |
 | Kraken | [`repos/kraken.md`](repos/kraken.md) | [zUrp-Astronomics/kraken](https://github.com/zUrp-Astronomics/kraken) | https://zurp-astronomics.github.io/brand/social/kraken.jpg |
 | Maelstrom | [`repos/maelstrom.md`](repos/maelstrom.md) | [zUrp-Astronomics/maelstrom](https://github.com/zUrp-Astronomics/maelstrom) | https://zurp-astronomics.github.io/brand/social/maelstrom.jpg |
+| Cyclops | [`repos/cyclops.md`](repos/cyclops.md) | *pas encore de dépôt* | https://zurp-astronomics.github.io/brand/social/cyclops.jpg |
 | Wraith | [`repos/wraith.md`](repos/wraith.md) | *pas encore de dépôt* | https://zurp-astronomics.github.io/brand/social/wraith.jpg |
 | Basilisk | [`repos/basilisk.md`](repos/basilisk.md) | [zUrp-Astronomics/basilisk](https://github.com/zUrp-Astronomics/basilisk) | https://zurp-astronomics.github.io/brand/social/basilisk.jpg |
 
-Wraith n'a pas encore de dépôt : son en-tête et sa carte sont prêts pour le jour où il sera créé.
+Cyclops, Wraith n'ont pas encore de dépôt : leurs en-têtes et leurs cartes sont prêts pour le jour où ils seront créés.
 
 ## 4. Régénérer
 

@@ -13,14 +13,18 @@
 // products keep their products.ts order. A section with no product is not drawn. The v1 archive
 // keeps its single flat grid.
 //
-// Header: the drawing is a real poster taped to the wall (crooked, tape, drop shadow); the logo is
-// the h1, on a small enamel plate screwed above it; motto + pitch are the exhibition label (cartel)
-// pinned beside it. No rainbow trail leaving the poster: the human ruled it out.
+// Header: a title, then an illustration. The title (the h1) is the photographed zUrp enamel plate
+// (src/assets/header/zurp-astronomics-plate.webp, from ready-room f92ca1e), hung straight, kept
+// smallish and set well apart from the poster by a hairline rule (ticket #20: the human wanted it
+// detached, not two plates side by side). The drawing is a real poster taped to the wall (crooked,
+// tape, drop shadow); motto + pitch are the exhibition label (cartel) pinned beside it. No rainbow
+// trail leaving the poster: the human ruled it out.
 import { Image, getImage } from 'astro:assets';
 import V2Layout from '../layouts/V2Layout.astro';
 import PosterTile from '../components/v2/PosterTile.astro';
 import { products, sections } from '../data/products';
 import lowTechPoster from '../assets/header/low-tech-diy-poster.webp';
+import plate from '../assets/header/zurp-astronomics-plate.webp';
 
 // Social card: the poster itself, as a JPEG (widest support among link unfurlers), 1200 × 800.
 const ogPoster = await getImage({ src: lowTechPoster, width: 1200, format: 'jpg', quality: 78 });
@@ -45,21 +49,26 @@ const shelves = sections
 <V2Layout title="zUrp Astronomics" ogImage={ogPoster.src}>
   <header class="hero">
     <div class="z2-container">
-      <div class="enamel">
-        <span class="screw tl" aria-hidden="true"></span>
-        <span class="screw tr" aria-hidden="true"></span>
-        <span class="screw bl" aria-hidden="true"></span>
-        <span class="screw br" aria-hidden="true"></span>
-        <h1>
-          <img
-            src="/logo_zUrp-astronomics.png"
-            alt="zUrp Astronomics corporate logotype"
-            class="logo"
-            width="4000"
-            height="1429"
-          />
-        </h1>
-      </div>
+      <!-- The title: a real enamel plate, photographed (screws, rust and chips are in the image,
+           so no CSS frame around it). Hung straight on purpose: the crooked poster below is the
+           illustration, the straight plate is the title. Shown at 440 px at most (300 px on
+           phones): 1x/2x variants up to 880 px. -->
+      <h1 class="masthead">
+        <Image
+          src={plate}
+          alt="zUrp Astronomics"
+          width={880}
+          widths={[300, 440, 600, 880]}
+          sizes="(max-width: 640px) min(82vw, 300px), 440px"
+          format="webp"
+          quality={80}
+          loading="eager"
+          class="plate"
+        />
+      </h1>
+
+      <!-- A plain hairline cuts the title off from the illustration. Decorative only. -->
+      <hr class="masthead-rule" aria-hidden="true" />
 
       <div class="display">
         <!-- The creases are in the image; the tape and the cast shadow make it read as paper.
@@ -156,55 +165,37 @@ const shelves = sections
     pointer-events: none;
   }
 
-  /* --- The logo: a small enamel plate screwed to the wall ------------------------------------ */
+  /* --- The title: the photographed enamel plate, then a hairline ------------------------------ */
 
-  .enamel {
-    position: relative;
-    width: min(100%, 520px);
-    margin: 0 auto 2.75rem;
-    padding: 1rem 1.75rem;
-    background:
-      var(--z2-stains),
-      radial-gradient(ellipse at 30% 20%, var(--z2-cream-light), var(--z2-cream) 60%, var(--z2-cream-shade));
-    background-size: 600px 600px, auto;
-    border-radius: 12px;
-    box-shadow:
-      inset 0 0 0 3px var(--z2-cream-shade),
-      inset 0 0 0 5px rgba(29, 26, 22, 0.5),
-      0 0 0 2px var(--z2-soot-deep),
-      6px 9px 14px rgba(0, 0, 0, 0.55);
-    transform: rotate(0.6deg);
-  }
-
-  .enamel h1 {
+  /* Smaller than the poster by far (440 px at most, was a 520 px CSS plate) and hung straight: it
+     reads as the page's title, the crooked poster below as its illustration. The screws, rim, rust
+     and chips are in the photograph: no CSS frame, only the shadow of a plate standing off a wall. */
+  .masthead {
+    width: min(100%, 440px);
+    margin: 0 auto;
     line-height: 0;
   }
 
-  /* Black on white source: multiply drops the white onto the enamel. */
-  .logo {
+  .plate {
     display: block;
     width: 100%;
     height: auto;
-    mix-blend-mode: multiply;
-    /* No drop-shadow here: a red one offset down-right (a "misregistration" touch) drew a red
-       rim along the logo's bottom and right edges on the enamel. Removed in ticket #16. */
+    aspect-ratio: 3 / 1;
+    border-radius: 6px;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.6),
+      5px 8px 14px rgba(0, 0, 0, 0.55);
   }
 
-  .screw {
-    position: absolute;
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background:
-      linear-gradient(45deg, transparent 44%, rgba(16, 15, 14, 0.85) 44% 56%, transparent 56%),
-      radial-gradient(circle at 35% 35%, #9a9387, #4a453e 60%, #1f1d1a);
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+  /* A plain rule across the container, in the cream of the page's text, dimmed: no effect, it only
+     cuts the title off from what hangs below. The wide gap under it is the point of ticket #20. */
+  .masthead-rule {
+    height: 0;
+    margin: 2.5rem 0 4rem;
+    border: 0;
+    border-top: 1px solid var(--z2-cream-dim);
+    opacity: 0.35;
   }
-
-  .screw.tl { top: 8px; left: 9px; }
-  .screw.tr { top: 8px; right: 9px; transform: rotate(70deg); }
-  .screw.bl { bottom: 8px; left: 9px; transform: rotate(20deg); }
-  .screw.br { bottom: 8px; right: 9px; transform: rotate(-35deg); }
 
   /* --- The poster and its label --------------------------------------------------------------- */
 
@@ -417,19 +408,12 @@ const shelves = sections
     .hero {
       padding-top: 1.5rem;
     }
-    .enamel {
-      width: min(100%, 360px);
-      margin-bottom: 2rem;
-      padding: 0.75rem 1.2rem;
+    .masthead {
+      width: min(82%, 300px);
     }
-    .screw {
-      width: 8px;
-      height: 8px;
+    .masthead-rule {
+      margin: 1.75rem 0 2.75rem;
     }
-    .screw.tl { top: 5px; left: 6px; }
-    .screw.tr { top: 5px; right: 6px; }
-    .screw.bl { bottom: 5px; left: 6px; }
-    .screw.br { bottom: 5px; right: 6px; }
     section {
       padding-top: 3.5rem;
     }

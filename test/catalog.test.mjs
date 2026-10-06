@@ -493,7 +493,8 @@ test('README kit: generated from the built catalog — order, Released section b
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');
   const [wip, released] = org.split('### Released ✅');
   const order = (text) => [...text.matchAll(/<b><a href="[^"]+">([^<]+)<\/a><\/b>/g)].map((m) => m[1]);
-  assert.deepEqual(order(wip), ['Berserker', 'Kaiju', 'Cyclops', 'Maelstrom', 'Kraken', 'Unicorn', 'Wraith']);
+  // Maelstrom stays in the work in progress; its release ranks it first in its section (cameras).
+  assert.deepEqual(order(wip), ['Berserker', 'Kaiju', 'Maelstrom', 'Cyclops', 'Kraken', 'Unicorn', 'Wraith']);
   assert.deepEqual(order(released), ['Basilisk']);
   assert.match(released, /#### Gadgets/);
   for (const slug of publishedSlugs) assert.ok(existsSync(join(out, 'readme-kit', 'repos', `${slug}.md`)), slug);

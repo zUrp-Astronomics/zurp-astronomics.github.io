@@ -1,0 +1,225 @@
+# SOURCE: zurp-astronomics-site — THROWAWAY copy of trial-compare-dist (ticket #75), printing the proof excerpts last — on-demand trial: build main and the branch, compare the two dist/ trees (scripts/compare-dist.mjs), README kits and brand images (scripts/compare-brand.mjs)
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — a trial, launched on demand (ci_trial), never a status of the PR
+# REVISED: 2026-10-06 (ticket #46) — the branch builds with its catalog read on the simulator
+# REVISED: 2026-10-06 (ticket #49) — the base names its catalog source too (since #46 a build without
+#   one fails); the README kits of both sides and the brand images (social cards) are compared too
+# REVISED: 2026-10-06 (ticket #53) — a CLOSED list of admitted differences, declared below (env):
+#   DIST_ADMITTED_NEW, KIT_MAY_DIFFER. KIT_ADMITTED (ticket #49, in main since) is gone
+# REVISED: 2026-10-06 (ticket #61) — both lists emptied: the #53 differences are in main
+# REVISED: 2026-10-06 (ticket #66) — DIST_ADMITTED: differences declared INSIDE pages present on both
+#   sides (scripts/compare-dist.mjs --admitted), each one required to be observed; the lists of #66
+# REVISED: 2026-10-06 (ticket #72) — the lists of #66 (in main since) replaced by those of #72: three
+#   licence stamps added, nothing else; KIT_MAY_DIFFER emptied
+# REVISED: 2026-10-06 (ticket #75) — the lists of #72 (in main since) replaced by those of #75: the
+#   licence badges (new SVG files), the « Software · » / « Hardware · » stamps, the product headers
+#   and the guide of the kit; the end of the log carries the licence badges check-dist found
+#
+# For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
+# lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
+# it — BOTH with their catalog read on the simulator (ZURP_CATALOG=simulator: the source is always
+# named, and the same catalog on both sides) — and compares:
+#   - the two dist/ (pages, URLs, visible text, image sizes, stylesheets, build stamp:
+#     scripts/compare-dist.mjs);
+#   - the two README kits (npm run readme-kit), byte for byte — compare-dist does not cover them;
+#   - the stable brand images (dist/brand/: posters, social preview cards with their drawn text,
+#     panel, avatar), byte for byte; a file whose bytes differ is compared pixel by pixel, in case
+#     the encoder is not deterministic (scripts/compare-brand.mjs).
+# Red when anything differs, apart from the differences the change under trial declares on purpose
+# in `env` below — a CLOSED list, in the repository, readable in the diff: every difference outside
+# it still turns the trial red, and an admitted difference (or new file) that does not appear does
+# too. Empty the lists once the change is in main. The report lists every difference, admitted ones
+# included.
+#
+# The name must not start with `CI`: it would become a required status of `main`.
+name: trial-75-proof
+
+on: workflow_dispatch
+
+jobs:
+  compare:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    timeout-minutes: 30
+    env:
+      BASE_REF: main
+      # ADMITTED DIFFERENCES — ticket #75: two licences per product, software (LICENSE, as GitHub detects
+      # it) and hardware (LICENSE-HARDWARE, its first line). The simulator imitates basilisk after the
+      # inversion of its files (catalog-simulator/licenses/basilisk.json: MIT;
+      # catalog-simulator/repos/basilisk/LICENSE-HARDWARE: the OCL v1.1); the other imitated
+      # repositories are unchanged.
+      #   DIST_ADMITTED_NEW  files new in dist/ (space-separated): the two licence badges of each of
+      #                      the 8 products of the simulator's catalog, /brand/badges/<slug>/<kind>.svg
+      #                      (empty for a licence the repository does not declare).
+      #   DIST_ADMITTED      differences inside the pages, one per line, `<kind> <pages> <value>`
+      #                      (scripts/compare-dist.mjs, `--admitted`), each required to be observed on
+      #                      every page its pattern matches:
+      #     - the software stamp takes its prefix: « GPL-3.0 » becomes « Software · GPL-3.0 » (kaiju,
+      #       kraken, maelstrom, unicorn), « CERN-OHL-S-2.0 » becomes « Software · CERN-OHL-S-2.0 »
+      #       (berserker: its LICENSE holds a hardware licence, shown where the repository declares it);
+      #     - basilisk: « Other licence » (its LICENSE was the OCL, NOASSERTION) becomes
+      #       « Software · MIT » and « Hardware · OCL v1.1 ». Cyclops and Wraith: no stamp, as before.
+      #     No URL and no CSS rule changes (the stamps keep the `.badge-license` style, told apart by
+      #     an attribute).
+      #   KIT_MAY_DIFFER     README kit files that may differ (shell patterns): the product headers
+      #                      (two licence badges after the status badge) and the guide (which says so).
+      #                      profile/README.md is identical: the org README carries no licence.
+      # Each list empty = nothing admitted.
+      DIST_ADMITTED_NEW: >-
+        brand/badges/basilisk/software.svg brand/badges/basilisk/hardware.svg
+        brand/badges/berserker/software.svg brand/badges/berserker/hardware.svg
+        brand/badges/cyclops/software.svg brand/badges/cyclops/hardware.svg
+        brand/badges/kaiju/software.svg brand/badges/kaiju/hardware.svg
+        brand/badges/kraken/software.svg brand/badges/kraken/hardware.svg
+        brand/badges/maelstrom/software.svg brand/badges/maelstrom/hardware.svg
+        brand/badges/unicorn/software.svg brand/badges/unicorn/hardware.svg
+        brand/badges/wraith/software.svg brand/badges/wraith/hardware.svg
+      DIST_ADMITTED: |
+        text-added {berserker,kaiju,kraken,maelstrom,unicorn}/index.html Software ·
+        text-removed basilisk/index.html Other licence
+        text-added basilisk/index.html Software · MIT
+        text-added basilisk/index.html Hardware · OCL v1.1
+      KIT_MAY_DIFFER: 'readme-kit/repos/*.md readme-kit/README.md'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Base checkout
+        run: |
+          git fetch -q --no-tags --depth=1 origin "$BASE_REF"
+          git worktree add -q /tmp/base FETCH_HEAD
+          echo "base $(git -C /tmp/base rev-parse --short HEAD), head $(git rev-parse --short HEAD)"
+          # The base builds with the Node its own deploy workflow names.
+          v=$(sed -n 's/^ *node-version: *\([0-9][0-9.]*\).*/\1/p' /tmp/base/.github/workflows/deploy.yml | head -1)
+          echo "BASE_NODE=${v:-20}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.BASE_NODE }}
+
+      - name: Build base
+        working-directory: /tmp/base
+        run: |
+          node -v
+          npm ci --no-audit --no-fund >/dev/null
+          # Its stamp reads its own commit (GITHUB_SHA would be the head's). Its catalog is read on the
+          # simulator, like the head's: since #46 a build without a named source fails.
+          env -u GITHUB_SHA ZURP_CATALOG=simulator npm run build > /tmp/base-build.log 2>&1 || { tail -60 /tmp/base-build.log; exit 1; }
+          tail -3 /tmp/base-build.log
+          npm run readme-kit
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Build head (the CI commands)
+        run: |
+          node -v
+          npm ci --no-audit --no-fund
+          npm ls astro sharp esbuild vite js-yaml mustache markdown-it
+          ZURP_CATALOG=simulator npm run build > /tmp/head-build.log 2>&1 || { tail -80 /tmp/head-build.log; exit 1; }
+          echo "--- build warnings / errors"
+          grep -n -i -E 'warn|error|deprecat|fail' /tmp/head-build.log | head -60 || true
+          tail -3 /tmp/head-build.log
+          node scripts/check-dist.mjs > /tmp/check-dist.log 2>&1 || { cat /tmp/check-dist.log; exit 1; }
+          tail -2 /tmp/check-dist.log
+          npm run readme-kit
+          npm test
+
+      # The README kit, generated on both sides from the same catalog (the simulator): identical byte
+      # for byte, apart from the files of KIT_MAY_DIFFER. The raw diff is printed first, in full, so
+      # the admitted changes show too; then the verdict, file by file.
+      - name: Compare README kit
+        run: |
+          set -f  # KIT_MAY_DIFFER holds shell patterns: never expanded against the working directory
+          rc=0
+          {
+            echo "--- raw diff, base → head (KIT_MAY_DIFFER: $KIT_MAY_DIFFER)"
+            diff -ru /tmp/base/.zurp-catalog/readme-kit .zurp-catalog/readme-kit || true
+            echo "--- verdict, file by file"
+            bad=0
+            list() { (cd "$1" && find . -type f | sed 's#^\./##'); }
+            for f in $( { list /tmp/base/.zurp-catalog/readme-kit; list .zurp-catalog/readme-kit; } | sort -u ); do
+              a=/tmp/base/.zurp-catalog/readme-kit/$f
+              b=.zurp-catalog/readme-kit/$f
+              if [ ! -f "$a" ] || [ ! -f "$b" ]; then echo "ONE SIDE ONLY: $f"; bad=1; continue; fi
+              if cmp -s "$a" "$b"; then echo "identical: $f"; continue; fi
+              may=0
+              for pat in $KIT_MAY_DIFFER; do case "$f" in $pat) may=1 ;; esac; done
+              if [ $may = 1 ]; then echo "differs, admitted (KIT_MAY_DIFFER): $f"; else echo "DIFFERS, NOT ADMITTED: $f"; bad=1; fi
+            done
+            test -f .zurp-catalog/readme-kit/profile/README.md || { echo "no profile/README.md in the head kit"; bad=1; }
+            if [ $bad = 0 ]; then
+              echo "README KIT: identical byte for byte ($(find .zurp-catalog/readme-kit -type f | wc -l) files), apart from the admitted files (KIT_MAY_DIFFER)"
+            else
+              echo "README KIT: DIFFERS outside the admitted files"; false
+            fi
+          } > /tmp/kit-report.txt 2>&1 || rc=$?
+          cat /tmp/kit-report.txt
+          exit $rc
+
+      # The stable brand images, byte for byte: compare-dist only compares their pixel size, and the
+      # social cards carry drawn text. A file whose bytes differ is decoded and compared pixel by
+      # pixel (identical pixels pass, and are reported as such).
+      - name: Compare brand images
+        run: |
+          rc=0
+          node scripts/compare-brand.mjs /tmp/base/dist dist --admit-new $DIST_ADMITTED_NEW > /tmp/brand-report.txt 2>&1 || rc=$?
+          cat /tmp/brand-report.txt
+          exit $rc
+
+      # The trial returns only the end of the job's log, and the report is longer: it is printed in
+      # full, then once more as one gzip+base64 line (with the build logs and the built pages of both
+      # sides) between REPORT-B64 markers — decode with `base64 -d | tar xz` — and last, the verdicts
+      # of the three comparisons (README kit, brand images, dist/ with its admitted differences), the
+      # basilisk header and the licence stamps check-dist found, so that the end of the log carries
+      # them all.
+      - name: Compare dist/
+        run: |
+          rc=0
+          node scripts/compare-dist.mjs /tmp/base/dist dist --admitted "$DIST_ADMITTED" --admit-new $DIST_ADMITTED_NEW > /tmp/report.txt 2>&1 || rc=$?
+          cat /tmp/report.txt
+          mkdir -p /tmp/bundle/base /tmp/bundle/head
+          cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
+          (cd /tmp/base/dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/base -xf -)
+          (cd dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/head -xf -)
+          echo "REPORT-B64-BEGIN"
+          tar -C /tmp/bundle -cf - . | gzip -9n | base64 -w0; echo
+          echo "REPORT-B64-END"
+          echo "=== VERDICTS"
+          echo "--- README kit"
+          sed -n '/^--- verdict/,$p' /tmp/kit-report.txt
+          echo "--- brand images (scripts/compare-brand.mjs)"
+          head -1 /tmp/brand-report.txt
+          echo "--- the basilisk header, as it will be pasted (readme-kit/repos/basilisk.md of the head kit)"
+          cat .zurp-catalog/readme-kit/readme-kit/repos/basilisk.md
+          echo "--- the licence stamps of the head's pages (scripts/check-dist.mjs)"
+          sed -n '/^Licence stamps/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
+          echo "--- the licence badges of the head (scripts/check-dist.mjs)"
+          sed -n '/^Licence badges/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
+          tail -1 /tmp/check-dist.log
+          echo "--- dist/ (scripts/compare-dist.mjs), last: the trial's end of log carries it whole"
+          sed -n '/^FILES/p;/^IMAGE /p' /tmp/report.txt | sort | uniq -c
+          grep -E '^=== |^  (text \(strict\)|urls)|^  [^ ]+\.html: ' /tmp/report.txt | grep -v -E '^  [^ ]+\.html: same \([0-9]+ chars\)$' || true
+          sed -n '/^ADMITTED DIFFERENCES/,/^$/p;/^DIFFERENCES/,$p' /tmp/report.txt
+          tail -1 /tmp/report.txt
+          exit $rc
+
+      - name: Proof excerpts
+        if: always()
+        run: |
+          echo "=== README kit: raw diff of the product headers and verdict"
+          sed -n '/^--- raw diff/,/^--- verdict/p' /tmp/kit-report.txt | grep -v '^Only in' | head -80
+          sed -n '/^--- verdict/,$p' /tmp/kit-report.txt
+          echo "=== brand images"
+          tail -3 /tmp/brand-report.txt
+          echo "=== check-dist: licence stamps and badges"
+          sed -n '/^Licence stamps/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
+          sed -n '/^Licence badges/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
+          tail -1 /tmp/check-dist.log
+          echo "=== basilisk header"
+          cat .zurp-catalog/readme-kit/readme-kit/repos/basilisk.md
+          echo "=== basilisk hardware badge"
+          cat dist/brand/badges/basilisk/hardware.svg
+          echo "=== basilisk badges div"
+          grep -o '<div class="badges"[^>]*>.*</div>' dist/basilisk/index.html | sed 's#</span>#</span>\n#g' | head -8

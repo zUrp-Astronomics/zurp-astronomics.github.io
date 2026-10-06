@@ -1,4 +1,4 @@
-# SOURCE: zurp-astronomics-site — ticket #43 trial: regenerate package-lock.json for package.json (Node 24), read Astro 7 notes from the installed package
+# SOURCE: zurp-astronomics-site — ticket #43 trial: read Astro 7's image pipeline from the installed package
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: trial (removed before delivery)
@@ -17,30 +17,10 @@ jobs:
           node-version: 24
       - name: Notes
         run: |
-          rm -f package-lock.json
-          npm install --no-audit --no-fund >/dev/null 2>&1
-          cd node_modules/astro
-          echo "=== config types: compressHTML"
-          f=$(grep -rl 'compressHTML' dist/types 2>/dev/null | head -3); echo "$f"
-          for x in $f; do grep -n -B40 -A6 'compressHTML?' "$x" | cut -c1-200 | head -80; done
-          echo "=== CHANGELOG lines"
-          grep -n -i -E 'compressHTML|fsPath|upscal|crop|import\.meta\.env|inline.*env|strict.*html|invalid html' CHANGELOG.md | cut -c1-400 | head -60
-  lock:
-    runs-on: shell
-    container: catthehacker/ubuntu:act-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Lock
-        run: |
-          node -v; npm -v
-          rm -f package-lock.json
-          npm install --no-audit --no-fund
-          npm ls astro sharp esbuild vite
-          git diff --stat -- package.json
-          echo "LOCK-SHA256 $(sha256sum package-lock.json)"
-          echo "LOCK-B64-BEGIN"
-          gzip -9nc package-lock.json | base64 -w0; echo
-          echo "LOCK-B64-END"
+          npm ci --no-audit --no-fund >/dev/null 2>&1
+          ls -d node_modules/lightningcss node_modules/postcss 2>&1 || true
+          cd node_modules/astro/dist/assets
+          find . -name '*.js' | sort
+          echo "REPORT-B64-BEGIN"
+          tar -cf - $(find . -name '*.js') ../../package.json ../../dist/types/public/config.d.ts | gzip -9n | base64 -w0; echo
+          echo "REPORT-B64-END"

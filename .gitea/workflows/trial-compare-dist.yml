@@ -5,19 +5,22 @@
 # REVISED: 2026-10-06 (ticket #46) — the branch builds with its catalog read on the simulator
 # REVISED: 2026-10-06 (ticket #49) — the base names its catalog source too (since #46 a build without
 #   one fails); the README kits of both sides and the brand images (social cards) are compared too
+# REVISED: 2026-10-06 (ticket #53) — a CLOSED list of admitted differences, declared below (env):
+#   DIST_ADMITTED_NEW, KIT_MAY_DIFFER. KIT_ADMITTED (ticket #49, in main since) is gone
 #
 # For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
 # lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
 # it — BOTH with their catalog read on the simulator (ZURP_CATALOG=simulator: the source is always
 # named, and the same catalog on both sides) — and compares:
 #   - the two dist/ (pages, URLs, visible text, image sizes, build stamp: scripts/compare-dist.mjs);
-#   - the two README kits (npm run readme-kit), byte for byte — compare-dist does not cover them. A
-#     difference admitted on purpose is listed in KIT_ADMITTED (a sed script applied to the base
-#     kit, written for the change under trial and removed after it);
+#   - the two README kits (npm run readme-kit), byte for byte — compare-dist does not cover them;
 #   - the stable brand images (dist/brand/: posters, social preview cards with their drawn text,
 #     panel, avatar), byte for byte; a file whose bytes differ is compared pixel by pixel, in case
 #     the encoder is not deterministic (scripts/compare-brand.mjs).
-# Red when anything differs; the report lists every difference.
+# Red when anything differs, apart from the differences the change under trial declares on purpose
+# in `env` below — a CLOSED list, in the repository, readable in the diff: every difference outside
+# it still turns the trial red, and an admitted new file that does not appear does too. Empty both
+# lists once the change is in main. The report lists every difference, admitted ones included.
 #
 # The name must not start with `CI`: it would become a required status of `main`.
 name: trial-compare-dist
@@ -31,9 +34,25 @@ jobs:
     timeout-minutes: 30
     env:
       BASE_REF: main
-      # Ticket #49, the one text change admitted in the kit: the guide points to content/products/<slug>/
-      # instead of src/data/products.ts (gone). A no-op once main has it: remove it then.
-      KIT_ADMITTED: 's#^migré, `src/data/products.ts` du site\.$#migré, `content/products/<slug>/` du site.#'
+      # ADMITTED DIFFERENCES — ticket #53 (README header pasted once, status badge served by the site).
+      # dist/ (compare-dist AND compare-brand): the new status JSON of each product, at its path, and
+      # nothing else — every other file of dist/, all of dist/brand/ included, stays identical. Each
+      # one must be NEW in the head (absent from main, present in the branch).
+      DIST_ADMITTED_NEW: >-
+        brand/status/basilisk.json
+        brand/status/berserker.json
+        brand/status/cyclops.json
+        brand/status/kaiju.json
+        brand/status/kraken.json
+        brand/status/maelstrom.json
+        brand/status/unicorn.json
+        brand/status/wraith.json
+      # README kit: the product headers (rewritten: URLs only) and the guide (paste once) may differ;
+      # their diff is printed, it does not fail. Every other file — profile/README.md, the org README —
+      # stays identical byte for byte, and both kits hold the same files. Shell patterns, kit-relative.
+      KIT_MAY_DIFFER: >-
+        readme-kit/repos/*.md
+        readme-kit/README.md
     steps:
       - uses: actions/checkout@v4
 
@@ -80,21 +99,32 @@ jobs:
           npm test
 
       # The README kit, generated on both sides from the same catalog (the simulator): identical byte
-      # for byte, once the admitted change (KIT_ADMITTED) is applied to the base. The raw diff is
-      # printed first, so the admitted change shows too.
+      # for byte, apart from the files of KIT_MAY_DIFFER. The raw diff is printed first, in full, so
+      # the admitted changes show too; then the verdict, file by file.
       - name: Compare README kit
         run: |
+          set -f  # KIT_MAY_DIFFER holds shell patterns: never expanded against the working directory
           rc=0
           {
-            echo "--- raw diff, base → head"
+            echo "--- raw diff, base → head (KIT_MAY_DIFFER: $KIT_MAY_DIFFER)"
             diff -ru /tmp/base/.zurp-catalog/readme-kit .zurp-catalog/readme-kit || true
-            rm -rf /tmp/kit-base && cp -R /tmp/base/.zurp-catalog/readme-kit /tmp/kit-base
-            find /tmp/kit-base -type f -name '*.md' -exec sed -i "$KIT_ADMITTED" {} +
-            echo "--- after the admitted change"
-            if diff -ru /tmp/kit-base .zurp-catalog/readme-kit; then
-              echo "README KIT: identical byte for byte ($(find .zurp-catalog/readme-kit -type f | wc -l) files), apart from the admitted change"
+            echo "--- verdict, file by file"
+            bad=0
+            list() { (cd "$1" && find . -type f | sed 's#^\./##'); }
+            for f in $( { list /tmp/base/.zurp-catalog/readme-kit; list .zurp-catalog/readme-kit; } | sort -u ); do
+              a=/tmp/base/.zurp-catalog/readme-kit/$f
+              b=.zurp-catalog/readme-kit/$f
+              if [ ! -f "$a" ] || [ ! -f "$b" ]; then echo "ONE SIDE ONLY: $f"; bad=1; continue; fi
+              if cmp -s "$a" "$b"; then echo "identical: $f"; continue; fi
+              may=0
+              for pat in $KIT_MAY_DIFFER; do case "$f" in $pat) may=1 ;; esac; done
+              if [ $may = 1 ]; then echo "differs, admitted (KIT_MAY_DIFFER): $f"; else echo "DIFFERS, NOT ADMITTED: $f"; bad=1; fi
+            done
+            test -f .zurp-catalog/readme-kit/profile/README.md || { echo "no profile/README.md in the head kit"; bad=1; }
+            if [ $bad = 0 ]; then
+              echo "README KIT: identical byte for byte ($(find .zurp-catalog/readme-kit -type f | wc -l) files), apart from the admitted files (KIT_MAY_DIFFER)"
             else
-              echo "README KIT: DIFFERS"; false
+              echo "README KIT: DIFFERS outside the admitted files"; false
             fi
           } > /tmp/kit-report.txt 2>&1 || rc=$?
           cat /tmp/kit-report.txt
@@ -106,19 +136,19 @@ jobs:
       - name: Compare brand images
         run: |
           rc=0
-          node scripts/compare-brand.mjs /tmp/base/dist dist > /tmp/brand-report.txt 2>&1 || rc=$?
+          node scripts/compare-brand.mjs /tmp/base/dist dist --admit-new $DIST_ADMITTED_NEW > /tmp/brand-report.txt 2>&1 || rc=$?
           cat /tmp/brand-report.txt
           exit $rc
 
       # The trial returns only the end of the job's log, and the report is longer: it is printed in
       # full, then once more as one gzip+base64 line (with the build logs and the built pages of both
       # sides) between REPORT-B64 markers — decode with `base64 -d | tar xz` — and last, the verdicts
-      # of the three comparisons (dist/, README kit, brand images), so that the end of the log
-      # carries them all.
+      # of the three comparisons (dist/, README kit, brand images) and the basilisk header with its
+      # status JSON, so that the end of the log carries them all.
       - name: Compare dist/
         run: |
           rc=0
-          node scripts/compare-dist.mjs /tmp/base/dist dist > /tmp/report.txt 2>&1 || rc=$?
+          node scripts/compare-dist.mjs /tmp/base/dist dist --admit-new $DIST_ADMITTED_NEW > /tmp/report.txt 2>&1 || rc=$?
           cat /tmp/report.txt
           mkdir -p /tmp/bundle/base /tmp/bundle/head
           cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
@@ -129,10 +159,14 @@ jobs:
           echo "REPORT-B64-END"
           echo "=== VERDICTS"
           echo "--- dist/ (scripts/compare-dist.mjs)"
-          sed -n '/^FILES:/p;/^IMAGE /p;/markup (report only)/p;/^    [+-] /p' /tmp/report.txt | sort | uniq -c
+          sed -n '/^FILES/p;/^    brand\/status\//p;/^IMAGE /p;/markup (report only)/p;/^    [+-] /p' /tmp/report.txt | sort | uniq -c
           tail -1 /tmp/report.txt
           echo "--- README kit"
-          sed -n '/^--- raw diff/,$p' /tmp/kit-report.txt
+          sed -n '/^--- verdict/,$p' /tmp/kit-report.txt
           echo "--- brand images (scripts/compare-brand.mjs)"
           cat /tmp/brand-report.txt
+          echo "--- the basilisk header, as it will be pasted (readme-kit/repos/basilisk.md of the head kit)"
+          cat .zurp-catalog/readme-kit/readme-kit/repos/basilisk.md
+          echo "--- its status JSON (dist/brand/status/basilisk.json)"
+          cat dist/brand/status/basilisk.json
           exit $rc

@@ -23,6 +23,9 @@
 // One more stable URL lives with the site icons, from the same drawing (src/lib/site-icons.ts):
 //   https://zurp-astronomics.github.io/brand/avatar.png               the GitHub organisation avatar
 //                                                                     480 × 480 px PNG
+// And one, not an image, with the status badge of the product READMEs (src/lib/status-badge.mjs):
+//   https://zurp-astronomics.github.io/brand/status/<slug>.json       shields.io endpoint JSON, the
+//                                                                     product's status (ticket #53)
 //
 // Panel and posters are WebP; the social cards are JPEG (GitHub's upload form takes PNG, JPG or
 // GIF). All well under the 614 400-byte ceiling of scripts/check-dist.mjs.

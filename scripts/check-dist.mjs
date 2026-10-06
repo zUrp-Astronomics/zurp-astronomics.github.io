@@ -2,6 +2,7 @@
 // SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width and order, one page per product, version stamps, stable brand image URLs, GitHub social preview cards, site icons and organisation avatar
 // AUTHOR: engineer
 // DATE: 2026-10-03 (revised 2026-10-06, ticket #46: the full catalog of the build)
+// REVISED: 2026-10-06 (ticket #53) — the status JSON of each product (shields.io endpoint, README status badge)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -47,13 +48,21 @@
 //       `favicon-32.png`         32 × 32                `icon-192.png`    192 × 192
 //       `apple-touch-icon.png`   180 × 180              `brand/avatar.png` 480 × 480 (GitHub org avatar)
 //   - a page does not declare an icon (`<link rel="icon">`) AND an `apple-touch-icon`, declares one
-//     whose file is missing from dist/, or declares `sizes="WxH"` that the file does not have.
+//     whose file is missing from dist/, or declares `sizes="WxH"` that the file does not have;
+//   - the status JSON of a product (the status badge of its README header, rendered by shields.io:
+//     src/lib/status-badge.mjs) is missing, is not JSON, does not follow shields' endpoint schema
+//     (`schemaVersion` 1, `label` and `message` non-empty strings, `color` a string when present),
+//     does not carry the tag of the latest release in its message when the product has one, or is
+//     not what the catalog of the build gives (content/catalog.yml):
+//       `brand/status/<slug>.json` per product        (a README links it forever)
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
 import { unguardedWarning } from '../src/lib/catalog/assemble.mjs';
+import { catalogContent } from '../src/lib/content.mjs';
+import { statusBadgeJson, statusBadgePath } from '../src/lib/status-badge.mjs';
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
 const MAX_TILE_WIDTH = 600; // px — widest variant allowed for a catalog tile
@@ -395,6 +404,48 @@ for (const page of [...found].sort()) {
 }
 console.log(`Icon links checked on ${found.size} page(s): ${declared}`);
 
+// --- 7. Status JSON of each product (shields.io endpoint: the README status badge) ---------------
+// Schema: https://shields.io/badges/endpoint-badge — checked here on its own, then the file is
+// compared with what the catalog of the build gives (src/lib/status-badge.mjs).
+const statusTexts = catalogContent(repoRoot);
+const statusReport = [];
+for (const p of catalog.products) {
+  const path = statusBadgePath(p.slug);
+  const abs = join(distDir, path);
+  if (!existsSync(abs)) {
+    errors.push(`missing status JSON: dist/${path} (the status badge of the product's README header)`);
+    statusReport.push(`  MISSING  dist/${path}`);
+    continue;
+  }
+  const raw = readFileSync(abs, 'utf8');
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch (e) {
+    errors.push(`status JSON is not JSON: dist/${path} (${e.message})`);
+    statusReport.push(`  NOT JSON dist/${path}`);
+    continue;
+  }
+  const problems = [];
+  if (!json || typeof json !== 'object' || Array.isArray(json)) problems.push('not an object');
+  else {
+    if (json.schemaVersion !== 1) problems.push(`schemaVersion ${JSON.stringify(json.schemaVersion)}, expected 1`);
+    for (const key of ['label', 'message']) {
+      if (typeof json[key] !== 'string' || !json[key].trim()) problems.push(`\`${key}\` missing or empty`);
+    }
+    if ('color' in json && typeof json.color !== 'string') problems.push('`color` is not a string');
+    if (p.release && !(typeof json.message === 'string' && json.message.includes(p.release.tag))) {
+      problems.push(`message ${JSON.stringify(json.message)} does not carry the latest release ${JSON.stringify(p.release.tag)}`);
+    }
+  }
+  const expectedJson = statusBadgeJson(p, statusTexts);
+  if (!problems.length && raw !== expectedJson) problems.push(`differs from the catalog of the build: ${raw.trim()} ≠ ${expectedJson.trim()}`);
+  for (const x of problems) errors.push(`status JSON dist/${path}: ${x}`);
+  statusReport.push(`  ${problems.length ? 'BAD ' : 'ok  '} dist/${path}  ${JSON.stringify(json?.message)} (${json?.color})`);
+}
+console.log(`Status JSON (README status badges, shields.io endpoint): ${catalog.products.length} expected`);
+for (const line of statusReport) console.log(line);
+
 // --- Helpers ------------------------------------------------------------------------------------
 function decodeText(s) {
   return s
@@ -412,4 +463,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px and in catalog order, one page per product + home page, version stamps, every stable brand image, social preview card, site icon and the organisation avatar in place.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px and in catalog order, one page per product + home page, version stamps, every stable brand image, social preview card, site icon, the organisation avatar and every status JSON in place.');

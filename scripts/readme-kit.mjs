@@ -4,6 +4,7 @@
 // DATE: 2026-10-03 (revised 2026-10-06, ticket #46: generated at each deployment, no longer committed)
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #49) — the texts and the layout are Mustache templates in content/readme-kit/; this script only computes what they show
+// REVISED: 2026-10-06 (ticket #53) — the product header is pasted ONCE: URLs only (poster, status badge served from the site's JSON, GitHub licence badge), no text of the sheet
 //
 // Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
 //   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
@@ -13,7 +14,9 @@
 // copies it after EACH deployment (dispatches from product repositories included):
 //   profile/README.md                  the organisation README (GitHub shows it on the org page)
 //   readme-kit/README.md               the user guide (French: the human is a French speaker)
-//   readme-kit/repos/<slug>.md         the header block of each product repository's README
+//   readme-kit/repos/<slug>.md         the header block of each product repository's README, pasted
+//                                      ONCE: it holds only URLs whose content is served and kept up
+//                                      to date elsewhere (ticket #53, see repoHeader below)
 //
 // WHY NOT COMMITTED ANY MORE. Part of the catalog is read on GitHub at build time (the product
 // repositories' sheets and releases): a file committed here could not be the truth of the org
@@ -27,7 +30,7 @@
 // content/readme-kit/ — org-readme.md (+ projects-table.md), product-header.md, guide.md — and
 // content/ (site.yml, catalog.yml, home/pitch.md, licences/): logic-less Mustache templates, which
 // the human edits without touching this script. This script computes their values (URLs, the
-// grouping of the projects, which product has a repository, the licence sentences filled) and
+// grouping of the projects, which product has a repository, the org README's licence sentence) and
 // provides one helper, `{{#badge}}label|message|colour{{/badge}}`: a shields.io static badge.
 // `{{x}}` is HTML-escaped (for HTML tags), `{{{x}}}` is inserted as is (for Markdown).
 //
@@ -44,7 +47,8 @@ import { dirname, join, resolve } from 'node:path';
 import Mustache from 'mustache';
 import { loadBuiltCatalog, repoRoot } from './lib/catalog.mjs';
 import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
-import { catalogContent, escapeHtml, fill, licencesContent, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
+import { escapeHtml, fill, licencesContent, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
+import { shieldsEndpoint, statusBadgePath } from '../src/lib/status-badge.mjs';
 
 const arg = (name) => {
   const i = process.argv.indexOf(name);
@@ -57,7 +61,6 @@ const snapshotFile = arg('--catalog') && resolve(arg('--catalog'));
 
 const { products, sections } = await loadBuiltCatalog({ snapshotFile });
 const site = siteContent(repoRoot);
-const { statuses } = catalogContent(repoRoot);
 const licences = licencesContent(repoRoot);
 const kit = readYaml('readme-kit/kit.yml', repoRoot);
 const template = (name) => readMarkdown(`readme-kit/${name}.md`, repoRoot);
@@ -76,10 +79,14 @@ const socialUrl = (p) => `${SITE}/brand/social/${p.slug}.jpg`;
 // Organisation avatar: mirror of src/lib/site-icons.ts (checked in dist/ by scripts/check-dist.mjs).
 const avatarUrl = `${SITE}/brand/avatar.png`;
 const pageUrl = (p) => `${SITE}/${p.slug}/`;
+// Status JSON of a product (src/lib/status-badge.mjs, published by src/pages/brand/status/[slug].json.ts).
+const statusJsonUrl = (p) => `${SITE}/${statusBadgePath(p.slug)}`;
 const siteHost = SITE.replace(/^https?:\/\//, '');
 
 /** A product with no dedicated repository yet has the organisation itself as its `repo`. */
 const hasRepo = (p) => p.repo.replace(/\/+$/, '') !== ORG_URL;
+/** `zUrp-Astronomics/Basilisk` for https://github.com/zUrp-Astronomics/Basilisk. */
+const repoPath = (p) => p.repo.replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
 
 // --- Template helpers ---------------------------------------------------------------------------------
 
@@ -153,27 +160,26 @@ function orgReadme() {
 }
 
 // --- 2. Product README headers (top of each product repository's README.md) -------------------------
-
-const BEGIN = 'zurp-readme-header:begin';
-const END = 'zurp-readme-header:end';
+//
+// PASTED ONCE (ticket #53, the human's decision). The site never writes in the product repositories,
+// so a header that copied the sheet went stale at the first change or release. The block holds only
+// URLs whose content is served, and kept up to date, elsewhere — and no text of the sheet (name,
+// slogan, tagline, « based on », posterAlt): it is never pasted again, such a text would go stale:
+//   - the poster, /brand/posters/<slug>.webp, linking to the product page;
+//   - the status badge: shields.io renders /brand/status/<slug>.json, which the site rewrites at each
+//     build (src/lib/status-badge.mjs);
+//   - for a product with a repository, GitHub's standard licence badge: shields.io reads the licence
+//     GitHub detects in the repository's LICENSE file (no LICENSE: « not specified », and that is
+//     true). The licence of a project is its LICENSE file, nothing else.
+// Its alt texts and the comments around it come from content/readme-kit/kit.yml (`header`).
 
 function repoHeader(p) {
-  const status = statuses[p.status];
-  if (!status) throw new Error(`readme-kit: no status ${JSON.stringify(p.status)} in content/catalog.yml`);
   return render('product-header', {
-    ...common,
-    begin: BEGIN,
-    end: END,
-    name: p.name,
-    slogan: p.slogan,
-    tagline: p.tagline,
-    posterAlt: p.posterAlt,
-    basedOn: p.basedOn,
+    header: kit.header,
     pageUrl: pageUrl(p),
     posterUrl: posterUrl(p),
-    statusLabel: status.label,
-    statusColor: status.badgeColor,
-    licence: licenceSentence('product-readme', { basedOn: p.basedOn }),
+    statusBadgeUrl: shieldsEndpoint(statusJsonUrl(p)),
+    licenceBadgeUrl: hasRepo(p) ? `https://img.shields.io/github/license/${repoPath(p)}` : null,
   });
 }
 
@@ -183,8 +189,9 @@ function guide() {
   const noRepo = products.filter((p) => !hasRepo(p));
   return render('guide', {
     ...common,
-    begin: BEGIN,
-    end: END,
+    begin: kit.header.begin,
+    end: kit.header.end,
+    statusJsonUrl: `${SITE}/${statusBadgePath('<produit>')}`,
     avatarUrl,
     orgSettingsUrl: `${ORG_URL.replace('github.com/', 'github.com/organizations/')}/settings/profile`,
     products: products.map((p) => ({
@@ -192,7 +199,7 @@ function guide() {
       slug: p.slug,
       hasRepo: hasRepo(p),
       repo: p.repo,
-      repoPath: p.repo.replace('https://github.com/', ''),
+      repoPath: repoPath(p),
       socialUrl: socialUrl(p),
     })),
     noRepo: noRepo.map((p, i) => ({ name: p.name, last: i === noRepo.length - 1 })),

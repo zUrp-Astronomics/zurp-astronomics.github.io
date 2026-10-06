@@ -1,7 +1,8 @@
 # SOURCE: zurp-astronomics-site — the catalog's vocabulary: sections, status labels, local products without a repository
 # AUTHOR: engineer
 # DATE: 2026-10-06
-# STATUS: active — read by src/lib/content.mjs (site, product sheet validation, README kit)
+# STATUS: active — read by src/lib/content.mjs (site, product sheet validation, README kit, status badge JSON)
+# REVISED: 2026-10-06 (ticket #53) — `statusBadge`: the texts of the status JSON (/brand/status/<slug>.json)
 
 # Catalog sections, in display order (home page shelves, org README). `id` is what a product sheet
 # names in its `section:` field — change an id only together with every sheet using it; `title` is
@@ -17,8 +18,8 @@ sections:
   - id: future
     title: Future
 
-# Status of a product: its label (product page badge, README badges) and the colour of its README
-# badge (a shields.io colour name).
+# Status of a product: its label (product page badge, org README, status badge of the product
+# README) and the colour of that badge (a shields.io colour name).
 statuses:
   wip:
     label: WIP
@@ -29,6 +30,16 @@ statuses:
   released:
     label: Released
     badgeColor: brightgreen
+
+# The status badge at the top of each product README: shields.io renders it from a JSON the site
+# publishes at each build, https://zurp-astronomics.github.io/brand/status/<slug>.json
+# (src/lib/status-badge.mjs). `label` is the left part of the badge; `message`, the right part, is a
+# Mustache template: {{status}} is the label of the product's status (above), and
+# {{#release}}…{{/release}} shows only when the product has a release, {{release}} being the tag of
+# its latest one. The colour is the status's `badgeColor`.
+statusBadge:
+  label: status
+  message: '{{status}}{{#release}} · {{release}}{{/release}}'
 
 # Products of content/products/ that have no repository yet: their « Source » link is the
 # organisation (site.yml, org.url) instead of github.com/zUrp-Astronomics/<slug>, and the README kit

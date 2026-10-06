@@ -4,8 +4,15 @@
 // DATE: 2026-10-06
 // STATUS: active — run by .gitea/workflows/trial-compare-dist.yml (an on-demand trial, not part of CI)
 // REVISED: 2026-10-06 (ticket #46) — the CSS mask of scoping hashes is a valid identifier again
+// REVISED: 2026-10-06 (ticket #53) — `--admit-new`: a closed list of files the change adds on purpose
 //
-// Usage: node scripts/compare-dist.mjs <baseDist> <headDist>
+// Usage: node scripts/compare-dist.mjs <baseDist> <headDist> [--admit-new <path>...]
+//
+// ADMITTED NEW FILES. A change that adds files to dist/ on purpose names each of them, by its path
+// in dist/, after `--admit-new` (the trial declares the list, in the repository, readable in the
+// diff). Each one MUST be new in the head (absent from the base, present in the head): a declared
+// file that is not fails, so the list cannot hide anything. Nothing else is admitted: any other
+// file of one side only still fails.
 // Node built-ins only (image sizes are read from the file headers), plus lightningcss when it is
 // installed (Vite ships it), for the stylesheets.
 //
@@ -38,11 +45,12 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep, posix } from 'node:path';
 
-const [baseArg, headArg] = process.argv.slice(2);
-if (!baseArg || !headArg) {
-  console.error('usage: node scripts/compare-dist.mjs <baseDist> <headDist>');
+const [baseArg, headArg, ...rest] = process.argv.slice(2);
+if (!baseArg || !headArg || (rest.length && rest[0] !== '--admit-new')) {
+  console.error('usage: node scripts/compare-dist.mjs <baseDist> <headDist> [--admit-new <path>...]');
   process.exit(2);
 }
+const ADMITTED_NEW = new Set(rest.slice(1));
 const BASE = resolve(baseArg);
 const HEAD = resolve(headArg);
 const SITE = 'https://zurp-astronomics.github.io';
@@ -327,12 +335,20 @@ const show = (title, lines, max = 40) => {
 // ---------- 1. files ----------------------------------------------------------------------------
 console.log(`base: ${BASE} (${baseFiles.length} files)\nhead: ${HEAD} (${headFiles.length} files)\n`);
 {
-  const { onlyA, onlyB } = diffMultisets(baseFiles.map((f) => f.norm), headFiles.map((f) => f.norm));
+  const { onlyA, onlyB: onlyHead } = diffMultisets(baseFiles.map((f) => f.norm), headFiles.map((f) => f.norm));
+  const admitted = onlyHead.filter((f) => ADMITTED_NEW.has(f));
+  const onlyB = onlyHead.filter((f) => !ADMITTED_NEW.has(f));
+  const notNew = [...ADMITTED_NEW].filter((f) => !admitted.includes(f)).sort();
   if (onlyA.length || onlyB.length) {
     fail('the set of files in dist/ differs');
     show('FILES only in base:', onlyA);
     show('FILES only in head:', onlyB);
-  } else console.log(`FILES: same ${baseFiles.length} files (hashed names normalised)`);
+  } else console.log(`FILES: same ${baseFiles.length} files in the base and the head, apart from the ${admitted.length} admitted new file(s) (hashed names normalised)`);
+  if (notNew.length) {
+    fail('a file declared as admitted (--admit-new) is not new in the head');
+    show('FILES declared admitted but not new in head (absent from the head, or already in the base):', notNew);
+  }
+  if (admitted.length) show(`FILES admitted, new in head (--admit-new, ${admitted.length}):`, admitted);
 }
 
 // ---------- 2. every image file: pixel size (fail) and bytes (report) ----------------------------
@@ -510,4 +526,4 @@ if (failures.length) {
   for (const f of failures) console.log(`  - ${f}`);
   process.exit(1);
 }
-console.log(`SAME: files, image sizes, visible text, URLs, page images${lightningcss ? ', stylesheets' : ''}; build stamp rendered on every page.`);
+console.log(`SAME: files${ADMITTED_NEW.size ? ` (apart from the ${ADMITTED_NEW.size} admitted new)` : ''}, image sizes, visible text, URLs, page images${lightningcss ? ', stylesheets' : ''}; build stamp rendered on every page.`);

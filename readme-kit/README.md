@@ -1,9 +1,9 @@
 # Kit README — où le trouver
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-06 (ticket #46 : le kit n'est plus commité ici)
+**Dernière révision** : 2026-10-06 (ticket #49 : ses textes et sa mise en page sont des gabarits de `content/readme-kit/`)
 **Statut** : actif — page fixe, sans donnée du catalogue
-**Référencé par** : `scripts/readme-kit.mjs`, `.github/workflows/deploy.yml`
+**Référencé par** : `scripts/readme-kit.mjs`, `.github/workflows/deploy.yml`, `content/README.md`
 
 Le kit README (README de l'organisation, en-tête de README de chaque produit, mode d'emploi) n'est
 plus commité dans ce dépôt. Une partie du catalogue est lue sur GitHub au moment du build (fiches
@@ -19,6 +19,11 @@ l'org »), et copié dans le dépôt [zUrp-Astronomics/.github](https://github.c
 | README de l'organisation (affiché sur la page de l'org) | [`profile/README.md`](https://github.com/zUrp-Astronomics/.github/blob/main/profile/README.md) |
 | **En-tête de README de chaque produit**, à coller en tête du README de son dépôt | [`readme-kit/repos/<produit>.md`](https://github.com/zUrp-Astronomics/.github/tree/main/readme-kit/repos) |
 | Mode d'emploi complet (en-têtes, cartes d'aperçu, avatar, liens) | [`readme-kit/README.md`](https://github.com/zUrp-Astronomics/.github/blob/main/readme-kit/README.md) |
+
+**Pour changer un texte ou la mise en page du kit**, édite ses gabarits, `content/readme-kit/`
+(README de l'org, en-tête produit, mode d'emploi), et les textes qu'il partage avec le site dans
+`content/` (accroche, pitch, signature, titres des sections, statuts, licences) :
+`content/README.md` dit ce qui est où. Aucun code à toucher.
 
 Rien à lancer sur ta machine. Pour régénérer sans rien changer : onglet **Actions** du dépôt du site
 → « Deploy to GitHub Pages » → **Run workflow** (le kit suit chaque déploiement, y compris ceux

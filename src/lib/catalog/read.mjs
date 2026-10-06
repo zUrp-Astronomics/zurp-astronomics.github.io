@@ -8,7 +8,7 @@
 //     README, never the docs, no other directory;
 //   - the sheet is 9_Assets/zurp.yml. A repository without it is not in the catalog (that leaves out
 //     `.github`, the site's own repository, drafts);
-//   - its fields are those of `Product` (src/data/products.ts), minus what is deduced:
+//   - its fields are those of `Product` (src/data/catalog.ts), minus what is deduced:
 //       slug      the repository name in lower case (`Kraken` → `kraken`)
 //       repo      the repository's URL (the « Source » link)
 //       status    `released` as soon as the repository has at least one release, whatever it is;
@@ -22,6 +22,11 @@
 //   - the sheets come from elsewhere, so they are validated here: an invalid one (missing field,
 //     unknown section, missing poster, …) fails the build with a message naming the repository and
 //     the field. Every problem of every repository is reported at once.
+//
+// The products not migrated yet (content/products/<slug>/, ticket #49) are read by THIS code too,
+// through a third backend that sees each folder as a repository's 9_Assets/ (local.mjs): same
+// sheet, same validation. A backend may name its places itself (`where`, `origin`, `filePath`)
+// for the messages.
 
 import yaml from 'js-yaml';
 
@@ -115,7 +120,8 @@ export function latestRelease(releases) {
 /**
  * Reads every repository of the backend and returns the products it holds, in repository-name
  * order. Throws one error listing every problem found, each prefixed by its repository.
- * @param {{ listRepos(): Promise<Array<{name: string, url: string}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string }} backend
+ * Each product also carries `posterPath`, the poster's path inside 9_Assets/ as the sheet names it.
+ * @param {{ listRepos(): Promise<Array<{name: string, url: string}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string, where?(repo: string): string, origin?(repo: string): string, filePath?(repo: string, path: string): string }} backend
  * @param {{ sectionIds: readonly string[] }} options
  */
 export async function readRepoProducts(backend, { sectionIds }) {
@@ -124,7 +130,7 @@ export async function readRepoProducts(backend, { sectionIds }) {
   for (const { name: repoName, url } of await backend.listRepos()) {
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
-    const where = `repository ${repoName} (${SHEET_PATH})`;
+    const where = backend.where?.(repoName) ?? `repository ${repoName} (${SHEET_PATH})`;
     let sheet;
     try {
       sheet = yaml.load(raw.toString('utf8'), { filename: `${repoName}/${SHEET_PATH}` });
@@ -140,7 +146,10 @@ export async function readRepoProducts(backend, { sectionIds }) {
     let posterBytes = null;
     if (!own.some((p) => p.startsWith('field `poster`'))) {
       posterBytes = await backend.readFile(repoName, `${ASSETS_DIR}/${sheet.poster}`);
-      if (posterBytes === null) own.push(`field \`poster\`: ${ASSETS_DIR}/${sheet.poster} does not exist in the repository`);
+      if (posterBytes === null) {
+        const shown = backend.filePath?.(repoName, `${ASSETS_DIR}/${sheet.poster}`);
+        own.push(`field \`poster\`: ${shown ?? `${ASSETS_DIR}/${sheet.poster}`} does not exist${shown ? '' : ' in the repository'}`);
+      }
     }
     let release = null;
     try {
@@ -156,7 +165,7 @@ export async function readRepoProducts(backend, { sectionIds }) {
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({
       slug,
-      origin: `repository ${repoName}`,
+      origin: backend.origin?.(repoName) ?? `repository ${repoName}`,
       name: sheet.name.trim(),
       tagline: sheet.tagline.trim(),
       slogan: sheet.slogan.trim(),
@@ -172,6 +181,7 @@ export async function readRepoProducts(backend, { sectionIds }) {
       // Named after the slug, not after the sheet's file: Astro names the optimised variants after
       // the source file (_astro/<name>.<hash>.webp).
       posterFile: `${slug}${ext}`,
+      posterPath: sheet.poster,
       posterBytes,
     });
   }

@@ -1,0 +1,35 @@
+# SOURCE: zurp-astronomics-site — fiche vitrine de Kaiju, lue par le site zurp-astronomics.github.io
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
+#
+# Sa place est 9_Assets/zurp.yml dans le dépôt du produit. Tant que le dépôt ne la porte pas, le
+# site la lit ici, dans content/products/kaiju/, au même format et avec le même code de validation
+# (src/lib/catalog/read.mjs). Migrer le produit = déplacer ce dossier, tel quel, dans 9_Assets/.
+#
+# Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /kaiju/), le
+# lien vers le dépôt (https://github.com/zUrp-Astronomics/kaiju), le statut « released » et la
+# version (tag de la dernière release GitHub), le rang dans sa section.
+
+name: Kaiju
+tagline: Fully integrated harmonic alt-az mount for DSLR, like a SeeStar on steroids.
+slogan: Over-engineered by principle
+category: Mount
+section: mounts           # mounts | cameras | gadgets | future
+status: wip               # wip | future — devient « released » dès qu'une release existe sur GitHub
+
+description:
+  - >-
+    Kaiju is a fully integrated harmonic alt-azimuth mount, designed for DSLR imaging with the ease
+    of a SeeStar — but scaled up, printable, and hackable end-to-end.
+  - >-
+    Harmonic drives replace traditional worm gears: zero backlash, silent tracking, holding torque
+    without gravity compensation tricks. Everything in one sealed head, no separate controller box
+    to carry.
+
+poster: kaiju.webp        # à côté de cette fiche — l'affiche série 2 (1254 × 1254)
+posterAlt: >-
+  Kaiju poster on a worn, chipped cream plate: a red-and-steel armoured mechanical kaiju with
+  glowing red eyes roars in front of a pale full moon, one clawed hand thrust forward, between red
+  rays and blueprint sketches of itself, above the slogan “Over-engineered by principle”.
+accent: '#d81f15'         # couleur des rayons de l'affiche

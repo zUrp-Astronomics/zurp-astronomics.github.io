@@ -2,18 +2,19 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #49) — the section ids come from content/catalog.yml
 //
 // The loader (src/lib/catalog/loader.mjs) reads the source named by ZURP_CATALOG (simulator |
 // github, no default) and validates every sheet with messages naming the repository and the field
 // (src/lib/catalog/read.mjs). This schema only shapes what it stores, and turns the poster into an
 // image import with image(). The site never reads this collection directly: it reads the full
-// catalog (src/data/catalog.ts), this collection plus the products still in products.ts.
+// catalog (src/data/catalog.ts), this collection plus the products still in content/products/.
 import { defineCollection } from 'astro:content';
 import { z } from 'astro/zod';
 import { repoProductsLoader } from './lib/catalog/loader.mjs';
-import { sections } from './data/sections.mjs';
+import { catalogContent } from './lib/content.mjs';
 
-const sectionIds = sections.map((s) => s.id);
+const sectionIds = catalogContent().sections.map((s) => s.id);
 
 const repoProducts = defineCollection({
   loader: repoProductsLoader({ sectionIds }),

@@ -3,6 +3,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #49) — default description and og:site_name from content/site.yml
 //
 // The site's only layout since the v1 archive (/alternate/, V1Layout.astro) was deleted (ticket #35).
 // Head contract: noindex, OG/Twitter, icons (favicon + apple-touch-icon, src/lib/site-icons.ts), build stamp. Every global rule below is scoped under
@@ -14,9 +15,11 @@
 // (the plate is its h1) is drawn by the page itself, inside its hero, on the hero's concrete wall.
 import Footer from '../components/v2/Footer.astro';
 import SiteHeader from '../components/v2/SiteHeader.astro';
+import { siteContent } from '../lib/content.mjs';
 
 interface Props {
   title: string;
+  /** Meta description; default: the site's tagline (content/site.yml). */
   description?: string;
   /**
    * Social card image. Every page passes its own JPEG (home: the Low-Tech & DIY poster, product
@@ -30,9 +33,10 @@ interface Props {
   home?: boolean;
 }
 
+const site = siteContent();
 const {
   title,
-  description = 'Low-tech, DIY, amateur astronomy hardware.',
+  description = site.tagline,
   ogImage = '/brand/low-tech-diy.webp',
   productName,
   home = false,
@@ -66,7 +70,7 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:image" content={ogImageURL} />
-    <meta property="og:site_name" content="zUrp Astronomics" />
+    <meta property="og:site_name" content={site.name} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />

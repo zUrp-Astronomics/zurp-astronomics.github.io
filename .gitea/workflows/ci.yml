@@ -88,8 +88,8 @@ jobs:
       - name: Build du site (catalogue lu sur le simulateur)
         run: npm ci && ZURP_CATALOG=simulator npm run build
       # Contrôle du build livré : aucune image de dist/ > 600 Ko, et exactement une page
-      # `<slug>/index.html` par produit du catalogue construit (products.ts + dépôts produit, lu dans
-      # l'instantané du build, .zurp-catalog/remote.json), tuiles de l'accueil dans l'ordre du
+      # `<slug>/index.html` par produit du catalogue construit (content/products/ + dépôts produit,
+      # ceux-ci lus dans l'instantané du build, .zurp-catalog/remote.json), tuiles de l'accueil dans l'ordre du
       # catalogue, tampon de version sur les pages des produits à release (+ index.html racine).
       # Aussi : les images à URL stable des README (brand/) et une carte d'aperçu GitHub par produit
       # (brand/social/<slug>.jpg, JPEG 1280 × 640).
@@ -100,7 +100,9 @@ jobs:
       # (.zurp-catalog/readme-kit/, ignoré par git).
       - name: Kit README (généré depuis le catalogue construit)
         run: npm run readme-kit
-      # Les tests du code de lecture du catalogue (test/*.test.mjs) : source explicite, simulateur,
-      # GitHub simulé, validation des fiches, releases, ordre, slug en double, produit publié disparu.
+      # Les tests du code de lecture du catalogue et de content/ (test/*.test.mjs) : source explicite,
+      # simulateur, GitHub simulé, validation des fiches, releases, ordre, slug en double, produit
+      # publié disparu ; produits de content/products/ (même lecteur, migration = déplacer le
+      # dossier), gabarits du kit README, aucun texte de content/ dans le code.
       - name: Tests du code de lecture du catalogue
         run: npm test

@@ -2,6 +2,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #49) — the signature is passed in (the site's `name`, content/site.yml)
 //
 // Served at https://zurp-astronomics.github.io/brand/social/<slug>.jpg by
 // src/pages/brand/social/[slug].jpg.ts (convention: src/lib/brand-images.ts). The human downloads it
@@ -10,8 +11,9 @@
 // LAYOUT (1280 × 640, GitHub's recommended size). Left: the whole series 2 poster, never cropped,
 // 576 px square — its near-black corners are the wall's own colour (--z2-soot), so the worn plate
 // sits on the wall with no visible edge. Right: the name in a red block (the posters' and the
-// site's red name band), the poster's slogan in wide-tracked capitals, and the "zUrp Astronomics"
-// signature between two red rules, as on the posters. Wall: soot, faint blueprint grid, two water
+// site's red name band), the poster's slogan in wide-tracked capitals, and the site's name as a
+// signature between two red rules, as on the posters ("zUrp Astronomics": `name` in
+// content/site.yml, passed in by the endpoint). Wall: soot, faint blueprint grid, two water
 // stains, grain — the site's wall (src/layouts/V2Layout.astro), drawn as SVG.
 //
 // TEXT. Rendered with the site's display face, Black Ops One, from the font file vendored in
@@ -102,7 +104,7 @@ function wallSvg(blocks: string): Buffer {
  * import: only its `fsPath` is read, for the reason given in src/lib/brand-images.ts (reading any
  * other property would make Astro copy the heavy original into dist/).
  */
-export async function socialCard(poster: ImageMetadata, name: string, slogan: string): Promise<Response> {
+export async function socialCard(poster: ImageMetadata, name: string, slogan: string, signature: string): Promise<Response> {
   if (!existsSync(FONT_FILE)) {
     throw new Error(`social card: font not found at ${FONT_FILE} — run the build from the repository root`);
   }
@@ -124,7 +126,7 @@ export async function socialCard(poster: ImageMetadata, name: string, slogan: st
     26,
     PANEL_W,
   );
-  const signText = await textLine(`<span foreground="${CREAM_DIM}">zUrp Astronomics</span>`, 20, PANEL_W / 2);
+  const signText = await textLine(`<span foreground="${CREAM_DIM}">${escapeMarkup(signature)}</span>`, 20, PANEL_W / 2);
 
   const blockH = nameText.height + 56;
   const gap = 34;

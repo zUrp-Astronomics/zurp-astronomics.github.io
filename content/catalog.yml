@@ -1,0 +1,39 @@
+# SOURCE: zurp-astronomics-site — the catalog's vocabulary: sections, status labels, local products without a repository
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — read by src/lib/content.mjs (site, product sheet validation, README kit)
+
+# Catalog sections, in display order (home page shelves, org README). `id` is what a product sheet
+# names in its `section:` field — change an id only together with every sheet using it; `title` is
+# free text. Inside a section, the order of the products is not set here: the latest release first,
+# then by name (src/lib/catalog/assemble.mjs).
+sections:
+  - id: mounts
+    title: Mounts
+  - id: cameras
+    title: Cameras
+  - id: gadgets
+    title: Gadgets
+  - id: future
+    title: Future
+
+# Status of a product: its label (product page badge, README badges) and the colour of its README
+# badge (a shields.io colour name).
+statuses:
+  wip:
+    label: WIP
+    badgeColor: orange
+  future:
+    label: Future
+    badgeColor: lightgrey
+  released:
+    label: Released
+    badgeColor: brightgreen
+
+# Products of content/products/ that have no repository yet: their « Source » link is the
+# organisation (site.yml, org.url) instead of github.com/zUrp-Astronomics/<slug>, and the README kit
+# gives them no GitHub badge. Remove a slug from here when its repository is created; a slug that is
+# not a folder of content/products/ fails the build.
+withoutRepository:
+  - cyclops
+  - wraith

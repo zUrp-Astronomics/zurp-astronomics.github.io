@@ -1,14 +1,23 @@
-# SOURCE: zurp-astronomics-site — on-demand trial: build main and the branch, compare the two dist/ trees (scripts/compare-dist.mjs)
+# SOURCE: zurp-astronomics-site — on-demand trial: build main and the branch, compare the two dist/ trees (scripts/compare-dist.mjs), README kits and brand images (scripts/compare-brand.mjs)
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: active — a trial, launched on demand (ci_trial), never a status of the PR
 # REVISED: 2026-10-06 (ticket #46) — the branch builds with its catalog read on the simulator
+# REVISED: 2026-10-06 (ticket #49) — the base names its catalog source too (since #46 a build without
+#   one fails); the README kits of both sides and the brand images (social cards) are compared too
 #
 # For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
 # lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
-# it (catalog read on the simulator, ZURP_CATALOG=simulator: the source is always named), and
-# compares the two dist/ (pages, URLs, visible text, image sizes, build stamp). Red when they
-# differ; the report lists every difference.
+# it — BOTH with their catalog read on the simulator (ZURP_CATALOG=simulator: the source is always
+# named, and the same catalog on both sides) — and compares:
+#   - the two dist/ (pages, URLs, visible text, image sizes, build stamp: scripts/compare-dist.mjs);
+#   - the two README kits (npm run readme-kit), byte for byte — compare-dist does not cover them. A
+#     difference admitted on purpose is listed in KIT_ADMITTED (a sed script applied to the base
+#     kit, written for the change under trial and removed after it);
+#   - the stable brand images (dist/brand/: posters, social preview cards with their drawn text,
+#     panel, avatar), byte for byte; a file whose bytes differ is compared pixel by pixel, in case
+#     the encoder is not deterministic (scripts/compare-brand.mjs).
+# Red when anything differs; the report lists every difference.
 #
 # The name must not start with `CI`: it would become a required status of `main`.
 name: trial-compare-dist
@@ -22,6 +31,9 @@ jobs:
     timeout-minutes: 30
     env:
       BASE_REF: main
+      # Ticket #49, the one text change admitted in the kit: the guide points to content/products/<slug>/
+      # instead of src/data/products.ts (gone). A no-op once main has it: remove it then.
+      KIT_ADMITTED: 's#^migré, `src/data/products.ts` du site\.$#migré, `content/products/<slug>/` du site.#'
     steps:
       - uses: actions/checkout@v4
 
@@ -43,20 +55,21 @@ jobs:
         run: |
           node -v
           npm ci --no-audit --no-fund >/dev/null
-          # Its stamp reads its own commit (GITHUB_SHA would be the head's).
-          env -u GITHUB_SHA npm run build > /tmp/base-build.log 2>&1 || { tail -60 /tmp/base-build.log; exit 1; }
+          # Its stamp reads its own commit (GITHUB_SHA would be the head's). Its catalog is read on the
+          # simulator, like the head's: since #46 a build without a named source fails.
+          env -u GITHUB_SHA ZURP_CATALOG=simulator npm run build > /tmp/base-build.log 2>&1 || { tail -60 /tmp/base-build.log; exit 1; }
           tail -3 /tmp/base-build.log
+          npm run readme-kit
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
 
-      # The base keeps its build as it is: main had no notion of a catalog source before #46.
       - name: Build head (the CI commands)
         run: |
           node -v
           npm ci --no-audit --no-fund
-          npm ls astro sharp esbuild vite js-yaml
+          npm ls astro sharp esbuild vite js-yaml mustache markdown-it
           ZURP_CATALOG=simulator npm run build > /tmp/head-build.log 2>&1 || { tail -80 /tmp/head-build.log; exit 1; }
           echo "--- build warnings / errors"
           grep -n -i -E 'warn|error|deprecat|fail' /tmp/head-build.log | head -60 || true
@@ -65,6 +78,28 @@ jobs:
           tail -2 /tmp/check-dist.log
           npm run readme-kit
           npm test
+
+      # The README kit, generated on both sides from the same catalog (the simulator): identical byte
+      # for byte, once the admitted change (KIT_ADMITTED) is applied to the base. The raw diff is
+      # printed first, so the admitted change shows too.
+      - name: Compare README kit
+        run: |
+          echo "--- raw diff, base → head"
+          diff -ru /tmp/base/.zurp-catalog/readme-kit .zurp-catalog/readme-kit || true
+          rm -rf /tmp/kit-base && cp -R /tmp/base/.zurp-catalog/readme-kit /tmp/kit-base
+          find /tmp/kit-base -type f -name '*.md' -exec sed -i "$KIT_ADMITTED" {} +
+          echo "--- after the admitted change"
+          if diff -ru /tmp/kit-base .zurp-catalog/readme-kit; then
+            echo "README KIT: identical byte for byte ($(find .zurp-catalog/readme-kit -type f | wc -l) files), apart from the admitted change"
+          else
+            echo "README KIT: DIFFERS"; exit 1
+          fi
+
+      # The stable brand images, byte for byte: compare-dist only compares their pixel size, and the
+      # social cards carry drawn text. A file whose bytes differ is decoded and compared pixel by
+      # pixel (identical pixels pass, and are reported as such).
+      - name: Compare brand images
+        run: node scripts/compare-brand.mjs /tmp/base/dist dist
 
       # The trial returns only the end of the job's log, and the report is longer: it is printed in
       # full, then once more as one gzip+base64 line (with the build logs and the built pages of both
@@ -77,6 +112,8 @@ jobs:
           cat /tmp/report.txt
           mkdir -p /tmp/bundle/base /tmp/bundle/head
           cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
+          cp -R /tmp/base/.zurp-catalog/readme-kit /tmp/bundle/base/readme-kit
+          cp -R .zurp-catalog/readme-kit /tmp/bundle/head/readme-kit
           (cd /tmp/base/dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/base -xf -)
           (cd dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/head -xf -)
           echo "REPORT-B64-BEGIN"

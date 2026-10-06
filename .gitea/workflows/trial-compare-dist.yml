@@ -73,8 +73,8 @@ jobs:
           cat /tmp/report.txt
           mkdir -p /tmp/bundle/base /tmp/bundle/head
           cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
-          (cd /tmp/base/dist && find . -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' | cpio -pdm --quiet /tmp/bundle/base)
-          (cd dist && find . -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' | cpio -pdm --quiet /tmp/bundle/head)
+          (cd /tmp/base/dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/base -xf -)
+          (cd dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/head -xf -)
           echo "REPORT-B64-BEGIN"
           tar -C /tmp/bundle -cf - . | gzip -9n | base64 -w0; echo
           echo "REPORT-B64-END"

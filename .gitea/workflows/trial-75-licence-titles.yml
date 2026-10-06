@@ -1,0 +1,27 @@
+# SOURCE: zurp-astronomics-site — throwaway trial of ticket #75: the first lines of the official hardware licence texts
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: temporary — removed before delivery
+name: trial-75-licence-titles
+
+on: workflow_dispatch
+
+jobs:
+  titles:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    steps:
+      - name: First lines of the official texts
+        run: |
+          for u in \
+            https://ohwr.org/cern_ohl_s_v2.txt \
+            https://ohwr.org/cern_ohl_w_v2.txt \
+            https://ohwr.org/cern_ohl_p_v2.txt \
+            https://raw.githubusercontent.com/spdx/license-list-data/main/text/CERN-OHL-S-2.0.txt \
+            https://raw.githubusercontent.com/spdx/license-list-data/main/text/CERN-OHL-W-2.0.txt \
+            https://raw.githubusercontent.com/spdx/license-list-data/main/text/CERN-OHL-P-2.0.txt \
+            https://raw.githubusercontent.com/zUrp-Astronomics/basilisk/main/LICENSE \
+            https://raw.githubusercontent.com/zUrp-Astronomics/berserker/main/LICENSE ; do
+            echo "=== $u"
+            curl -sSL --max-time 30 "$u" | head -c 600 | cat -A | head -6 || echo "FAILED"
+          done

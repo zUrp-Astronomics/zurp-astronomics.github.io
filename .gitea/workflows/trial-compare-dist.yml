@@ -62,5 +62,20 @@ jobs:
           tail -2 /tmp/check-dist.log
           npm run readme-kit:check
 
+      # The trial returns only the end of the job's log, and the report is longer: it is printed in
+      # full, then once more as one gzip+base64 line (with the build logs and the built pages of both
+      # sides) between REPORT-B64 markers, the last thing in the log —
+      # decode with `base64 -d | tar xz`.
       - name: Compare dist/
-        run: node scripts/compare-dist.mjs /tmp/base/dist dist
+        run: |
+          rc=0
+          node scripts/compare-dist.mjs /tmp/base/dist dist > /tmp/report.txt 2>&1 || rc=$?
+          cat /tmp/report.txt
+          mkdir -p /tmp/bundle/base /tmp/bundle/head
+          cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
+          (cd /tmp/base/dist && find . -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' | cpio -pdm --quiet /tmp/bundle/base)
+          (cd dist && find . -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' | cpio -pdm --quiet /tmp/bundle/head)
+          echo "REPORT-B64-BEGIN"
+          tar -C /tmp/bundle -cf - . | gzip -9n | base64 -w0; echo
+          echo "REPORT-B64-END"
+          exit $rc

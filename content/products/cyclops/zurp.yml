@@ -9,8 +9,8 @@
 #
 # Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /cyclops/), le
 # lien vers le dépôt (ce produit n'a pas encore de dépôt : il est listé dans `withoutRepository`
-# de content/catalog.yml, et son lien « Source » mène à l'organisation), le statut « released » et
-# la version (tag de la dernière release GitHub), le rang dans sa section.
+# de content/catalog.yml, et son lien « Source » mène à l'organisation), la version
+# (tag de la dernière release GitHub), le rang dans sa section.
 
 name: Cyclops
 tagline: >-
@@ -19,7 +19,7 @@ tagline: >-
 slogan: One eye to find them all
 category: Camera
 section: cameras          # mounts | cameras | gadgets | future
-status: future            # wip | future — devient « released » dès qu'une release existe sur GitHub
+status: future            # wip | future | released — décidé par l'humain, jamais déduit d'une release
 basedOn: diofinder
 
 description:

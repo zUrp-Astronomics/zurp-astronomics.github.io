@@ -8,15 +8,15 @@
 # (src/lib/catalog/read.mjs). Migrer le produit = déplacer ce dossier, tel quel, dans 9_Assets/.
 #
 # Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /kraken/), le
-# lien vers le dépôt (https://github.com/zUrp-Astronomics/kraken), le statut « released » et la
-# version (tag de la dernière release GitHub), le rang dans sa section.
+# lien vers le dépôt (https://github.com/zUrp-Astronomics/kraken), la version
+# (tag de la dernière release GitHub), le rang dans sa section.
 
 name: Kraken
 tagline: Compact but efficient powerbox, in a Raspberry Pi case.
 slogan: Power to the people
 category: Powerbox
 section: gadgets          # mounts | cameras | gadgets | future
-status: wip               # wip | future — devient « released » dès qu'une release existe sur GitHub
+status: wip               # wip | future | released — décidé par l'humain, jamais déduit d'une release
 basedOn: NAFAbox / Astralim
 
 description:

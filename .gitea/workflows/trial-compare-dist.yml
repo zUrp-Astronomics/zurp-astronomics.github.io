@@ -84,27 +84,37 @@ jobs:
       # printed first, so the admitted change shows too.
       - name: Compare README kit
         run: |
-          echo "--- raw diff, base → head"
-          diff -ru /tmp/base/.zurp-catalog/readme-kit .zurp-catalog/readme-kit || true
-          rm -rf /tmp/kit-base && cp -R /tmp/base/.zurp-catalog/readme-kit /tmp/kit-base
-          find /tmp/kit-base -type f -name '*.md' -exec sed -i "$KIT_ADMITTED" {} +
-          echo "--- after the admitted change"
-          if diff -ru /tmp/kit-base .zurp-catalog/readme-kit; then
-            echo "README KIT: identical byte for byte ($(find .zurp-catalog/readme-kit -type f | wc -l) files), apart from the admitted change"
-          else
-            echo "README KIT: DIFFERS"; exit 1
-          fi
+          rc=0
+          {
+            echo "--- raw diff, base → head"
+            diff -ru /tmp/base/.zurp-catalog/readme-kit .zurp-catalog/readme-kit || true
+            rm -rf /tmp/kit-base && cp -R /tmp/base/.zurp-catalog/readme-kit /tmp/kit-base
+            find /tmp/kit-base -type f -name '*.md' -exec sed -i "$KIT_ADMITTED" {} +
+            echo "--- after the admitted change"
+            if diff -ru /tmp/kit-base .zurp-catalog/readme-kit; then
+              echo "README KIT: identical byte for byte ($(find .zurp-catalog/readme-kit -type f | wc -l) files), apart from the admitted change"
+            else
+              echo "README KIT: DIFFERS"; false
+            fi
+          } > /tmp/kit-report.txt 2>&1 || rc=$?
+          cat /tmp/kit-report.txt
+          exit $rc
 
       # The stable brand images, byte for byte: compare-dist only compares their pixel size, and the
       # social cards carry drawn text. A file whose bytes differ is decoded and compared pixel by
       # pixel (identical pixels pass, and are reported as such).
       - name: Compare brand images
-        run: node scripts/compare-brand.mjs /tmp/base/dist dist
+        run: |
+          rc=0
+          node scripts/compare-brand.mjs /tmp/base/dist dist > /tmp/brand-report.txt 2>&1 || rc=$?
+          cat /tmp/brand-report.txt
+          exit $rc
 
       # The trial returns only the end of the job's log, and the report is longer: it is printed in
       # full, then once more as one gzip+base64 line (with the build logs and the built pages of both
-      # sides) between REPORT-B64 markers, the last thing in the log —
-      # decode with `base64 -d | tar xz`.
+      # sides) between REPORT-B64 markers — decode with `base64 -d | tar xz` — and last, the verdicts
+      # of the three comparisons (dist/, README kit, brand images), so that the end of the log
+      # carries them all.
       - name: Compare dist/
         run: |
           rc=0
@@ -112,11 +122,17 @@ jobs:
           cat /tmp/report.txt
           mkdir -p /tmp/bundle/base /tmp/bundle/head
           cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
-          cp -R /tmp/base/.zurp-catalog/readme-kit /tmp/bundle/base/readme-kit
-          cp -R .zurp-catalog/readme-kit /tmp/bundle/head/readme-kit
           (cd /tmp/base/dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/base -xf -)
           (cd dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/head -xf -)
           echo "REPORT-B64-BEGIN"
           tar -C /tmp/bundle -cf - . | gzip -9n | base64 -w0; echo
           echo "REPORT-B64-END"
+          echo "=== VERDICTS"
+          echo "--- dist/ (scripts/compare-dist.mjs)"
+          sed -n '/^FILES:/p;/^IMAGE /p;/markup (report only)/p;/^    [+-] /p' /tmp/report.txt | sort | uniq -c
+          tail -1 /tmp/report.txt
+          echo "--- README kit"
+          sed -n '/^--- raw diff/,$p' /tmp/kit-report.txt
+          echo "--- brand images (scripts/compare-brand.mjs)"
+          cat /tmp/brand-report.txt
           exit $rc

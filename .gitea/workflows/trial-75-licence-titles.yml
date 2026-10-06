@@ -1,4 +1,4 @@
-# SOURCE: zurp-astronomics-site — throwaway trial of ticket #75: the first lines of the official hardware licence texts
+# SOURCE: zurp-astronomics-site — throwaway trial of ticket #75: the OCL text of the real basilisk repository, for the simulator
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: temporary — removed before delivery
@@ -11,17 +11,9 @@ jobs:
     runs-on: shell
     container: catthehacker/ubuntu:act-latest
     steps:
-      - name: First lines of the official texts
+      - name: The OCL text of basilisk
         run: |
-          for u in \
-            https://ohwr.org/cern_ohl_s_v2.txt \
-            https://ohwr.org/cern_ohl_w_v2.txt \
-            https://ohwr.org/cern_ohl_p_v2.txt \
-            https://raw.githubusercontent.com/spdx/license-list-data/main/text/CERN-OHL-S-2.0.txt \
-            https://raw.githubusercontent.com/spdx/license-list-data/main/text/CERN-OHL-W-2.0.txt \
-            https://raw.githubusercontent.com/spdx/license-list-data/main/text/CERN-OHL-P-2.0.txt \
-            https://raw.githubusercontent.com/zUrp-Astronomics/basilisk/main/LICENSE \
-            https://raw.githubusercontent.com/zUrp-Astronomics/berserker/main/LICENSE ; do
-            echo "=== $u"
-            curl -sSL --max-time 30 "$u" | head -c 600 | cat -A | head -6 || echo "FAILED"
-          done
+          curl -sSfL --max-time 30 https://raw.githubusercontent.com/zUrp-Astronomics/basilisk/main/LICENSE -o /tmp/ocl
+          curl -sSfL --max-time 30 https://api.github.com/repos/zUrp-Astronomics/basilisk/contents/ | grep -E '"(name|path)"' || true
+          wc -c /tmp/ocl; sha256sum /tmp/ocl
+          echo "B64-BEGIN"; gzip -9n < /tmp/ocl | base64 -w0; echo; echo "B64-END"

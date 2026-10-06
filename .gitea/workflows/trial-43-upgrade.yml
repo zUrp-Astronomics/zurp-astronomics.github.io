@@ -1,4 +1,4 @@
-# SOURCE: zurp-astronomics-site — ticket #43 trial: resolve Astro 7 / sharp / esbuild on the registry, emit the lockfile, try the build
+# SOURCE: zurp-astronomics-site — ticket #43 trial: regenerate package-lock.json for package.json (Node 24), read Astro 7 notes from the installed package
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: trial (removed before delivery)
@@ -7,6 +7,24 @@ name: trial-43-upgrade
 on: workflow_dispatch
 
 jobs:
+  notes:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Notes
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund >/dev/null 2>&1
+          cd node_modules/astro
+          echo "=== config types: compressHTML"
+          f=$(grep -rl 'compressHTML' dist/types 2>/dev/null | head -3); echo "$f"
+          for x in $f; do grep -n -B40 -A6 'compressHTML?' "$x" | cut -c1-200 | head -80; done
+          echo "=== CHANGELOG lines"
+          grep -n -i -E 'compressHTML|fsPath|upscal|crop|import\.meta\.env|inline.*env|strict.*html|invalid html' CHANGELOG.md | cut -c1-400 | head -60
   lock:
     runs-on: shell
     container: catthehacker/ubuntu:act-latest
@@ -15,41 +33,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Registry
+      - name: Lock
         run: |
           node -v; npm -v
-          npm view astro dist-tags --json
-          V=$(npm view astro dist-tags.latest)
-          echo "astro latest=$V"
-          npm view "astro@$V" engines dependencies optionalDependencies peerDependencies --json
-          npm view sharp dist-tags --json
-          npm view esbuild dist-tags --json
-      - name: Install
-        run: |
-          V=$(npm view astro dist-tags.latest)
-          npm pkg set "dependencies.astro=^$V" "engines.node=>=24"
+          rm -f package-lock.json
           npm install --no-audit --no-fund
-          npm ls astro sharp esbuild vite --all 2>&1 | head -60 || true
-          cat package.json
-          echo "LOCK-SIZE $(wc -c < package-lock.json)"
+          npm ls astro sharp esbuild vite
+          git diff --stat -- package.json
+          echo "LOCK-SHA256 $(sha256sum package-lock.json)"
           echo "LOCK-B64-BEGIN"
-          gzip -9c package-lock.json | base64 -w0; echo
+          gzip -9nc package-lock.json | base64 -w0; echo
           echo "LOCK-B64-END"
-  build:
-    runs-on: shell
-    container: catthehacker/ubuntu:act-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Install
-        run: |
-          V=$(npm view astro dist-tags.latest)
-          npm pkg set "dependencies.astro=^$V" "engines.node=>=24"
-          npm install --no-audit --no-fund >/dev/null 2>&1
-          npm ls astro sharp esbuild vite 2>&1 || true
-      - name: Build
-        run: npm run build 2>&1 | grep -v -E '^\s+(├|└)─' | tail -150
-      - name: Check
-        run: node scripts/check-dist.mjs && npm run readme-kit:check

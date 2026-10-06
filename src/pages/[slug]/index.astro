@@ -7,8 +7,8 @@
 // Content: tagline, category, badges (status, version of the latest release when there is one,
 // hardware + software licences, based on), About, Source + repo link, footer. Copy from the catalog
 // (src/data/catalog.ts: products.ts or the product's own sheet, 9_Assets/zurp.yml), word for word
-// (it began as the v1 page's, deleted with the v1 archive in ticket #35). The licence badges and sentence come from
-// src/data/licenses.ts / src/components/LicenseText.astro.
+// (it began as the v1 page's, deleted with the v1 archive in ticket #35). The licence badges and
+// sentence come from src/data/licenses.ts / src/components/LicenseText.astro.
 //
 // Ticket #27: no breadcrumb any more. The site's common header (src/components/v2/SiteHeader.astro,
 // drawn by V2Layout, compact and sticky on this page) carries the zUrp plate, a link to `/`, and
@@ -251,8 +251,9 @@ const tint = [
     border-color: var(--z2-soot-deep);
   }
 
-  /* The version (ticket #46): tag of the latest GitHub release, as is, only when there is one. A
-     date stamp: soot ink pad, dashed accent rim, typewriter digits. */
+  /* The version (ticket #46): the tag of the latest GitHub release, as is, only when there is one.
+     Inked on soot like the licence stamps, with a dashed rim in the product's accent; the tag keeps
+     its own case. */
   .badge-version {
     background: var(--z2-soot-deep);
     color: var(--z2-cream);

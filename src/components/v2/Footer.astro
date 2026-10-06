@@ -18,6 +18,10 @@
 // silent for screen readers. Smooth scroll comes from `scroll-behavior` on html.z2, already turned
 // off under prefers-reduced-motion. No JavaScript. The footer is cut off from the page by ONE thin
 // rule (the old 4 px red border + 2 px red echo doubled the signature's own red rules).
+// `fit="outside"` (ticket #43, Astro 7): the panel is 3:2 (1536 × 1024) and 140 px gives a 93 px
+// height, so Astro 7 asks for its 280 px variant at 280 × 186 (= 280 / (140 / 93)) and its image
+// service CROPS to that by default. "outside" (sharp's fit: keep the ratio, cover the box) scales
+// instead, as Astro 4 did: 280 × 187, the whole panel. `fit` never reaches the HTML.
 import { Image } from 'astro:assets';
 import lowTechPoster from '../../assets/header/low-tech-diy-poster.webp';
 
@@ -56,6 +60,7 @@ const { productName } = Astro.props;
         title="Low-Tech & DIY — culture zUrp"
         width={140}
         widths={[140, 280]}
+        fit="outside"
         sizes="140px"
         format="webp"
         quality={72}

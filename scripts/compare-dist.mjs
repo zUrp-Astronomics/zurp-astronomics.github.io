@@ -12,7 +12,8 @@
 // scripts/check-dist.mjs guards one build; this compares two.
 //
 // Hashed asset names (`/_astro/<name>.<hash>.<ext>`) are normalised to `/_astro/<name>.#.<ext>`
-// everywhere: a hash changes with any byte of the asset, its URL is not part of the contract. The
+// everywhere (`/_astro/*.#.<ext>` for CSS and JS bundles, named by the bundler): a hash changes
+// with any byte of the asset, its URL is not part of the contract. The
 // build stamp (commit hash, build date) differs between two builds by design: it is masked in the
 // comparisons and checked on its own (rendered, well-formed).
 //
@@ -26,8 +27,11 @@
 //     links): the pixel size of the file it points to, and its descriptor;
 //   - the pixel size of every image file in dist/ (by normalised name);
 //   - the build stamp on every page of the branch (a 7-hex commit and a `YYYY-MM-DD HH:MMZ` date).
+//   - the stylesheets of each page, in cascade order, once both are rewritten by lightningcss into
+//     one canonical form (when lightningcss is installed — Vite ships it; otherwise reported only).
 // REPORTS (no failure) what may legitimately move with a toolchain: the normalised markup of each
-// page, the CSS, image byte sizes, the generator meta.
+// page (attribute order, whitespace, the place of a module script), image byte sizes, the
+// generator meta.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep, posix } from 'node:path';
@@ -56,8 +60,12 @@ function walk(dir) {
 }
 
 // `/_astro/kaiju.Ab12Cd34_Z1xYz9.webp` → `/_astro/kaiju.#.webp`; same for a bare `_astro/…` path.
+// A stylesheet or script bundle loses its name too (`_astro/index.#.css`, `_astro/V2Layout.#.css`
+// → `_astro/*.#.css`): the bundler names its chunks, and the name moves with the bundler. An image
+// keeps its name, which is its source file's.
 const HASHED = /(^|\/)_astro\/([^/"'\s,()]+?)\.([A-Za-z0-9_-]{6,})\.([a-z0-9]+)(?=$|[?#"'\s,)])/gi;
-const normHash = (s) => s.replace(HASHED, '$1_astro/$2.#.$4');
+const normHash = (s) =>
+  s.replace(HASHED, (_, pre, name, hash, ext) => `${pre}_astro/${/^(css|js|mjs)$/i.test(ext) ? '*' : name}.#.${ext}`);
 
 function tree(root) {
   const files = walk(root).map((abs) => ({
@@ -420,27 +428,49 @@ for (const page of pages) {
   }
 }
 
-// ---------- 4. CSS (report only) ----------------------------------------------------------------
-{
-  const css = (root, files, html) => {
-    const parts = files.filter((f) => f.rel.endsWith('.css')).map((f) => readFileSync(f.abs, 'utf8'));
-    for (const p of html) for (const m of readFileSync(join(root, p), 'utf8').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) parts.push(m[1]);
-    return [...new Set(
-      parts
-        .join('\n')
-        .replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-#')
-        .replace(/\bastro-[a-z0-9]{8}\b/g, 'astro-#')
-        .split(/(?<=[{};])/)
-        .map((s) => normHash(s.trim()))
-        .filter(Boolean),
-    )].sort();
-  };
-  const { onlyA, onlyB } = diffMultisets(css(BASE, baseFiles, [...basePages]), css(HEAD, headFiles, pages));
-  if (onlyA.length || onlyB.length) {
-    console.log(`\nCSS (report only): ${onlyA.length} rule fragment(s) only in base, ${onlyB.length} only in head`);
-    show('  only in base:', onlyA, 60);
-    show('  only in head:', onlyB, 60);
-  } else console.log('\nCSS (report only): same rule fragments');
+// ---------- 4. CSS -------------------------------------------------------------------------------
+// The stylesheets of each page, in order (linked files, then inline <style>), with the scoping
+// hashes (data-astro-cid-…) masked. Two minifiers write the same rules differently (`rgba(…)` or
+// `#rrggbbaa`, declaration order, whitespace), so with lightningcss available (Vite ships it) both
+// sides are first rewritten by it, with the same options, into one canonical form: a difference left
+// after that is a difference in the rules, and fails. Without lightningcss the raw comparison is
+// only reported.
+let lightningcss = null;
+try {
+  lightningcss = await import('lightningcss');
+} catch {
+  // reported below
+}
+const CSS_TARGETS = { chrome: 111 << 16, edge: 111 << 16, firefox: 114 << 16, safari: (16 << 16) | (4 << 8) };
+const maskCid = (css) => css.replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-#').replace(/\bastro-[a-z0-9]{8}\b/g, 'astro-#');
+function canonicalCss(code, name) {
+  if (!lightningcss) return maskCid(code);
+  const out = lightningcss.transform({ filename: name, code: Buffer.from(maskCid(code)), minify: true, targets: CSS_TARGETS, errorRecovery: true });
+  return out.code.toString();
+}
+function pageCss(root, html) {
+  const sheets = [];
+  for (const t of tags(html)) {
+    if (t.name === 'link' && /\bstylesheet\b/.test(t.attrs.rel ?? '')) {
+      const file = distFile(root, t.attrs.href ?? '');
+      if (file) sheets.push(canonicalCss(readFileSync(file, 'utf8'), t.attrs.href));
+      else sheets.push(`/* external */ @import "${t.attrs.href}";`);
+    }
+  }
+  for (const m of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) sheets.push(canonicalCss(m[1], 'inline.css'));
+  return sheets.join('\n');
+}
+const cssLines = (css) => css.split(/(?<=[{};])/).map((s) => normHash(s.trim())).filter(Boolean);
+console.log(`\nCSS: ${lightningcss ? 'canonical form (lightningcss), per page, in cascade order' : 'lightningcss not found — raw comparison, report only'}`);
+for (const page of pages.filter((p) => basePages.has(p))) {
+  const a = pageCss(BASE, readFileSync(join(BASE, page), 'utf8'));
+  const b = pageCss(HEAD, readFileSync(join(HEAD, page), 'utf8'));
+  if (a === b) {
+    console.log(`  ${page}: same (${b.length} chars)`);
+    continue;
+  }
+  if (lightningcss) fail(`${page}: stylesheets differ`);
+  show(`  ${page}: DIFFERS`, lineDiff(cssLines(a), cssLines(b)), 40);
 }
 
 console.log('');
@@ -449,4 +479,4 @@ if (failures.length) {
   for (const f of failures) console.log(`  - ${f}`);
   process.exit(1);
 }
-console.log('SAME: files, image sizes, visible text, URLs, page images; build stamp rendered on every page.');
+console.log(`SAME: files, image sizes, visible text, URLs, page images${lightningcss ? ', stylesheets' : ''}; build stamp rendered on every page.`);

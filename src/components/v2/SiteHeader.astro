@@ -30,6 +30,9 @@
 //         gradual fade: p jumps 0 → 1 at the middle of the range, and back.
 //         Without JavaScript the bar stays hidden and inert (markup default) and the big header
 //         just scrolls away: accepted (ticket #31).
+//         `inert={home}`, a boolean: Astro 7 renders `inert` as a boolean attribute, so the former
+//         `inert={home ? '' : undefined}` (an empty string, falsy) dropped it from the markup
+//         (measured in ticket #43, Astro 4 → 7).
 //
 // Ticket #31 removed the #27 / #29 machinery (outer box locking the full height, sentinel,
 // hysteresis thresholds, 0.8 s transition on the plate's size): the header no longer changes size.
@@ -83,7 +86,7 @@ const Bar = home ? 'div' : 'header';
       </div>
     </header>
   ) : (
-    <Bar class="site-head site-bar" data-fade={home ? '' : undefined} inert={home ? '' : undefined}>
+    <Bar class="site-head site-bar" data-fade={home ? '' : undefined} inert={home}>
       <div class="z2-container site-head-inner">
         <div class="site-head-title">
           <a

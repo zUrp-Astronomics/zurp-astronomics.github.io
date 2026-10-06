@@ -10,6 +10,8 @@
 # REVISED: 2026-10-06 (ticket #61) — both lists emptied: the #53 differences are in main
 # REVISED: 2026-10-06 (ticket #66) — DIST_ADMITTED: differences declared INSIDE pages present on both
 #   sides (scripts/compare-dist.mjs --admitted), each one required to be observed; the lists of #66
+# REVISED: 2026-10-06 (ticket #72) — the lists of #66 (in main since) replaced by those of #72: three
+#   licence stamps added, nothing else; KIT_MAY_DIFFER emptied
 #
 # For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
 # lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
@@ -39,33 +41,25 @@ jobs:
     timeout-minutes: 30
     env:
       BASE_REF: main
-      # ADMITTED DIFFERENCES — ticket #66: the licence of a product is its repository's LICENSE, as
-      # GitHub detects it; the site's licence rule is gone.
+      # ADMITTED DIFFERENCES — ticket #72: full discovery. The simulator imitates the organisation's
+      # real repositories that have no sheet yet (catalog-simulator/repos/kaiju, kraken, berserker,
+      # with their licence); the repository of a product of content/products/ is discovered there.
       #   DIST_ADMITTED_NEW  files new in dist/ (space-separated): none.
       #   DIST_ADMITTED      differences inside the pages, one per line, `<kind> <pages> <value>`
       #                      (scripts/compare-dist.mjs, `--admitted`), each required to be observed on
       #                      every page its pattern matches:
-      #     - removed from every product page: the two stamps of the old rule, the licence sentence of
-      #       the Source section with its two links, and its paragraph's style (.repo-note);
-      #     - added: the stamp of the licence GitHub detects, as the simulator imitates it — GPL-3.0 on
-      #       /maelstrom/ and /unicorn/, the generic stamp (content/site.yml product.licenseOther) on
-      #       /basilisk/ (an OCL LICENSE GitHub does not recognise). The other products have no
-      #       repository, or none in the simulator: no stamp.
-      #   KIT_MAY_DIFFER     README kit files that may differ (shell patterns): the product headers
-      #                      (licence badge gone), the guide (its paragraphs on that badge), the org
-      #                      README (licence badges and line gone) — their raw diff is printed in full.
+      #     - added: the stamp of the licence GitHub detects in their repository — GPL-3.0 on /kaiju/
+      #       and /kraken/, CERN-OHL-S-2.0 on /berserker/. Their « Source » link does not change (the
+      #       imitated repositories are in lower case, like the folders); Cyclops and Wraith have no
+      #       repository: no stamp, the organisation as their link, as before.
+      #   KIT_MAY_DIFFER     README kit files that may differ (shell patterns): none — the kit carries
+      #                      no licence, and its links do not change.
       # Each list empty = nothing admitted.
       DIST_ADMITTED_NEW: ''
       DIST_ADMITTED: |
-        text-removed */index.html Hardware · OCL v1.1
-        text-removed */index.html Software · GPL-3.0
-        text-removed */index.html Open hardware — BOM, 3D files, firmware, docs. Hardware (BOM, 3D/CAD files, PCB, mechanics) is under OCL v1.1, software and firmware under GPL-3.0. A project derived from upstream work follows its upstream licence: the project's repository has the final word.
-        url-removed */index.html https://github.com/OpenCommunityLicence/OpenCommunityLicence
-        url-removed */index.html https://www.gnu.org/licenses/gpl-3.0.html
-        css-removed */index.html .repo-note
-        text-added {maelstrom,unicorn}/index.html GPL-3.0
-        text-added basilisk/index.html Other licence
-      KIT_MAY_DIFFER: 'readme-kit/repos/* readme-kit/README.md profile/README.md'
+        text-added {kaiju,kraken}/index.html GPL-3.0
+        text-added berserker/index.html CERN-OHL-S-2.0
+      KIT_MAY_DIFFER: ''
     steps:
       - uses: actions/checkout@v4
 

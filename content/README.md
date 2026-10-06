@@ -1,7 +1,7 @@
 # content/ — les textes et les ressources du site
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-06 (ticket #66 : la licence d'un produit est le `LICENSE` de son dépôt, `licences/` retiré)
+**Dernière révision** : 2026-10-06 (ticket #72 : découverte intégrale — le dépôt d'un produit d'ici est découvert, aucune liste de produits)
 **Statut** : actif — tout texte destiné au lecteur vit ici ; le code (`src/`, `scripts/`) ne fait que le placer
 **Référencé par** : `src/lib/content.mjs`, `src/lib/catalog/local.mjs`, `src/lib/status-badge.mjs`, `src/lib/license-stamp.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
 
@@ -14,7 +14,7 @@ changement part au déploiement suivant (push sur `main`).
 | Fichier | Ce qu'il porte | Où ça sort |
 |---|---|---|
 | `site.yml` | le nom, l'accroche, l'affiliation (« a subsidiary of… », écrite une fois : la signature et la ligne produit du pied de page la reprennent), la signature, l'organisation GitHub, les titres, libellés et textes alternatifs des pages (dont `product.licenseOther`, le tampon d'une licence que GitHub ne reconnaît pas) | tout le site ; nom, accroche et signature aussi dans le README de l'org, le nom aussi sur les cartes d'aperçu |
-| `catalog.yml` | les sections (ordre, titres), les libellés de statut (et la couleur de leur badge README), les textes du badge de statut (`statusBadge`), les produits sans dépôt | accueil, pages produit, README de l'org et JSON de statut des badges (`/brand/status/<slug>.json`, rendu par shields.io dans l'en-tête de chaque README produit) |
+| `catalog.yml` | les sections (ordre, titres), les libellés de statut (et la couleur de leur badge README), les textes du badge de statut (`statusBadge`) | accueil, pages produit, README de l'org et JSON de statut des badges (`/brand/status/<slug>.json`, rendu par shields.io dans l'en-tête de chaque README produit) |
 | `home/pitch.md` | le pitch, sur une ligne | accueil (étiquette de l'affiche), README de l'org (« Hi here ») |
 | `home/manifesto.md` | le manifeste | accueil |
 | `footer/legalese.md` | la ligne en petit du pied de page | toutes les pages |
@@ -56,10 +56,14 @@ d'après le slug. Le site le lit et le valide avec le même code que les fiches 
 (`src/lib/catalog/read.mjs`).
 
 **Migrer un produit vers son dépôt = déplacer ce dossier** dans le `9_Assets/` du dépôt, sans rien
-réécrire, puis le retirer d'ici (et, s'il y était, retirer son slug de `withoutRepository` dans
-`catalog.yml`). Un slug présent ici ET dans un dépôt fait échouer le build ; un produit publié qui
-disparaît aussi (`src/data/published-slugs.mjs`).
+réécrire, puis le retirer d'ici. Tant qu'il est aux deux endroits, la fiche du dépôt gagne et ce
+dossier est ignoré, avec un avertissement dans le rapport du build ; si la fiche du dépôt est
+invalide, le dépôt est sauté et ce dossier reste publié. Aucune liste de produits n'est tenue à la
+main : le site publie ce qu'il découvre, dans les dépôts de l'organisation et ici. Une fiche
+invalide **ici** fait échouer le build.
 
-Le lien « Source » d'un produit d'ici est `https://github.com/zUrp-Astronomics/<slug>` — ou
-l'organisation elle-même pour un produit listé dans `withoutRepository` de `catalog.yml` (Cyclops,
-Wraith : pas encore de dépôt). Une fiche ne porte jamais de champ `repo` : il est déduit.
+Le lien « Source » d'un produit d'ici est **découvert** : le dépôt de l'organisation qui porte son
+nom (casse ignorée — `Kaiju` pour `kaiju`), à son URL telle que GitHub la donne, et sa licence est
+celle que GitHub détecte dans ce dépôt. S'il n'a pas de dépôt (Cyclops, Wraith), le lien mène à
+l'organisation elle-même, sans licence ; le jour où le dépôt est créé, le build suivant le trouve.
+Une fiche ne porte jamais de champ `repo` : il est déduit.

@@ -4,6 +4,7 @@
 // DATE: 2026-10-03 (revised 2026-10-06, ticket #46: the full catalog of the build)
 // REVISED: 2026-10-06 (ticket #53) — the status JSON of each product (shields.io endpoint, README status badge)
 // REVISED: 2026-10-06 (ticket #66) — the licence stamp of each product page: the licence of the built catalog, or none
+// REVISED: 2026-10-06 (ticket #72) — no list of products kept by hand, no warning about it: the catalog is what was discovered
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -68,7 +69,6 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
-import { unguardedWarning } from '../src/lib/catalog/assemble.mjs';
 import { catalogContent, siteContent } from '../src/lib/content.mjs';
 import { licenseStamp } from '../src/lib/license-stamp.mjs';
 import { statusBadgeJson, statusBadgePath } from '../src/lib/status-badge.mjs';
@@ -140,14 +140,12 @@ for (const img of images.slice(0, 5)) {
 }
 
 // --- 2. Exactly one page per product + the home page -------------------------------------------
-// The catalog the site was built with (assembly errors — a slug twice, a published product missing
-// — are thrown here as they were in the build).
+// The catalog the site was built with (an invalid sheet of content/products/ is thrown here as it
+// was in the build; what the build skipped is in its catalog report, src/lib/catalog/report.mjs).
 const catalog = await loadBuiltCatalog();
 const slugs = catalog.products.map((p) => p.slug);
 if (slugs.length === 0) errors.push('the built catalog holds no product');
 console.log(`Catalog source of the build: ${catalog.read}`);
-const unguarded = unguardedWarning(catalog.unguarded);
-if (unguarded) console.log(`${process.env.GITHUB_ACTIONS === 'true' ? '::warning::' : 'WARNING: '}${unguarded}`);
 
 const expected = new Set([HOME_PAGE, ...slugs.map((s) => `${s}/index.html`)]);
 const found = new Set(files.map((f) => f.rel).filter((rel) => rel.endsWith('index.html')));

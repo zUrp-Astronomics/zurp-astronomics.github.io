@@ -2,12 +2,17 @@
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: active
+# REVISED: 2026-10-06 (ticket #72) — full discovery: invalid repositories skipped, the catalog report in the job summary
 #
 # THE CATALOG IS READ ON GITHUB, HERE (ZURP_CATALOG=github, src/lib/catalog/): the sheets
 # 9_Assets/zurp.yml and the releases of the public repositories of zUrp-Astronomics, with this job's
-# GITHUB_TOKEN (1000 requests per hour; every read goes through api.github.com). No fallback: if
-# GitHub cannot be read, or a sheet is invalid, or a published product is missing
-# (src/data/published-slugs.mjs), the build fails and Pages keeps serving the previous deployment.
+# GITHUB_TOKEN (1000 requests per hour; every read goes through api.github.com). The site publishes
+# what it discovers (ticket #72): a repository whose sheet or poster is invalid is skipped, with a
+# warning, and the rest is published; no list of products is kept by hand. If GitHub cannot be read,
+# or a sheet of content/products/ (this repository) is invalid, the build fails and Pages keeps
+# serving the previous deployment. The catalog found — each product, its origin, its « Source »
+# link — and what was skipped, with the reason, are in the build log and in the job summary of
+# `build` (src/lib/catalog/report.mjs, through GITHUB_STEP_SUMMARY).
 #
 # TRIGGERS: a push to main of this repository; a `repository_dispatch` of type `zurp-catalog`, sent
 # by each product repository when a release is published, unpublished or deleted, or when its

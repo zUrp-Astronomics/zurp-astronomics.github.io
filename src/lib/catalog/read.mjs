@@ -2,6 +2,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #62) — the status is the sheet's, never deduced from a release (the
+//   human: « repo public != projet releasé »); a release gives the version, the rank, a rebuild
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases. Never the
@@ -11,12 +13,14 @@
 //   - its fields are those of `Product` (src/data/catalog.ts), minus what is deduced:
 //       slug      the repository name in lower case (`Kraken` → `kraken`)
 //       repo      the repository's URL (the « Source » link)
-//       status    `released` as soon as the repository has at least one release, whatever it is;
-//                 otherwise the sheet's `wip` or `future`
 //       release   the latest release: its tag, as is (the version shown), and its `published_at`
 //                 (the moment it appears on the Releases page; it ranks the product in its section)
 //     The poster is the file of 9_Assets/ named by `poster:`;
-//   - NO analysis of a release's name, tag or pre-release box: « tant que ça pop ça update ». A
+//   - the status (`wip`, `future`, `released`) is WRITTEN in the sheet: the human decides it. It is
+//     never deduced from the releases — an alpha release of a firmware does not make the product
+//     released (« repo public != projet releasé »);
+//   - a release gives the version shown, the rank in the section and a rebuild — nothing else. NO
+//     analysis of a release's name, tag or pre-release box: « tant que ça pop ça update ». A
 //     prerelease counts like any other. Only drafts are left out: they are not on the Releases page
 //     (no `published_at`, and invisible without push access anyway);
 //   - the sheets come from elsewhere, so they are validated here: an invalid one (missing field,
@@ -35,7 +39,7 @@ export const ASSETS_DIR = '9_Assets';
 export const SHEET_PATH = `${ASSETS_DIR}/zurp.yml`;
 
 const STRING_FIELDS = ['name', 'tagline', 'slogan', 'category', 'posterAlt'];
-const SHEET_STATUSES = ['wip', 'future'];
+const SHEET_STATUSES = ['wip', 'future', 'released'];
 const POSTER_EXT = /\.(png|jpe?g|webp|avif)$/i;
 const ALLOWED = new Set([...STRING_FIELDS, 'section', 'status', 'description', 'basedOn', 'poster', 'accent']);
 const DEDUCED = {
@@ -73,9 +77,7 @@ export function sheetProblems(sheet, sectionIds) {
     problems.push(`field \`section\`: unknown section ${JSON.stringify(sheet.section)} (expected one of: ${sectionIds.join(', ')})`);
   }
   if (!('status' in sheet)) problems.push('field `status`: missing');
-  else if (sheet.status === 'released') {
-    problems.push('field `status`: `released` is not written in the sheet, it is deduced from the GitHub releases (use wip or future)');
-  } else if (!SHEET_STATUSES.includes(sheet.status)) {
+  else if (!SHEET_STATUSES.includes(sheet.status)) {
     problems.push(`field \`status\`: ${JSON.stringify(sheet.status)} is not one of: ${SHEET_STATUSES.join(', ')}`);
   }
   if (!('description' in sheet)) problems.push('field `description`: missing');
@@ -172,7 +174,7 @@ export async function readRepoProducts(backend, { sectionIds }) {
       category: sheet.category.trim(),
       section: sheet.section,
       repo: url,
-      status: release ? 'released' : sheet.status,
+      status: sheet.status,
       description: sheet.description.map((d) => d.trim()),
       ...(sheet.basedOn !== undefined ? { basedOn: sheet.basedOn.trim() } : {}),
       posterAlt: sheet.posterAlt.trim(),

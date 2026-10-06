@@ -9,15 +9,15 @@
 #
 # Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /wraith/), le
 # lien vers le dépôt (ce produit n'a pas encore de dépôt : il est listé dans `withoutRepository`
-# de content/catalog.yml, et son lien « Source » mène à l'organisation), le statut « released » et
-# la version (tag de la dernière release GitHub), le rang dans sa section.
+# de content/catalog.yml, et son lien « Source » mène à l'organisation), la version
+# (tag de la dernière release GitHub), le rang dans sa section.
 
 name: Wraith
 tagline: All-in-One mount controller with a Compute Module 5.
 slogan: Ghost in the sky
 category: Controller
 section: future           # mounts | cameras | gadgets | future
-status: future            # wip | future — devient « released » dès qu'une release existe sur GitHub
+status: future            # wip | future | released — décidé par l'humain, jamais déduit d'une release
 
 description:
   - >-

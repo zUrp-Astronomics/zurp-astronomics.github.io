@@ -6,6 +6,8 @@
 // REVISED: 2026-10-06 (ticket #53) — the basilisk header points to its status JSON, which carries the release tag (was: a static status badge)
 // REVISED: 2026-10-06 (ticket #61) — the simulator holds maelstrom and unicorn too, byte copies of their workshop kits;
 //   the assembly fixtures follow (LOCAL: content/products/, REMOTE: the simulator), checked against both
+// REVISED: 2026-10-06 (ticket #62) — the status is the sheet's, never deduced from a release: `released`
+//   accepted in a sheet; a release gives the tag and the rank, the status stays the sheet's
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet, a slug twice, a published product gone) are built here, in temporary simulators and a
@@ -28,7 +30,7 @@ import { assembleCatalog } from '../src/lib/catalog/assemble.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogContent } from '../src/lib/content.mjs';
 import { publishedSlugs } from '../src/data/published-slugs.mjs';
-import { statusBadgeJson } from '../src/lib/status-badge.mjs';
+import { statusBadge, statusBadgeJson } from '../src/lib/status-badge.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -175,7 +177,7 @@ test('invalid sheets fail with the repository and the field named, all problems 
     alpha: gizmo(VALID_SHEET.replace('name: Gizmo\n', '')),
     bravo: gizmo(VALID_SHEET.replace('section: gadgets', 'section: telescopes')),
     charlie: { '9_Assets/zurp.yml': VALID_SHEET },
-    delta: gizmo(VALID_SHEET.replace('status: wip', 'status: released')),
+    delta: gizmo(VALID_SHEET.replace('status: wip', 'status: shipped')),
     echo: gizmo(VALID_SHEET + 'slug: other\norder: 3\nbasedon: typo\n'),
     foxtrot: gizmo('name: [unclosed\n'),
     golf: gizmo(VALID_SHEET.replace("accent: '#123456'", 'accent: red').replace('poster: poster.png', 'poster: ../poster.png')),
@@ -186,7 +188,7 @@ test('invalid sheets fail with the repository and the field named, all problems 
       /repository alpha \(9_Assets\/zurp\.yml\): field `name`: missing/,
       /repository bravo .*field `section`: unknown section "telescopes"/,
       /repository charlie .*field `poster`: 9_Assets\/poster\.png does not exist/,
-      /repository delta .*field `status`: `released` is not written in the sheet/,
+      /repository delta .*field `status`: "shipped" is not one of: wip, future, released/,
       /repository echo .*field `slug`: not allowed/,
       /repository echo .*field `order`: not allowed/,
       /repository echo .*field `basedon`: unknown field/,
@@ -207,22 +209,64 @@ test('sheetProblems: a valid sheet has none; description must be a list of texts
   assert.match(sheetProblems(['x'], sectionIds).join('\n'), /not a YAML mapping/);
 });
 
+test('sheetProblems: the status is written in the sheet — wip, future, released accepted; anything else refused', () => {
+  const ok = { name: 'a', tagline: 'b', slogan: 'c', category: 'd', section: 'mounts', description: ['e'], poster: 'p.webp', posterAlt: 'f', accent: '#AbCdEf' };
+  for (const status of ['wip', 'future', 'released']) assert.deepEqual(sheetProblems({ ...ok, status }, sectionIds), [], status);
+  for (const status of ['Released', 'beta', '', null, 1]) {
+    assert.match(sheetProblems({ ...ok, status }, sectionIds).join('\n'), /field `status`: .* is not one of: wip, future, released/, String(status));
+  }
+  assert.match(sheetProblems(ok, sectionIds).join('\n'), /field `status`: missing/);
+});
+
 // --- Releases ----------------------------------------------------------------------------------
 
-test('one release: released, its tag as is, its published_at', async () => {
+// Ticket #62 (the human: « repo public != projet releasé »): a release gives the version, the rank and
+// a rebuild; the status is always the sheet's.
+
+test('one release: the status of the sheet unchanged, its tag as is, its published_at', async () => {
   const dir = makeSim({ gizmo: gizmo() }, { gizmo: [{ tag_name: 'v0.1-α', published_at: '2026-09-01T10:00:00Z', draft: false, prerelease: false }] });
   const [p] = await read(dir);
-  assert.equal(p.status, 'released');
+  assert.equal(p.status, 'wip');
   assert.deepEqual(p.release, { tag: 'v0.1-α', publishedAt: '2026-09-01T10:00:00.000Z' });
 });
 
-test('a prerelease counts like any release (no analysis of name, tag or pre-release box)', async () => {
+test('a sheet `released` without any release: released, no version', async () => {
+  const dir = makeSim({ gizmo: gizmo(VALID_SHEET.replace('status: wip', 'status: released')) });
+  const [p] = await read(dir);
+  assert.equal(p.status, 'released');
+  assert.equal(p.release, null);
+  const json = statusBadge(p, catalogContent(ROOT));
+  assert.equal(json.message, statuses.released.label);
+  assert.equal(json.color, statuses.released.badgeColor);
+});
+
+test('a sheet `wip` with a release: wip, version = the tag, status JSON « WIP » plus the tag', async () => {
+  const dir = makeSim({ gizmo: gizmo() }, { gizmo: [{ tag_name: 'v0.3', published_at: '2026-09-03T00:00:00Z', draft: false, prerelease: false }] });
+  const [p] = await read(dir);
+  assert.equal(p.status, 'wip');
+  assert.equal(p.release.tag, 'v0.3');
+  const json = statusBadge(p, catalogContent(ROOT));
+  assert.equal(json.message, `${statuses.wip.label} · v0.3`);
+  assert.equal(json.color, statuses.wip.badgeColor);
+});
+
+test('a sheet `future` with a prerelease: future, plus the tag (no analysis of name, tag or pre-release box)', async () => {
   const dir = makeSim({ gizmo: gizmo(VALID_SHEET.replace('status: wip', 'status: future')) }, {
     gizmo: [{ tag_name: 'nightly', name: 'DO NOT USE', published_at: '2026-09-02T00:00:00Z', draft: false, prerelease: true }],
   });
   const [p] = await read(dir);
-  assert.equal(p.status, 'released');
+  assert.equal(p.status, 'future');
   assert.equal(p.release.tag, 'nightly');
+  const json = statusBadge(p, catalogContent(ROOT));
+  assert.equal(json.message, `${statuses.future.label} · nightly`);
+  assert.equal(json.color, statuses.future.badgeColor);
+});
+
+test('an unknown status is refused, release or not', async () => {
+  const dir = makeSim({ gizmo: gizmo(VALID_SHEET.replace('status: wip', 'status: beta')) }, {
+    gizmo: [{ tag_name: 'v1', published_at: '2026-09-02T00:00:00Z', draft: false }],
+  });
+  await assert.rejects(read(dir), /repository gizmo .*field `status`: "beta" is not one of: wip, future, released/);
 });
 
 test('two releases: the latest by published_at, whatever the list order; drafts are not on the Releases page', async () => {
@@ -366,7 +410,7 @@ test('GitHub: public repositories (paginated), sheet and poster through the cont
   const p = products[0];
   assert.equal(p.slug, 'basilisk');
   assert.equal(p.repo, 'https://github.com/zUrp-Astronomics/Basilisk');
-  assert.equal(p.status, 'released');
+  assert.equal(p.status, 'wip', 'the status of the sheet, releases or not');
   assert.deepEqual(p.release, { tag: 'v1.1.0-rc1', publishedAt: '2026-10-05T12:00:00.000Z' });
   assert.deepEqual(p.posterBytes, PNG);
   assert.ok(calls.every((c) => c.url.startsWith('https://api.github.com/')), 'api.github.com only, never raw.githubusercontent.com');
@@ -430,12 +474,17 @@ test('snapshot: a failed read (or no source) leaves nothing of the previous buil
 
 // --- README kit (needs `npm ci`) ------------------------------------------------------------------
 
-test('README kit: generated from the built catalog — order, Released section, one header per product', async () => {
+test('README kit: generated from the built catalog — order, Released section by the sheet status, one header per product', async () => {
   const root = tempSiteWith(SIM);
   const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds });
-  // A release that exists nowhere in the organisation: only in this temporary snapshot.
-  snapshot.products[0].status = 'released';
-  snapshot.products[0].release = { tag: 'v1.0', publishedAt: '2026-10-06T00:00:00.000Z' };
+  // A status and releases that exist nowhere in the organisation: only in this temporary snapshot.
+  // Basilisk's sheet says `released` (the human's decision, ticket #62) and it has a release;
+  // maelstrom's says `wip` and it has a release too: a release does not make it released.
+  const bySlug = (slug) => snapshot.products.find((p) => p.slug === slug);
+  bySlug('basilisk').status = 'released';
+  bySlug('basilisk').release = { tag: 'v1.0', publishedAt: '2026-10-06T00:00:00.000Z' };
+  assert.equal(bySlug('maelstrom').status, 'wip');
+  bySlug('maelstrom').release = { tag: 'v0.3', publishedAt: '2026-10-05T00:00:00.000Z' };
   const snap = join(root, 'released.json');
   writeFileSync(snap, JSON.stringify(snapshot));
   const out = join(root, 'kit');
@@ -444,7 +493,8 @@ test('README kit: generated from the built catalog — order, Released section, 
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');
   const [wip, released] = org.split('### Released ✅');
   const order = (text) => [...text.matchAll(/<b><a href="[^"]+">([^<]+)<\/a><\/b>/g)].map((m) => m[1]);
-  assert.deepEqual(order(wip), ['Berserker', 'Kaiju', 'Cyclops', 'Maelstrom', 'Kraken', 'Unicorn', 'Wraith']);
+  // Maelstrom stays in the work in progress; its release ranks it first in its section (cameras).
+  assert.deepEqual(order(wip), ['Berserker', 'Kaiju', 'Maelstrom', 'Cyclops', 'Kraken', 'Unicorn', 'Wraith']);
   assert.deepEqual(order(released), ['Basilisk']);
   assert.match(released, /#### Gadgets/);
   for (const slug of publishedSlugs) assert.ok(existsSync(join(out, 'readme-kit', 'repos', `${slug}.md`)), slug);
@@ -461,5 +511,9 @@ test('README kit: generated from the built catalog — order, Released section, 
   assert.ok(json.message.includes(statuses.released.label), json.message);
   assert.ok(json.message.includes('v1.0'), json.message);
   assert.equal(json.color, statuses.released.badgeColor);
+  // The JSON follows the sheet's status: maelstrom stays « WIP », with its tag.
+  const wipJson = JSON.parse(statusBadgeJson(products.find((p) => p.slug === 'maelstrom'), catalogContent(ROOT)));
+  assert.equal(wipJson.message, `${statuses.wip.label} · v0.3`);
+  assert.equal(wipJson.color, statuses.wip.badgeColor);
   assert.match(readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8'), /\| Basilisk \| \[`repos\/basilisk\.md`\]/);
 });

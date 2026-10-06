@@ -9,10 +9,13 @@
 // REVISED: 2026-10-06 (ticket #72) — full discovery: an invalid product is SKIPPED (reported, never
 //   thrown: the caller decides — content/products/ fails, a repository does not); the poster is
 //   decoded (sharp); a release with an unreadable `published_at` is ignored, reported
+// REVISED: 2026-10-06 (ticket #75) — the hardware licence: LICENSE-HARDWARE at the root of a product's
+//   repository, its first non-empty line (`hardwareLicense`), the one file read outside 9_Assets/
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
-//   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases. Never the
-//     README, never the docs, no other directory;
+//   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases, plus ONE file
+//     at its root: LICENSE-HARDWARE, its hardware licence (ticket #75 — the only exception, arbitrated
+//     by the human). Never the README, never the docs, no other file, no other directory;
 //   - the sheet is 9_Assets/zurp.yml. A repository without it is not in the catalog (that leaves out
 //     `.github`, the site's own repository, drafts);
 //   - its fields are those of `Product` (src/data/catalog.ts), minus what is deduced:
@@ -20,9 +23,16 @@
 //       repo      the repository's URL (the « Source » link)
 //       release   the latest release: its tag, as is (the version shown), and its `published_at`
 //                 (the moment it appears on the Releases page; it ranks the product in its section)
-//       license   the licence GitHub detects in the repository's LICENSE file, as the list of the
-//                 organisation's repositories gives it (no other request, no file read); null when
-//                 there is none — never an error
+//       license   the SOFTWARE licence: the one GitHub detects in the repository's LICENSE file, as
+//                 the list of the organisation's repositories gives it (no other request, LICENSE is
+//                 never read); null when there is none — never an error
+//       hardwareLicense
+//                 the HARDWARE licence: { title }, the first non-empty line of LICENSE-HARDWARE at the
+//                 root of the repository (ticket #75), read through the backend's readFile; null when
+//                 the file is absent (a 404) or holds no text — never an error. Any other failure of
+//                 the read is the backend's, and fails the build like any other. It is identified
+//                 (its title looked up in content/licences.yml) where it is shown,
+//                 src/lib/license-stamp.mjs
 //     The poster is the file of 9_Assets/ named by `poster:`;
 //   - the status (`wip`, `future`, `released`) is WRITTEN in the sheet: the human decides it. It is
 //     never deduced from the releases — an alpha release of a firmware does not make the product
@@ -54,6 +64,8 @@ import sharp from 'sharp';
 /** Where a product repository keeps what the site reads. */
 export const ASSETS_DIR = '9_Assets';
 export const SHEET_PATH = `${ASSETS_DIR}/zurp.yml`;
+/** The hardware licence of a product repository, at its root (ticket #75). */
+export const HARDWARE_LICENSE_PATH = 'LICENSE-HARDWARE';
 
 const STRING_FIELDS = ['name', 'tagline', 'slogan', 'category', 'posterAlt'];
 const SHEET_STATUSES = ['wip', 'future', 'released'];
@@ -66,6 +78,7 @@ const DEDUCED = {
   repo: 'the « Source » link is the repository URL',
   release: 'the release comes from the GitHub releases',
   license: "the licence is the repository's LICENSE file, as GitHub detects it",
+  hardwareLicense: "it is the first line of the repository's LICENSE-HARDWARE file",
   version: 'the version is the tag of the latest GitHub release',
   order: 'the order inside a section comes from the release dates, then the names',
 };
@@ -145,6 +158,27 @@ export function latestRelease(releases, ignored = []) {
 }
 
 /**
+ * The hardware licence a LICENSE-HARDWARE file declares: its first non-empty line, trimmed (a byte
+ * order mark dropped), as { title }; null for a file without any text (equivalent to no licence).
+ * @param {Buffer | string} bytes
+ * @returns {{ title: string } | null}
+ */
+export function hardwareLicenseOf(bytes) {
+  const text = (Buffer.isBuffer(bytes) ? bytes.toString('utf8') : String(bytes)).replace(/^\uFEFF/, '');
+  const title = text.split(/\r\n|\r|\n/).map((l) => l.trim()).find((l) => l !== '');
+  return title ? { title } : null;
+}
+
+/**
+ * The hardware licence of repository `repo`: LICENSE-HARDWARE at its root, read through the backend
+ * (null when the file is absent). A failed read (anything but a 404) is not caught: it throws.
+ */
+export async function readHardwareLicense(backend, repo) {
+  const raw = await backend.readFile(repo, HARDWARE_LICENSE_PATH);
+  return raw === null ? null : hardwareLicenseOf(raw);
+}
+
+/**
  * Why `bytes` cannot be a poster, or null when they decode as a PNG, JPEG, WebP or AVIF image.
  * Decoded in full here, so that a corrupt file is a problem of its product, not a failure of Astro's
  * image pipeline later in the build.
@@ -169,6 +203,9 @@ export async function posterImageProblem(bytes) {
  * invalid one is in `skipped`, with every problem prefixed by its place. An error of the backend
  * (a failed request) is not caught: it throws.
  * Each product also carries `posterPath`, the poster's path inside 9_Assets/ as the sheet names it.
+ * Its hardware licence is read (LICENSE-HARDWARE) once the product is valid — unless the entry of
+ * the repository already carries `hardwareLicense` (the backend of content/products/, which knows the
+ * one of the repository it discovered, src/lib/catalog/local.mjs).
  * `repos`: the backend's repositories when the caller has already listed them (the loader keeps the
  * list for the snapshot: the organisation is listed once per build).
  * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string, where?(repo: string): string, origin?(repo: string): string, filePath?(repo: string, path: string): string }} backend
@@ -179,7 +216,8 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
   const products = [];
   const skipped = [];
   const ignoredReleases = [];
-  for (const { name: repoName, url, license } of repos ?? (await backend.listRepos())) {
+  for (const entry of repos ?? (await backend.listRepos())) {
+    const { name: repoName, url, license } = entry;
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
     const where = backend.where?.(repoName) ?? `repository ${repoName} (${SHEET_PATH})`;
@@ -216,6 +254,7 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
     const ignored = [];
     const release = latestRelease(await backend.listReleases(repoName), ignored);
     for (const message of ignored) ignoredReleases.push({ repo: repoName, origin, message: `${origin}: ${message}` });
+    const hardwareLicense = 'hardwareLicense' in entry ? entry.hardwareLicense ?? null : await readHardwareLicense(backend, repoName);
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({
       slug,
@@ -233,6 +272,7 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
       accent: sheet.accent,
       release,
       license: license ?? null,
+      hardwareLicense,
       // Named after the slug, not after the sheet's file: Astro names the optimised variants after
       // the source file (_astro/<name>.<hash>.webp).
       posterFile: `${slug}${ext}`,

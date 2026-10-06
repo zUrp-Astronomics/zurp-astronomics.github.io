@@ -6,6 +6,8 @@
 //   organisation has one by its name (`repositories`, the list the build read, in its snapshot)
 // REVISED: 2026-10-06 (ticket #72) — full discovery: the repository of a local product is found in
 //   that list (its URL and its licence, one lookup); no list of products without a repository
+// REVISED: 2026-10-06 (ticket #75) — and its hardware licence (LICENSE-HARDWARE of that repository,
+//   read by the build's loader and kept with the repository in the snapshot)
 //
 // THE RULE (ticket #49). A product not migrated yet lives in content/products/<slug>/: its sheet
 // `zurp.yml`, in the EXACT format of a repository's 9_Assets/zurp.yml, and its poster next to it.
@@ -20,10 +22,11 @@
 //             build listed (`repositories`: the snapshot's, src/lib/catalog/loader.mjs), by the name
 //             of the folder, the case ignored (the real repositories are `Kraken`, `Kaiju`…):
 //               - a repository found: the « Source » link is its URL as GitHub gives it (`html_url`,
-//                 its case included), and its licence is the one GitHub detects in it (null without
-//                 a LICENSE);
+//                 its case included), its licence is the one GitHub detects in it (null without a
+//                 LICENSE), and its hardware licence the first line of its LICENSE-HARDWARE (ticket
+//                 #75: read by the loader, src/lib/catalog/loader.mjs; null without the file);
 //               - none: the « Source » link is the organisation (content/site.yml, org.url), and
-//                 there is no licence.
+//                 there is no licence of either kind.
 //             No list kept by hand: a repository created is found at the next build. A sheet may
 //             not carry `repo` (read.mjs DEDUCED.repo);
 //   releases  none (a product with releases has a repository, so its sheet is there).
@@ -56,9 +59,25 @@ export function repositoryOf(slug, repositories) {
 }
 
 /**
+ * The folders of content/products/ under `root` (the slugs of the local products, as written; none
+ * when the directory is absent). The loader reads the hardware licence of their repositories.
+ * @param {string} root
+ */
+export function localProductFolders(root) {
+  const dir = join(root, LOCAL_PRODUCTS_DIR);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+}
+
+/**
  * content/products/ seen as repositories: each folder is a repository's 9_Assets/.
  * @param {string} dir content/products/
- * @param {{ orgUrl: string, repositories?: ReadonlyArray<{ name: string, url: string, license?: any }> }} options
+ * Each one carries the URL and the licences of the repository discovered for it (`hardwareLicense`
+ * included: readRepoProducts takes it from here, a folder has no LICENSE-HARDWARE of its own).
+ * @param {{ orgUrl: string, repositories?: ReadonlyArray<{ name: string, url: string, license?: any, hardwareLicense?: any }> }} options
  */
 export function localBackend(dir, { orgUrl, repositories = [] }) {
   const root = resolve(dir);
@@ -81,11 +100,14 @@ export function localBackend(dir, { orgUrl, repositories = [] }) {
         .sort()
         .map((name) => {
           const found = repositoryOf(name, repositories);
-          return found ? { name, url: found.url, license: found.license ?? null } : { name, url: org, license: null };
+          return found
+            ? { name, url: found.url, license: found.license ?? null, hardwareLicense: found.hardwareLicense ?? null }
+            : { name, url: org, license: null, hardwareLicense: null };
         });
     },
     async readFile(repo, path) {
-      // Only 9_Assets/ exists in a product repository's eyes, and the folder is that 9_Assets/.
+      // Only 9_Assets/ exists in a product repository's eyes, and the folder is that 9_Assets/ (the
+      // hardware licence comes with the repository discovered, listRepos above).
       if (!path.startsWith(`${ASSETS_DIR}/`)) return null;
       const base = folder(repo);
       const p = resolve(base, path.slice(ASSETS_DIR.length + 1));
@@ -104,7 +126,7 @@ export function localBackend(dir, { orgUrl, repositories = [] }) {
  * `posterBytes`. Throws on any problem, every problem at once: an invalid product here is never
  * skipped.
  * `repositories` is REQUIRED: the organisation's repositories as the build listed them, with their
- * URL and licence (the snapshot's `repositories`) — `[]` says on purpose that there is none to look
+ * URL and licences (the snapshot's `repositories`) — `[]` says on purpose that there is none to look
  * up. No default: a caller that forgot it would lose the links and the licences without a sound.
  * @param {{ root?: string, sectionIds: readonly string[], repositories: ReadonlyArray<{ name: string, url: string, license?: any }> }} options
  */

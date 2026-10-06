@@ -6,6 +6,7 @@
 // REVISED: 2026-10-06 (ticket #66) — `license`, the repository's licence as GitHub detects it. zod
 //   drops in silence every key this schema does not declare: a field of the snapshot missing here
 //   never reaches the page
+// REVISED: 2026-10-06 (ticket #75) — `hardwareLicense`, the first line of the repository's LICENSE-HARDWARE
 //
 // The loader (src/lib/catalog/loader.mjs) reads the source named by ZURP_CATALOG (simulator |
 // github, no default) and validates every sheet with messages naming the repository and the field
@@ -39,6 +40,7 @@ const repoProducts = defineCollection({
       accent: z.string(),
       release: z.object({ tag: z.string(), publishedAt: z.string() }).nullable(),
       license: z.object({ spdx_id: z.string().nullable(), name: z.string().nullable() }).nullable(),
+      hardwareLicense: z.object({ title: z.string() }).nullable(),
     }),
 });
 

@@ -5,6 +5,8 @@
 // REVISED: 2026-10-06 (ticket #53) — the status JSON of each product (shields.io endpoint, README status badge)
 // REVISED: 2026-10-06 (ticket #66) — the licence stamp of each product page: the licence of the built catalog, or none
 // REVISED: 2026-10-06 (ticket #72) — no list of products kept by hand, no warning about it: the catalog is what was discovered
+// REVISED: 2026-10-06 (ticket #75) — two licence stamps (software, hardware), told apart by `data-licence`; the
+//   two licence badges of each product (/brand/badges/<slug>/<kind>.svg)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -34,13 +36,21 @@
 //     inside one, the latest release first, then by name — src/lib/catalog/assemble.mjs);
 //   - a product page does not carry its version stamp (`badge-version`, the tag of its latest
 //     release) when it has a release, or carries one when it has none;
-//   - a product page does not carry EXACTLY ONE licence stamp (`badge-license`) whose text is the
-//     licence of the built catalog — the SPDX id GitHub detects in its repository, or the generic
-//     stamp of content/site.yml (`product.licenseOther`) for a LICENSE GitHub does not recognise
-//     (src/lib/license-stamp.mjs) — when it has one, or carries any licence stamp when it has none
-//     (no repository, no LICENSE). The catalog is the one the scripts after the build see (the
-//     snapshot's licences, for the products of content/products/ too): the page shows the licence the
-//     README kit was built with;
+//   - a product page does not carry, for EACH kind of licence (software, hardware — ticket #75),
+//     EXACTLY ONE stamp of that kind when the built catalog gives the product a licence of that kind,
+//     and NONE when it gives none (no repository, no LICENSE / no LICENSE-HARDWARE). A stamp is a
+//     <span> with the class `badge-license`, its kind in `data-licence` (`software` or `hardware`);
+//     its text must be the one src/lib/license-stamp.mjs computes from the catalog with the texts of
+//     content/licences.yml (« Software · GPL-3.0 », « Hardware · OCL v1.1 »). An element of that class
+//     with no kind, another kind, or another tag (a stamp that became a link) fails. The catalog is
+//     the one the scripts after the build see (the snapshot's licences, for the products of
+//     content/products/ too): the page shows the licences the README kit was built with;
+//   - the two licence badges of a product (the README header, src/lib/license-badge.mjs) are not
+//     both in dist/, or are not what the catalog of the build gives — an SVG drawn with the short
+//     label of the licence when the product has a licence of that kind, an EMPTY SVG (no size, nothing
+//     drawn) when it has none:
+//       `brand/badges/<slug>/software.svg`, `brand/badges/<slug>/hardware.svg` per product
+//                                                     (a README links them forever);
 //   - a stable-URL brand image linked by the GitHub READMEs is missing, is not a WebP, or is wider
 //     than its README size:
 //       `brand/low-tech-diy.webp`                    the Low-Tech & DIY panel   (≤ 800 px wide)
@@ -69,8 +79,9 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
-import { catalogContent, siteContent } from '../src/lib/content.mjs';
-import { licenseStamp } from '../src/lib/license-stamp.mjs';
+import { LICENSE_KINDS, catalogContent, licenseContent } from '../src/lib/content.mjs';
+import { licenseStamps } from '../src/lib/license-stamp.mjs';
+import { EMPTY_BADGE, licenseBadgePath, licenseBadgeSvg } from '../src/lib/license-badge.mjs';
 import { statusBadgeJson, statusBadgePath } from '../src/lib/status-badge.mjs';
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
@@ -172,30 +183,42 @@ for (const p of catalog.products) {
   }
 }
 
-// Licence stamp: exactly one, the licence of the built catalog, only when there is one.
-const licenseTexts = siteContent(repoRoot).product;
+// Licence stamps (ticket #75): per kind, exactly one when the built catalog has that licence, none
+// otherwise; the text of each, the one src/lib/license-stamp.mjs computes.
+const licenseTexts = licenseContent(repoRoot);
 const licenseReport = [];
 for (const p of catalog.products) {
   const page = `${p.slug}/index.html`;
   if (!found.has(page)) continue;
   const html = readFileSync(join(distDir, page), 'utf8');
   // Any element carrying the class: a licence stamp that became a link (or anything else) is counted.
-  const stamps = [...html.matchAll(/<([a-z][a-z0-9-]*)\b[^>]*\bclass="[^"]*\bbadge-license\b[^"]*"[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => ({
+  const stamps = [...html.matchAll(/<([a-z][a-z0-9-]*)\b([^>]*\bclass="[^"]*\bbadge-license\b[^"]*"[^>]*)>([\s\S]*?)<\/\1>/g)].map((m) => ({
     tag: m[1],
-    text: decodeText(m[2].replace(/<[^>]*>/g, '')).trim(),
+    kind: m[2].match(/\sdata-licence="([^"]*)"/)?.[1] ?? null,
+    text: decodeText(m[3].replace(/<[^>]*>/g, '')).trim(),
   }));
-  const expected = licenseStamp(p.license, licenseTexts);
-  const shown = stamps.map((s) => (s.tag === 'span' ? s.text : `<${s.tag}> ${s.text}`));
-  if (expected) {
-    if (stamps.length !== 1 || stamps[0].tag !== 'span' || stamps[0].text !== expected.label) {
-      errors.push(`dist/${page}: expected one licence stamp <span> ${JSON.stringify(expected.label)} (licence of the built catalog: ${JSON.stringify(p.license)}), found ${JSON.stringify(shown)}`);
-    }
-  } else if (stamps.length) {
-    errors.push(`dist/${page}: licence stamp ${JSON.stringify(shown)} on a product without a licence (no repository, or no LICENSE detected)`);
+  const expected = licenseStamps(p, licenseTexts);
+  const shown = (list) => list.map((s) => (s.tag === 'span' ? s.text : `<${s.tag}> ${s.text}`));
+  for (const s of stamps.filter((s) => !LICENSE_KINDS.includes(s.kind))) {
+    errors.push(`dist/${page}: licence stamp ${JSON.stringify(shown([s])[0])} without a known kind (data-licence=${JSON.stringify(s.kind)}, expected one of ${LICENSE_KINDS.join(', ')})`);
   }
-  licenseReport.push(`  ${(expected ? expected.label : '—').padEnd(16)} dist/${page}  found ${JSON.stringify(shown)}`);
+  const line = [];
+  for (const kind of LICENSE_KINDS) {
+    const mine = stamps.filter((s) => s.kind === kind);
+    const want = expected[kind];
+    const source = kind === 'software' ? `LICENSE: ${JSON.stringify(p.license)}` : `LICENSE-HARDWARE: ${JSON.stringify(p.hardwareLicense)}`;
+    if (want) {
+      if (mine.length !== 1 || mine[0].tag !== 'span' || mine[0].text !== want.text) {
+        errors.push(`dist/${page}: expected one ${kind} licence stamp <span> ${JSON.stringify(want.text)} (built catalog, ${source}), found ${JSON.stringify(shown(mine))}`);
+      }
+    } else if (mine.length) {
+      errors.push(`dist/${page}: ${kind} licence stamp ${JSON.stringify(shown(mine))} on a product without a ${kind} licence (${source})`);
+    }
+    line.push(`${kind} ${(want ? JSON.stringify(want.text) : '—').padEnd(28)} found ${JSON.stringify(shown(mine))}`);
+  }
+  licenseReport.push(`  dist/${page}\n      ${line.join('\n      ')}`);
 }
-console.log(`Licence stamps (the licence GitHub detects in each product's repository, from the built catalog): ${licenseReport.length} page(s)`);
+console.log(`Licence stamps (software: LICENSE as GitHub detects it; hardware: LICENSE-HARDWARE — from the built catalog): ${licenseReport.length} page(s)`);
 for (const line of licenseReport) console.log(line);
 
 // --- 3. Catalog tiles: no variant wider than 600 px, one tile per product --------------------
@@ -479,6 +502,44 @@ for (const p of catalog.products) {
 console.log(`Status JSON (README status badges, shields.io endpoint): ${catalog.products.length} expected`);
 for (const line of statusReport) console.log(line);
 
+// --- 8. Licence badges of each product (the README header) ---------------------------------------
+// Two SVG files per product, at stable URLs (src/lib/license-badge.mjs): checked on their own (an
+// empty one draws nothing and has no size; a full one has a size and carries the short label of the
+// licence), then compared with what the catalog of the build gives.
+const svgAttr = (svg, name) => svg.match(new RegExp(`<svg\\b[^>]*\\s${name}="([^"]*)"`))?.[1] ?? null;
+const badgeReport = [];
+for (const p of catalog.products) {
+  const stamps = licenseStamps(p, licenseTexts);
+  for (const kind of LICENSE_KINDS) {
+    const path = licenseBadgePath(p.slug, kind);
+    const abs = join(distDir, path);
+    if (!existsSync(abs)) {
+      errors.push(`missing licence badge: dist/${path} (linked by the README header of the product)`);
+      badgeReport.push(`  MISSING  dist/${path}`);
+      continue;
+    }
+    const svg = readFileSync(abs, 'utf8');
+    const width = Number(svgAttr(svg, 'width'));
+    const height = Number(svgAttr(svg, 'height'));
+    const problems = [];
+    if (!/^<svg\b/.test(svg)) problems.push('not an SVG');
+    const want = stamps[kind];
+    if (want) {
+      if (!(width > 1 && height > 1)) problems.push(`no size (${width} × ${height}) for a product with a ${kind} licence`);
+      if (!svg.includes(`>${want.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>`)) problems.push(`does not carry the licence ${JSON.stringify(want.label)}`);
+    } else {
+      if (!(width <= 1 && height <= 1)) problems.push(`has a size (${width} × ${height}) for a product without a ${kind} licence`);
+      if (/<(text|rect|path|image|circle|line|polygon|g)\b/.test(svg)) problems.push(`draws something for a product without a ${kind} licence`);
+      if (svg !== EMPTY_BADGE) problems.push('is not the empty badge');
+    }
+    if (!problems.length && svg !== licenseBadgeSvg(p, kind, licenseTexts)) problems.push('differs from the catalog of the build');
+    for (const x of problems) errors.push(`licence badge dist/${path}: ${x}`);
+    badgeReport.push(`  ${problems.length ? 'BAD ' : 'ok  '} ${want ? `${kind} | ${want.label}` : '(empty)'}`.padEnd(36) + `  ${width}×${height}  dist/${path}`);
+  }
+}
+console.log(`Licence badges (README headers): ${catalog.products.length * LICENSE_KINDS.length} expected (${LICENSE_KINDS.join(', ')} per product)`);
+for (const line of badgeReport) console.log(line);
+
 // --- Helpers ------------------------------------------------------------------------------------
 function decodeText(s) {
   return s
@@ -496,4 +557,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px and in catalog order, one page per product + home page, version stamps, licence stamps, every stable brand image, social preview card, site icon, the organisation avatar and every status JSON in place.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px and in catalog order, one page per product + home page, version stamps, licence stamps, every stable brand image, social preview card, site icon, the organisation avatar, every status JSON and licence badge in place.');

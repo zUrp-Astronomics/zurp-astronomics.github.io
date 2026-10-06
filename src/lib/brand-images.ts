@@ -26,6 +26,12 @@
 // And one, not an image, with the status badge of the product READMEs (src/lib/status-badge.mjs):
 //   https://zurp-astronomics.github.io/brand/status/<slug>.json       shields.io endpoint JSON, the
 //                                                                     product's status (ticket #53)
+// And two, SVG badges drawn by the site, with the licence badges of the product READMEs
+// (src/lib/license-badge.mjs, ticket #75):
+//   https://zurp-astronomics.github.io/brand/badges/<slug>/software.svg   the software licence badge
+//   https://zurp-astronomics.github.io/brand/badges/<slug>/hardware.svg   the hardware licence badge
+//                                                                     (an empty SVG when the
+//                                                                     repository declares none)
 //
 // Panel and posters are WebP; the social cards are JPEG (GitHub's upload form takes PNG, JPG or
 // GIF). All well under the 614 400-byte ceiling of scripts/check-dist.mjs.

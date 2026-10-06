@@ -7,6 +7,9 @@
 // REVISED: 2026-10-06 (ticket #53) — `--admit-new`: a closed list of files the change adds on purpose
 // REVISED: 2026-10-06 (ticket #66) — `--admitted`: a closed list of declared differences inside pages
 //   present on both sides (visible text removed or added, URL removed, CSS rule removed)
+// REVISED: 2026-10-06 (ticket #75) — an admitted new file (--admit-new) is left out of the pixel-size
+//   comparison of the image files (section 2): it has nothing to be compared with; it is still counted
+//   and reported, with its size
 //
 // Usage: node scripts/compare-dist.mjs <baseDist> <headDist> [--admitted <declarations>] [--admit-new <path>...]
 //
@@ -35,7 +38,8 @@
 // in dist/, after `--admit-new` (the trial declares the list, in the repository, readable in the
 // diff). Each one MUST be new in the head (absent from the base, present in the head): a declared
 // file that is not fails, so the list cannot hide anything. Nothing else is admitted: any other
-// file of one side only still fails.
+// file of one side only still fails. An admitted new image is not compared by its pixel size (it has
+// no counterpart in the base): it is counted and reported apart.
 // Node built-ins only (image sizes are read from the file headers), plus lightningcss when it is
 // installed (Vite ships it), for the stylesheets.
 //
@@ -467,14 +471,21 @@ console.log(`base: ${BASE} (${baseFiles.length} files)\nhead: ${HEAD} (${headFil
 
 // ---------- 2. every image file: pixel size (fail) and bytes (report) ----------------------------
 {
-  const label = (files) => files.filter((f) => IMAGE_EXT.test(f.rel)).map((f) => `${f.norm} ${imageLabel(f.abs)}`);
-  const { onlyA, onlyB } = diffMultisets(label(baseFiles), label(headFiles));
-  const count = headFiles.filter((f) => IMAGE_EXT.test(f.rel)).length;
+  // An admitted new file of the head (--admit-new, checked new in section 1) has nothing to be
+  // compared with: it is left out of the comparison, counted and reported apart.
+  const isNew = (f) => ADMITTED_NEW.has(f.norm) && !baseFiles.some((b) => b.norm === f.norm);
+  const images = (files) => files.filter((f) => IMAGE_EXT.test(f.rel));
+  const label = (files) => images(files).map((f) => `${f.norm} ${imageLabel(f.abs)}`);
+  const newImages = images(headFiles).filter(isNew);
+  const compared = images(headFiles).filter((f) => !isNew(f));
+  const { onlyA, onlyB } = diffMultisets(label(baseFiles), label(compared));
+  const apart = newImages.length ? `, apart from the ${newImages.length} admitted new image file(s), not compared` : '';
   if (onlyA.length || onlyB.length) {
     fail('image file sizes (pixels) differ');
     show('IMAGE SIZES only in base:', onlyA);
     show('IMAGE SIZES only in head:', onlyB);
-  } else console.log(`IMAGE SIZES: same pixel size for all ${count} image files`);
+  } else console.log(`IMAGE SIZES: same pixel size for all ${compared.length} image files compared${apart}`);
+  if (newImages.length) show(`IMAGE SIZES of the admitted new image files (--admit-new, ${newImages.length}, not compared):`, label(newImages));
 
   // Bytes, by stable path (non-hashed) or by normalised name + pixel size.
   const bytes = (files) => {

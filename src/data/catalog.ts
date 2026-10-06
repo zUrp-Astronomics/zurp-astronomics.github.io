@@ -8,6 +8,8 @@
 // REVISED: 2026-10-06 (ticket #72) — full discovery: no published list; the repository of a product of
 //   content/products/ (its link and licence) is discovered in the snapshot's repositories; a slug in
 //   both places: the repository wins (the catalog report, src/lib/catalog/report.mjs, says so)
+// REVISED: 2026-10-06 (ticket #75) — and `hardwareLicense`, the first line of its repository's
+//   LICENSE-HARDWARE, by the same two ways
 //
 // THE LICENCE AND THE « SOURCE » LINK (tickets #66, #72). A product of a repository gets them through
 // the collection (the loader stores them with the sheet; src/content.config.ts declares them, or zod
@@ -40,11 +42,16 @@ import { catalogContent } from '../lib/content.mjs';
 
 export type ProductStatus = 'wip' | 'future' | 'released';
 
-/** The licence GitHub detects in a repository (its `license`, src/lib/catalog/source.mjs). */
+/** The software licence: the one GitHub detects in a repository's LICENSE (its `license`, src/lib/catalog/source.mjs). */
 export interface RepoLicense {
   /** SPDX id (`GPL-3.0`), or `NOASSERTION` for a LICENSE GitHub does not recognise. */
   spdx_id: string | null;
   name: string | null;
+}
+
+/** The hardware licence a repository declares in LICENSE-HARDWARE: its first non-empty line. */
+export interface HardwareLicense {
+  title: string;
 }
 
 export interface Product {
@@ -69,8 +76,13 @@ export interface Product {
   posterAlt: string;
   /** Accent, read off the poster's rays. Tints the product page (badge fill nudged to ≥ 4.5:1). */
   accent: string;
-  /** Licence of its repository as GitHub detects it; null: no repository, no LICENSE — no stamp. */
+  /** Software licence of its repository as GitHub detects it; null: no repository, no LICENSE — no stamp. */
   license: RepoLicense | null;
+  /**
+   * Hardware licence of its repository: the first non-empty line of its LICENSE-HARDWARE (ticket #75,
+   * src/lib/catalog/read.mjs); null: no repository, no LICENSE-HARDWARE — no stamp, an empty badge.
+   */
+  hardwareLicense: HardwareLicense | null;
 }
 
 export interface Release {

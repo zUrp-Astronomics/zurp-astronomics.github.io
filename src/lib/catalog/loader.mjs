@@ -8,6 +8,9 @@
 //   skipped, not fatal (`skipped`), a release with an unreadable date ignored (`ignoredReleases`),
 //   both kept in the snapshot for the catalog report; each repository keeps its URL too (`url`, the
 //   « Source » link of a product of content/products/ whose repository it is)
+// REVISED: 2026-10-06 (ticket #75) — the hardware licence (`hardwareLicense`, LICENSE-HARDWARE) of every
+//   repository that carries a product, in the snapshot with the software one: with the product for a
+//   sheet in the repository, read here for a product of content/products/ whose repository it is
 //
 // Declared in src/content.config.ts. At each build (and `astro dev`/`astro sync`) it:
 //   1. reads the source named by ZURP_CATALOG (source.mjs) — the build fails without it;
@@ -31,7 +34,11 @@
 //                               discovered there (src/lib/catalog/local.mjs), by the site
 //                               (src/data/catalog.ts, which reads this file once the collection is
 //                               loaded) and by the scripts — one link and one licence per product,
-//                               wherever its sheet is. And what was left out: `skipped` (the
+//                               wherever its sheet is. Each repository also carries its HARDWARE
+//                               licence (`hardwareLicense`, ticket #75): read for the repositories
+//                               that carry a product (a sheet in 9_Assets/, or a folder of
+//                               content/products/ by its name), null for the others — so the page and
+//                               the README kit see the same one. And what was left out: `skipped` (the
 //                               repositories whose product is invalid, with the problems) and
 //                               `ignoredReleases` (src/lib/catalog/report.mjs prints them);
 //   4. stores one entry per product, its `poster` given to the schema's image() as a local file:
@@ -42,7 +49,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { catalogSource, githubBackend, simulatorBackend, TOKEN_VAR } from './source.mjs';
-import { readRepoProducts } from './read.mjs';
+import { readHardwareLicense, readRepoProducts } from './read.mjs';
+import { localProductFolders } from './local.mjs';
 
 export const SNAPSHOT_DIR = '.zurp-catalog';
 export const SNAPSHOT_FILE = `${SNAPSHOT_DIR}/remote.json`;
@@ -64,12 +72,24 @@ export async function readAndSnapshot({ root, env = process.env, sectionIds, bac
   // Listed once: the products are read from this list, and the snapshot keeps it (with the licences).
   const repos = await be.listRepos();
   const { products, skipped, ignoredReleases } = await readRepoProducts(be, { sectionIds, repos });
+  // The hardware licence (LICENSE-HARDWARE) of each repository that carries a product: read with the
+  // product when the sheet is in the repository, read here when the product is a folder of
+  // content/products/ named like the repository (src/lib/catalog/local.mjs discovers it the same way).
+  // Every other repository: null — nothing of it is shown.
+  const withSheet = new Map(products.map((p) => [p.slug, p.hardwareLicense]));
+  const local = new Set(localProductFolders(root).map((f) => f.toLowerCase()));
+  const repositories = [];
+  for (const { name, url, license } of repos) {
+    const key = name.toLowerCase();
+    const hardwareLicense = withSheet.has(key) ? withSheet.get(key) : local.has(key) ? await readHardwareLicense(be, name) : null;
+    repositories.push({ name, url, license: license ?? null, hardwareLicense });
+  }
   mkdirSync(join(outDir, 'posters'), { recursive: true });
   for (const p of products) writeFileSync(join(outDir, 'posters', p.posterFile), p.posterBytes);
   const snapshot = {
     source,
     read: be.describe ?? source,
-    repositories: repos.map(({ name, url, license }) => ({ name, url, license: license ?? null })),
+    repositories,
     products: products.map(({ posterBytes, ...rest }) => rest),
     skipped,
     ignoredReleases,
@@ -122,6 +142,7 @@ export function repoProductsLoader({ sectionIds }) {
           (snapshot.skipped.length ? `, ${snapshot.skipped.length} skipped` : '') +
           (snapshot.products.length ? ` (${snapshot.products.map((p) => p.slug + (p.release ? ` ${p.release.tag}` : '')).join(', ')})` : '') +
           `; licences detected by GitHub: ${snapshot.repositories.filter((r) => r.license).map((r) => `${r.name} ${r.license.spdx_id ?? r.license.name}`).join(', ') || 'none'}` +
+          `; LICENSE-HARDWARE: ${snapshot.repositories.filter((r) => r.hardwareLicense).map((r) => `${r.name} « ${r.hardwareLicense.title} »`).join(', ') || 'none'}` +
           (requests !== undefined ? `, ${requests} API request(s)` : ''),
       );
     },

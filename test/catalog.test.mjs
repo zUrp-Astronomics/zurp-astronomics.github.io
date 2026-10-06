@@ -16,6 +16,10 @@
 //   content/products/ still fails; a slug in both places: the repository wins; the repository of a
 //   local product is discovered (its html_url, its licence); the simulator holds kaiju, kraken and
 //   berserker, real repositories without a sheet; the catalog report and the job summary
+// REVISED: 2026-10-06 (ticket #75) — two licences (the human's rule changes, the tests follow): the
+//   software one (LICENSE, as GitHub detects it) and the hardware one (LICENSE-HARDWARE, its first
+//   line, the one file read outside 9_Assets/); the simulator's basilisk is MIT + OCL v1.1, so the
+//   NOASSERTION case is built in a temporary simulator; the licence badges (SVG)
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet or poster, a release with an unreadable date, a slug in a repository and in content/products/,
@@ -34,13 +38,14 @@ import { fileURLToPath } from 'node:url';
 
 import { catalogSource, githubBackend, repoLicense, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import sharp from 'sharp';
-import { latestRelease, readRepoProducts, sheetProblems } from '../src/lib/catalog/read.mjs';
+import { HARDWARE_LICENSE_PATH, hardwareLicenseOf, latestRelease, readRepoProducts, sheetProblems } from '../src/lib/catalog/read.mjs';
 import { repositoryOf, readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { assembleCatalog } from '../src/lib/catalog/assemble.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogReport, publishCatalogReport } from '../src/lib/catalog/report.mjs';
-import { catalogContent, siteContent } from '../src/lib/content.mjs';
-import { licenseStamp } from '../src/lib/license-stamp.mjs';
+import { catalogContent, licenseContent } from '../src/lib/content.mjs';
+import { hardwareLicense, licenseStamps, softwareLicense } from '../src/lib/license-stamp.mjs';
+import { EMPTY_BADGE, licenseBadgePath, licenseBadgeSvg, textWidth } from '../src/lib/license-badge.mjs';
 import { statusBadge, statusBadgeJson } from '../src/lib/status-badge.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
@@ -157,7 +162,7 @@ test('simulator: maelstrom and unicorn files are their workshop kits, byte for b
   }
 });
 
-test('simulator: basilisk reads exactly as products.ts held it on main, no release; its licence is GitHub’s « Other »', async () => {
+test('simulator: basilisk reads exactly as products.ts held it on main, no release; its licences are MIT (LICENSE) and the OCL v1.1 (LICENSE-HARDWARE)', async () => {
   const products = await read(SIM);
   assert.deepEqual(products.map((p) => p.slug).sort(), ['basilisk', 'maelstrom', 'unicorn']);
   for (const p of products) {
@@ -165,10 +170,14 @@ test('simulator: basilisk reads exactly as products.ts held it on main, no relea
     assert.equal(p.repo, `https://github.com/zUrp-Astronomics/${p.slug}`);
     assert.equal(p.release, null);
   }
-  const { posterBytes, posterFile, posterPath, origin, release, license, ...fields } = products.find((p) => p.slug === 'basilisk');
+  const { posterBytes, posterFile, posterPath, origin, release, license, hardwareLicense: hardware, ...fields } = products.find((p) => p.slug === 'basilisk');
   assert.deepEqual(fields, BASILISK_ON_MAIN);
-  // Ticket #66: its LICENSE (OCL v1.1, plus a LICENSE-MIT) is not recognised by GitHub.
-  assert.deepEqual(license, { spdx_id: 'NOASSERTION', name: 'Other' });
+  // Ticket #75: the simulator imitates basilisk after the inversion of its files — the MIT in LICENSE
+  // (as GitHub's API gives it), the OCL v1.1 in LICENSE-HARDWARE (the real repository's former
+  // LICENSE, byte for byte).
+  assert.deepEqual(license, { spdx_id: 'MIT', name: 'MIT License' });
+  assert.deepEqual(hardware, { title: 'Open Community License (OCL v1.1)' });
+  assert.equal(sha256(readFileSync(join(SIM, 'repos', 'basilisk', HARDWARE_LICENSE_PATH))), 'ace690fc2058c8ced3180193b3f36f339cc846cf744492f53bae59f50f252b55');
   assert.equal(posterPath, 'poster.png', 'the poster as the sheet names it');
   assert.equal(release, null);
   assert.equal(posterFile, 'basilisk.png', 'the local poster is named after the slug, not after the sheet');
@@ -507,8 +516,15 @@ test('GitHub: public repositories (paginated), sheet and poster through the cont
   assert.ok(!calls.some((c) => c.url.includes('/releases/latest')));
   const contents = calls.filter((c) => c.url.includes('/contents/'));
   assert.ok(contents.every((c) => c.headers.Accept === 'application/vnd.github.raw+json'));
-  assert.ok(!contents.some((c) => /README|docs/i.test(c.url.split('/contents/')[1])), 'only 9_Assets/ is read');
-  assert.ok(contents.every((c) => c.url.split('/contents/')[1].startsWith('9_Assets/')));
+  assert.ok(!contents.some((c) => /README|docs/i.test(c.url.split('/contents/')[1])), 'only 9_Assets/ and LICENSE-HARDWARE are read');
+  // Ticket #75: 9_Assets/ or LICENSE-HARDWARE, and nothing else — LICENSE-HARDWARE once, for the one
+  // repository that holds a product.
+  const path = (c) => c.url.split('/contents/')[1];
+  assert.ok(contents.every((c) => path(c).startsWith('9_Assets/') || path(c) === HARDWARE_LICENSE_PATH), contents.map(path).join(', '));
+  assert.deepEqual(contents.filter((c) => path(c) === HARDWARE_LICENSE_PATH).map((c) => c.url), [
+    'https://api.github.com/repos/zUrp-Astronomics/Basilisk/contents/LICENSE-HARDWARE',
+  ]);
+  assert.equal(p.hardwareLicense, null, 'no LICENSE-HARDWARE (a 404): no hardware licence');
 });
 
 test('GitHub: no token, no Authorization header', async () => {
@@ -552,9 +568,14 @@ test('GitHub: an invalid sheet or a missing poster (404) skips the product, the 
 
 // --- Snapshot (what the build leaves for check-dist and the README kit) -------------------------
 
+/**
+ * A temporary site root: a copy of `simDir` as its simulator, and a copy of content/ (the build's
+ * loader reads the hardware licence of the repositories of content/products/, ticket #75).
+ */
 function tempSiteWith(simDir) {
   const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
   cpSync(simDir, join(root, 'catalog-simulator'), { recursive: true });
+  cpSync(join(ROOT, 'content'), join(root, 'content'), { recursive: true });
   return root;
 }
 
@@ -644,17 +665,21 @@ test('README kit: generated from the built catalog — order, Released section b
   assert.match(readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8'), /\| Basilisk \| \[`repos\/basilisk\.md`\]/);
 });
 
-// --- Licences (ticket #66) -------------------------------------------------------------------------
-// The human's rule: the licence of a product is the LICENSE file of its repository, as GitHub detects
-// it — the `license` of the repository in the list of the organisation's repositories, which the
-// build already reads (no other request, no file read). Nothing to show is never an error. That the
-// page shows it is checked on the built pages by scripts/check-dist.mjs.
+// --- Licences (tickets #66, #75) ---------------------------------------------------------------
+// The human's rules: a product has two licences, each declared by a file of its repository. The
+// software one is LICENSE, as GitHub detects it — the `license` of the repository in the list of the
+// organisation's repositories, which the build already reads (LICENSE itself is never read). The
+// hardware one is LICENSE-HARDWARE, its first non-empty line, read through the backend (ticket #75).
+// Nothing to show is never an error. That the page shows them, and the badges, is checked on the
+// built site by scripts/check-dist.mjs.
 
 const GPL_API = { key: 'gpl-3.0', name: 'GNU General Public License v3.0', spdx_id: 'GPL-3.0', url: 'https://api.github.com/licenses/gpl-3.0', node_id: 'n' };
 const OTHER_API = { key: 'other', name: 'Other', spdx_id: 'NOASSERTION', url: null, node_id: 'o' };
 const GPL = { spdx_id: 'GPL-3.0', name: 'GNU General Public License v3.0' };
 const OTHER = { spdx_id: 'NOASSERTION', name: 'Other' };
-const productTexts = siteContent(ROOT).product;
+const MIT = { spdx_id: 'MIT', name: 'MIT License' };
+const OCL = { title: 'Open Community License (OCL v1.1)' };
+const licenseTexts = licenseContent(ROOT);
 
 const CERN = { spdx_id: 'CERN-OHL-S-2.0', name: 'CERN Open Hardware Licence Version 2 - Strongly Reciprocal' };
 const ORG_URL = 'https://github.com/zUrp-Astronomics';
@@ -685,38 +710,173 @@ async function builtFrom(root) {
   return { snapshot, built, bySlug: Object.fromEntries(built.products.map((p) => [p.slug, p])) };
 }
 
-test('licence: the simulator imitates the real repositories — maelstrom and unicorn GPL-3.0, basilisk « Other » (NOASSERTION)', async () => {
+test('licences: the simulator imitates the real repositories — maelstrom and unicorn GPL-3.0, basilisk MIT + OCL v1.1 (after the inversion of its files)', async () => {
   const products = await read(SIM);
-  assert.deepEqual(Object.fromEntries(products.map((p) => [p.slug, p.license])), { basilisk: OTHER, maelstrom: GPL, unicorn: GPL });
+  assert.deepEqual(Object.fromEntries(products.map((p) => [p.slug, p.license])), { basilisk: MIT, maelstrom: GPL, unicorn: GPL });
+  assert.deepEqual(Object.fromEntries(products.map((p) => [p.slug, p.hardwareLicense])), { basilisk: OCL, maelstrom: null, unicorn: null });
+  // No imitated repository is « Other » any more: that case is built below, in a temporary simulator.
+  for (const f of readdirSync(join(SIM, 'licenses'))) {
+    assert.notEqual(JSON.parse(readFileSync(join(SIM, 'licenses', f), 'utf8'))?.spdx_id, 'NOASSERTION', f);
+  }
 });
 
-test('licence recognised: its SPDX id in the snapshot (the product and its repository), stamped with it', async () => {
+test('licence recognised: its SPDX id in the snapshot (the product and its repository), stamped « Software · <id> »', async () => {
   const { snapshot, bySlug } = await builtFrom(tempSiteWith(SIM));
   assert.deepEqual(snapshot.products.find((p) => p.slug === 'maelstrom').license, GPL);
   // Ticket #72: each repository keeps its URL; kaiju, kraken and berserker are real repositories
-  // without a sheet (their product is in content/products/), with their licence.
+  // without a sheet (their product is in content/products/), with their licence. Ticket #75: and the
+  // hardware licence of each repository that carries a product — basilisk's OCL v1.1, none elsewhere.
   assert.deepEqual(snapshot.repositories, [
-    { name: 'basilisk', url: `${ORG_URL}/basilisk`, license: OTHER },
-    { name: 'berserker', url: `${ORG_URL}/berserker`, license: CERN },
-    { name: 'kaiju', url: `${ORG_URL}/kaiju`, license: GPL },
-    { name: 'kraken', url: `${ORG_URL}/kraken`, license: GPL },
-    { name: 'maelstrom', url: `${ORG_URL}/maelstrom`, license: GPL },
-    { name: 'unicorn', url: `${ORG_URL}/unicorn`, license: GPL },
+    { name: 'basilisk', url: `${ORG_URL}/basilisk`, license: MIT, hardwareLicense: OCL },
+    { name: 'berserker', url: `${ORG_URL}/berserker`, license: CERN, hardwareLicense: null },
+    { name: 'kaiju', url: `${ORG_URL}/kaiju`, license: GPL, hardwareLicense: null },
+    { name: 'kraken', url: `${ORG_URL}/kraken`, license: GPL, hardwareLicense: null },
+    { name: 'maelstrom', url: `${ORG_URL}/maelstrom`, license: GPL, hardwareLicense: null },
+    { name: 'unicorn', url: `${ORG_URL}/unicorn`, license: GPL, hardwareLicense: null },
   ]);
   for (const slug of ['maelstrom', 'unicorn', 'kaiju', 'kraken']) {
     assert.deepEqual(bySlug[slug].license, GPL, slug);
-    assert.deepEqual(licenseStamp(bySlug[slug].license, productTexts), { label: 'GPL-3.0', title: GPL.name }, slug);
+    assert.deepEqual(softwareLicense(bySlug[slug].license, licenseTexts), { label: 'GPL-3.0', title: GPL.name }, slug);
+    assert.deepEqual(licenseStamps(bySlug[slug], licenseTexts), { software: { label: 'GPL-3.0', title: GPL.name, text: 'Software · GPL-3.0' }, hardware: null }, slug);
   }
-  assert.deepEqual(licenseStamp(bySlug.berserker.license, productTexts), { label: 'CERN-OHL-S-2.0', title: CERN.name });
+  // Berserker, on purpose: its LICENSE holds the CERN-OHL-S-2.0, a hardware licence. The site shows
+  // what the repository declares, where it declares it: the software stamp. No licence id is sorted.
+  assert.deepEqual(licenseStamps(bySlug.berserker, licenseTexts), {
+    software: { label: 'CERN-OHL-S-2.0', title: CERN.name, text: 'Software · CERN-OHL-S-2.0' },
+    hardware: null,
+  });
+  // Basilisk: both stamps.
+  assert.deepEqual(licenseStamps(bySlug.basilisk, licenseTexts), {
+    software: { label: 'MIT', title: 'MIT License', text: 'Software · MIT' },
+    hardware: { label: 'OCL v1.1', title: 'Open Community License v1.1', text: 'Hardware · OCL v1.1' },
+  });
 });
 
-test('licence not recognised (NOASSERTION, « Other »): the generic stamp of content/site.yml, no name invented', async () => {
-  const { bySlug } = await builtFrom(tempSiteWith(SIM));
+test('licence not recognised (NOASSERTION, « Other ») on LICENSE: the generic software stamp of content/licences.yml, no name invented', async () => {
+  // A temporary simulator: basilisk as the real repository was before the inversion (its LICENSE the
+  // OCL, which GitHub does not recognise), no LICENSE-HARDWARE.
+  const root = tempSiteWithRepos({}, (sim) => {
+    writeFileSync(join(sim, 'licenses', 'basilisk.json'), JSON.stringify(OTHER_API));
+    rmSync(join(sim, 'repos', 'basilisk', HARDWARE_LICENSE_PATH));
+  });
+  const { bySlug } = await builtFrom(root);
   assert.deepEqual(bySlug.basilisk.license, OTHER);
-  const stamp = licenseStamp(bySlug.basilisk.license, productTexts);
-  assert.deepEqual(stamp, { label: productTexts.licenseOther.trim(), title: null });
-  assert.notEqual(stamp.label, 'Other', 'GitHub’s « Other » is not shown as a licence name');
-  assert.deepEqual(licenseStamp({ spdx_id: null, name: null }, productTexts), stamp, 'a licence without an SPDX id: the generic stamp too');
+  assert.equal(bySlug.basilisk.hardwareLicense, null);
+  const generic = licenseTexts.software.unrecognised;
+  assert.deepEqual(softwareLicense(bySlug.basilisk.license, licenseTexts), { label: generic, title: null });
+  assert.notEqual(generic, 'Other', 'GitHub’s « Other » is not shown as a licence name');
+  const stamps = licenseStamps(bySlug.basilisk, licenseTexts);
+  assert.equal(stamps.software.text, `Software · ${generic}`);
+  assert.equal(stamps.hardware, null);
+  assert.deepEqual(softwareLicense({ spdx_id: null, name: null }, licenseTexts), { label: generic, title: null }, 'a licence without an SPDX id: the generic stamp too');
+});
+
+// The hardware licence is identified by the first non-empty line of LICENSE-HARDWARE, in the titles of
+// content/licences.yml, case and spaces aside; a title the table does not hold is a generic stamp; an
+// empty file is no licence. The table's entries are the human's (content/), so the expectations are
+// read from it, apart from the OCL, which the ticket names.
+test('hardware licence: identified by the first line of LICENSE-HARDWARE — a known title, case and spaces, an unknown one, an empty file', () => {
+  const ocl = hardwareLicense(hardwareLicenseOf('Open Community License (OCL v1.1)\n\nOCL pertains to…\n'), licenseTexts);
+  assert.deepEqual(ocl, { label: 'OCL v1.1', title: 'Open Community License v1.1' });
+  // Blank lines and a byte order mark before the title, CRLF ends of line, other case and spaces.
+  const messy = hardwareLicenseOf(Buffer.from('\uFEFF\r\n   \r\n  open   COMMUNITY license(OCL  v1.1) \r\nrest\r\n'));
+  assert.deepEqual(messy, { title: 'open   COMMUNITY license(OCL  v1.1)' }, 'the line as written, trimmed');
+  assert.deepEqual(hardwareLicense(messy, licenseTexts), ocl);
+  // The three CERN-OHL v2, by their official first lines.
+  for (const [line, label] of [
+    ['CERN Open Hardware Licence Version 2 - Strongly Reciprocal', 'CERN-OHL-S-2.0'],
+    ['CERN Open Hardware Licence Version 2 - Weakly Reciprocal', 'CERN-OHL-W-2.0'],
+    ['CERN Open Hardware Licence Version 2 - Permissive', 'CERN-OHL-P-2.0'],
+  ]) {
+    assert.equal(hardwareLicense(hardwareLicenseOf(`${line}\n\n\nPreamble\n`), licenseTexts)?.label, label, line);
+  }
+  for (const t of licenseTexts.hardware.titles) assert.deepEqual(hardwareLicense({ title: t.title }, licenseTexts), { label: t.label, title: t.name }, t.title);
+  // A title the table does not hold: the generic stamp, the line as written in its title; no name invented.
+  const unknown = hardwareLicense(hardwareLicenseOf('TAPR Open Hardware License v1.0\n'), licenseTexts);
+  assert.deepEqual(unknown, { label: licenseTexts.hardware.unrecognised, title: 'TAPR Open Hardware License v1.0' });
+  assert.equal(licenseStamps({ license: null, hardwareLicense: { title: 'TAPR Open Hardware License v1.0' } }, licenseTexts).hardware.text, `Hardware · ${licenseTexts.hardware.unrecognised}`);
+  // An empty file, or one of blank lines only: no licence.
+  assert.equal(hardwareLicenseOf(''), null);
+  assert.equal(hardwareLicenseOf(Buffer.from(' \n\t\r\n  \n')), null);
+  assert.equal(hardwareLicense(null, licenseTexts), null);
+  assert.equal(hardwareLicense(undefined, licenseTexts), null);
+  assert.deepEqual(licenseStamps({ license: null, hardwareLicense: null }, licenseTexts), { software: null, hardware: null });
+});
+
+test('hardware licence: LICENSE-HARDWARE absent (a 404) or empty → none, never an error; any other failed read fails the build', async () => {
+  // Simulator: an empty LICENSE-HARDWARE is no licence.
+  const empty = await read(makeSim({ Gizmo: { ...gizmo(), [HARDWARE_LICENSE_PATH]: '\n  \n' } }));
+  assert.equal(empty[0].hardwareLicense, null);
+  const full = await read(makeSim({ Gizmo: { ...gizmo(), [HARDWARE_LICENSE_PATH]: 'CERN Open Hardware Licence Version 2 - Permissive\n\nPreamble\n' } }));
+  assert.deepEqual(full[0].hardwareLicense, { title: 'CERN Open Hardware Licence Version 2 - Permissive' });
+  // GitHub: a 404 is no licence; a 500 on LICENSE-HARDWARE fails the read, like any request.
+  const files = { 'Gizmo/9_Assets/zurp.yml': VALID_SHEET, 'Gizmo/9_Assets/poster.png': PNG };
+  const none = mockGitHub({ repos: ['Gizmo'], files });
+  assert.equal((await readRepoProducts(githubBackend({ fetchImpl: none.fetchImpl }), { sectionIds })).products[0].hardwareLicense, null);
+  const found = mockGitHub({ repos: ['Gizmo'], files: { ...files, 'Gizmo/LICENSE-HARDWARE': 'Open Community License (OCL v1.1)\n\ntext\n' } });
+  assert.deepEqual((await readRepoProducts(githubBackend({ fetchImpl: found.fetchImpl }), { sectionIds })).products[0].hardwareLicense, OCL);
+  const broken = mockGitHub({ repos: ['Gizmo'], files, failOn: { match: '/contents/LICENSE-HARDWARE', status: 500 } });
+  await assert.rejects(readRepoProducts(githubBackend({ fetchImpl: broken.fetchImpl }), { sectionIds }), /LICENSE-HARDWARE → HTTP 500/);
+  // A repository that carries no product: its LICENSE-HARDWARE is never read.
+  const noSheet = mockGitHub({ repos: ['.github', 'Gizmo'], files: { ...files, '.github/LICENSE-HARDWARE': 'x' } });
+  const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
+  const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'github' }, sectionIds, backend: githubBackend({ fetchImpl: noSheet.fetchImpl }) });
+  assert.ok(!noSheet.calls.some((c) => c.url.endsWith('/.github/contents/LICENSE-HARDWARE')), 'the LICENSE-HARDWARE of .github is not read');
+  assert.ok(noSheet.calls.some((c) => c.url.endsWith('/Gizmo/contents/LICENSE-HARDWARE')), 'the one of Gizmo is');
+  assert.deepEqual(snapshot.repositories.map((r) => [r.name, r.hardwareLicense]), [['.github', null], ['Gizmo', null]]);
+});
+
+// The licence badges of the README header (ticket #75): two SVG files per product, drawn by the site.
+test('licence badges: a full « flat » SVG with the short label when the licence exists, an empty one (no size, nothing drawn) when it does not', async () => {
+  const { bySlug } = await builtFrom(tempSiteWith(SIM));
+  assert.equal(licenseBadgePath('basilisk', 'software'), 'brand/badges/basilisk/software.svg');
+  assert.equal(licenseBadgePath('basilisk', 'hardware'), 'brand/badges/basilisk/hardware.svg');
+  const full = licenseBadgeSvg(bySlug.basilisk, 'hardware', licenseTexts);
+  const meta = await sharp(Buffer.from(full)).metadata();
+  assert.equal(meta.format, 'svg');
+  assert.equal(meta.height, 20);
+  assert.ok(meta.width > 40, `wide enough for its two texts (${meta.width} px)`);
+  assert.ok(full.includes(`>${licenseTexts.hardware.badge.label}</text>`), 'the left part: the kind, from content/licences.yml');
+  assert.ok(full.includes('>OCL v1.1</text>'), 'the right part: the short label of the licence');
+  assert.ok(full.includes(`fill="${licenseTexts.hardware.badge.color}"`) && full.includes(`fill="${licenseTexts.badge.labelColor}"`), 'the colours of content/licences.yml');
+  assert.match(full, /aria-label="[^"]+: OCL v1\.1"/);
+  // The text fits: each part is the estimated width of its text plus 5 px on each side.
+  const widths = [...full.matchAll(/<rect (?:x="\d+" )?width="(\d+)" height="20" fill="#/g)].map((m) => Number(m[1]));
+  assert.deepEqual(widths, [Math.round(textWidth(licenseTexts.hardware.badge.label) + 10), Math.round(textWidth('OCL v1.1') + 10)]);
+  assert.equal(meta.width, widths[0] + widths[1]);
+  // Rendered: it has pixels (sharp rasterises the SVG).
+  const { data } = await sharp(Buffer.from(full)).raw().toBuffer({ resolveWithObject: true });
+  assert.ok(data.some((b) => b !== 0));
+  assert.ok(licenseBadgeSvg(bySlug.basilisk, 'software', licenseTexts).includes('>MIT</text>'));
+  assert.ok(licenseBadgeSvg(bySlug.berserker, 'software', licenseTexts).includes('>CERN-OHL-S-2.0</text>'));
+  // Deterministic: the same catalog, the same bytes.
+  assert.equal(licenseBadgeSvg(bySlug.basilisk, 'hardware', licenseTexts), full);
+  // No licence of that kind: the empty badge, zero size, nothing drawn.
+  for (const [slug, kind] of [['berserker', 'hardware'], ['cyclops', 'software'], ['cyclops', 'hardware'], ['wraith', 'hardware']]) {
+    assert.equal(licenseBadgeSvg(bySlug[slug], kind, licenseTexts), EMPTY_BADGE, `${slug} ${kind}`);
+  }
+  assert.match(EMPTY_BADGE, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" width="0" height="0"\/>\n$/);
+  assert.doesNotMatch(EMPTY_BADGE, /<(text|rect|path|g)\b/);
+  // Text is escaped, a long label widens the badge.
+  const odd = licenseBadgeSvg({ license: null, hardwareLicense: { title: 'A <b> & "C"' } }, 'hardware', { ...licenseTexts, hardware: { ...licenseTexts.hardware, unrecognised: 'R&D <licence>' } });
+  assert.ok(odd.includes('>R&amp;D &lt;licence&gt;</text>'));
+  assert.ok(textWidth('CERN-OHL-S-2.0') > textWidth('MIT'));
+  assert.throws(() => licenseBadgeSvg(bySlug.basilisk, 'firmware', licenseTexts), /unknown kind "firmware"/);
+});
+
+test('content/licences.yml: validated — a missing text or colour, or two hardware titles that read the same, fails with the key named', () => {
+  const root = mkdtempSync(join(tmpdir(), 'zurp-content-'));
+  cpSync(join(ROOT, 'content'), join(root, 'content'), { recursive: true });
+  const file = join(root, 'content', 'licences.yml');
+  const original = readFileSync(file, 'utf8');
+  writeFileSync(file, original.replace("color: '#007ec6'", "color: blue").replace(/^( {4}- title: )Open Community License \(OCL v1\.1\)$/m, '$1CERN  open hardware licence version 2 - PERMISSIVE'));
+  assert.throws(() => licenseContent(root), (e) => {
+    assert.match(e.message, /content\/licences\.yml: .*`software\.badge\.color` is not a #rrggbb colour/);
+    assert.match(e.message, /`hardware\.titles\[3\]\.title` reads like `hardware\.titles\[0\]\.title`/);
+    return true;
+  });
+  writeFileSync(file, original.replace("stamp: 'Hardware · {{licence}}'", "stamp: 'Hardware'"));
+  assert.throws(() => licenseContent(root), /`hardware\.stamp` missing, or without its \{\{licence\}\} marker/);
 });
 
 test('no LICENSE: no licence, no stamp, never an error — no file, or `null`, in the simulator; `null` from GitHub', async () => {
@@ -724,8 +884,8 @@ test('no LICENSE: no licence, no stamp, never an error — no file, or `null`, i
   assert.equal((await read(makeSim({ Gizmo: gizmo() }, {}, { Gizmo: null })))[0].license, null);
   const { fetchImpl } = mockGitHub({ repos: ['Gizmo'], files: { 'Gizmo/9_Assets/zurp.yml': VALID_SHEET, 'Gizmo/9_Assets/poster.png': PNG } });
   assert.equal((await readRepoProducts(githubBackend({ fetchImpl }), { sectionIds })).products[0].license, null);
-  assert.equal(licenseStamp(null, productTexts), null);
-  assert.equal(licenseStamp(undefined, productTexts), null);
+  assert.equal(softwareLicense(null, licenseTexts), null);
+  assert.equal(softwareLicense(undefined, licenseTexts), null);
   assert.equal(repoLicense(null), null);
   assert.equal(repoLicense(undefined), null);
 });
@@ -742,27 +902,35 @@ test('a product of content/products/ without a repository (Cyclops, Wraith): the
     assert.equal(bySlug[slug].origin, `content/products/${slug}/`, slug);
     assert.equal(bySlug[slug].repo, ORG_URL, slug);
     assert.equal(bySlug[slug].license, null, slug);
-    assert.equal(licenseStamp(bySlug[slug].license, productTexts), null, slug);
+    assert.equal(bySlug[slug].hardwareLicense, null, slug);
+    assert.deepEqual(licenseStamps(bySlug[slug], licenseTexts), { software: null, hardware: null }, slug);
   }
 });
 
-test('a product of content/products/ whose repository is discovered: the « Source » link is its URL as GitHub gives it, the case included, and its licence', async () => {
-  // The simulator's kraken renamed `Kraken` (as on GitHub), kaiju without a LICENSE, berserker gone,
-  // and a repository `Cyclops` created.
+test('a product of content/products/ whose repository is discovered: the « Source » link is its URL as GitHub gives it, the case included, and its licences — LICENSE-HARDWARE included', async () => {
+  // The simulator's kraken renamed `Kraken` (as on GitHub) and given a LICENSE-HARDWARE, kaiju without
+  // a LICENSE, berserker gone, and a repository `Cyclops` created.
+  const CERN_W = 'CERN Open Hardware Licence Version 2 - Weakly Reciprocal';
   const root = tempSiteWithRepos({ Cyclops: GPL_API }, (sim) => {
     renameSync(join(sim, 'repos', 'kraken'), join(sim, 'repos', 'Kraken'));
     renameSync(join(sim, 'licenses', 'kraken.json'), join(sim, 'licenses', 'Kraken.json'));
+    writeFileSync(join(sim, 'repos', 'Kraken', HARDWARE_LICENSE_PATH), `\n${CERN_W}\n\n\nPreamble\n`);
     rmSync(join(sim, 'licenses', 'kaiju.json'));
     rmSync(join(sim, 'repos', 'berserker'), { recursive: true });
   });
   const { snapshot, bySlug } = await builtFrom(root);
   // Kraken and Kaiju have no sheet: they are not products of the snapshot, only repositories.
   assert.ok(!snapshot.products.some((p) => ['kraken', 'kaiju', 'cyclops'].includes(p.slug)));
-  assert.deepEqual(snapshot.repositories.find((r) => r.name === 'Kraken'), { name: 'Kraken', url: `${ORG_URL}/Kraken`, license: GPL });
+  assert.deepEqual(snapshot.repositories.find((r) => r.name === 'Kraken'), { name: 'Kraken', url: `${ORG_URL}/Kraken`, license: GPL, hardwareLicense: { title: CERN_W } });
   assert.equal(bySlug.kraken.origin, 'content/products/kraken/');
   assert.equal(bySlug.kraken.repo, `${ORG_URL}/Kraken`, 'kraken: the URL of Kraken, its case included');
   assert.deepEqual(bySlug.kraken.license, GPL, 'kraken: the licence of Kraken');
-  assert.equal(licenseStamp(bySlug.kraken.license, productTexts).label, 'GPL-3.0');
+  assert.deepEqual(bySlug.kraken.hardwareLicense, { title: CERN_W }, 'kraken: the LICENSE-HARDWARE of Kraken');
+  assert.deepEqual(licenseStamps(bySlug.kraken, licenseTexts), {
+    software: { label: 'GPL-3.0', title: GPL.name, text: 'Software · GPL-3.0' },
+    hardware: { label: 'CERN-OHL-W-2.0', title: CERN_W, text: 'Hardware · CERN-OHL-W-2.0' },
+  });
+  assert.equal(bySlug.kaiju.hardwareLicense, null, 'kaiju: its repository has no LICENSE-HARDWARE');
   assert.equal(bySlug.kaiju.repo, `${ORG_URL}/kaiju`, 'kaiju: its repository, found');
   assert.equal(bySlug.kaiju.license, null, 'kaiju: its repository has no LICENSE');
   assert.equal(bySlug.berserker.repo, ORG_URL, 'berserker: no repository by that name — the organisation');
@@ -777,15 +945,27 @@ test('a product of content/products/ whose repository is discovered: the « Sour
   assert.equal(repositoryOf('kraken', [{ ...kraken, name: 'Kraken-firmware' }]), null, 'the whole name, not a prefix');
 });
 
-test('GitHub: the « Source » link of a local product is the html_url GitHub lists', async () => {
-  const { fetchImpl } = mockGitHub({ repos: ['Kaiju', 'Wraith-old'], licenses: { Kaiju: GPL_API } });
+test('GitHub: the « Source » link of a local product is the html_url GitHub lists; its LICENSE-HARDWARE is read there, and only there', async () => {
+  const { fetchImpl, calls } = mockGitHub({
+    repos: ['Kaiju', 'Wraith-old'],
+    licenses: { Kaiju: GPL_API },
+    files: { 'Kaiju/LICENSE-HARDWARE': 'Open Community License (OCL v1.1)\n\ntext\n', 'Wraith-old/LICENSE-HARDWARE': 'x\n' },
+  });
   const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
+  cpSync(join(ROOT, 'content'), join(root, 'content'), { recursive: true });
   const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'github' }, sectionIds, backend: githubBackend({ fetchImpl }) });
+  assert.deepEqual(snapshot.repositories, [
+    { name: 'Kaiju', url: `${ORG_URL}/Kaiju`, license: GPL, hardwareLicense: OCL },
+    { name: 'Wraith-old', url: `${ORG_URL}/Wraith-old`, license: null, hardwareLicense: null },
+  ]);
+  assert.deepEqual(calls.filter((c) => c.url.endsWith('/LICENSE-HARDWARE')).map((c) => c.url), ['https://api.github.com/repos/zUrp-Astronomics/Kaiju/contents/LICENSE-HARDWARE']);
   const local = await readLocalProducts({ root: ROOT, sectionIds, repositories: snapshot.repositories });
   const bySlug = Object.fromEntries(local.map((p) => [p.slug, p]));
   assert.equal(bySlug.kaiju.repo, 'https://github.com/zUrp-Astronomics/Kaiju');
   assert.deepEqual(bySlug.kaiju.license, GPL);
+  assert.deepEqual(bySlug.kaiju.hardwareLicense, OCL);
   assert.equal(bySlug.wraith.repo, ORG_URL, 'Wraith-old is not wraith');
+  assert.equal(bySlug.wraith.hardwareLicense, null);
 });
 
 test('the repository of a local product is never guessed: readLocalProducts needs the repositories of the build, with their URL', async () => {
@@ -796,7 +976,7 @@ test('the repository of a local product is never guessed: readLocalProducts need
   assert.ok(local.filter((p) => p.slug !== 'kaiju').every((p) => p.license === null && p.repo === ORG_URL));
 });
 
-test('GitHub: the licence comes with the list of repositories — listed once, no other request, no LICENSE read', async () => {
+test('GitHub: the software licence comes with the list of repositories — listed once, no other request, LICENSE never read', async () => {
   const { fetchImpl, calls } = mockGitHub({
     repos: ['.github', 'Basilisk', 'Kraken'],
     files: {
@@ -808,16 +988,19 @@ test('GitHub: the licence comes with the list of repositories — listed once, n
   const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
   const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'github' }, sectionIds, backend: githubBackend({ fetchImpl }) });
   assert.deepEqual(snapshot.repositories, [
-    { name: '.github', url: `${ORG_URL}/.github`, license: null },
-    { name: 'Basilisk', url: `${ORG_URL}/Basilisk`, license: OTHER },
-    { name: 'Kraken', url: `${ORG_URL}/Kraken`, license: GPL },
+    { name: '.github', url: `${ORG_URL}/.github`, license: null, hardwareLicense: null },
+    { name: 'Basilisk', url: `${ORG_URL}/Basilisk`, license: OTHER, hardwareLicense: null },
+    { name: 'Kraken', url: `${ORG_URL}/Kraken`, license: GPL, hardwareLicense: null },
   ]);
   assert.deepEqual(snapshot.products.map((p) => [p.slug, p.license]), [['basilisk', OTHER]]);
   assert.equal(calls.filter((c) => c.url.includes('/orgs/')).length, 2, 'the two pages of repositories, read once');
-  assert.ok(!calls.some((c) => /\/license\b/i.test(c.url)), 'no request to the licence endpoint');
+  assert.ok(!calls.some((c) => /\/license$/i.test(new URL(c.url).pathname)), 'no request to the licence endpoint');
   const contents = calls.filter((c) => c.url.includes('/contents/'));
-  assert.ok(contents.every((c) => c.url.split('/contents/')[1].startsWith('9_Assets/')), 'no LICENSE file read');
-  assert.equal(calls.length, 2 + contents.length + 1, 'repositories (2 pages), 9_Assets/ files, the releases of the one repository with a sheet — nothing else');
+  // Ticket #75: 9_Assets/, and LICENSE-HARDWARE of the one repository with a product — never LICENSE.
+  const path = (c) => c.url.split('/contents/')[1];
+  assert.ok(contents.every((c) => path(c).startsWith('9_Assets/') || path(c) === HARDWARE_LICENSE_PATH), 'no LICENSE file read');
+  assert.deepEqual(contents.filter((c) => !path(c).startsWith('9_Assets/')).map((c) => c.url), ['https://api.github.com/repos/zUrp-Astronomics/Basilisk/contents/LICENSE-HARDWARE']);
+  assert.equal(calls.length, 2 + contents.length + 1, 'repositories (2 pages), 9_Assets/ files and LICENSE-HARDWARE, the releases of the one repository with a sheet — nothing else');
 });
 
 // --- One place per product, end to end (ticket #72) -----------------------------------------------

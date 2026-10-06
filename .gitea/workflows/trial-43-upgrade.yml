@@ -1,0 +1,55 @@
+# SOURCE: zurp-astronomics-site — ticket #43 trial: resolve Astro 7 / sharp / esbuild on the registry, emit the lockfile, try the build
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: trial (removed before delivery)
+name: trial-43-upgrade
+
+on: workflow_dispatch
+
+jobs:
+  lock:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Registry
+        run: |
+          node -v; npm -v
+          npm view astro dist-tags --json
+          V=$(npm view astro dist-tags.latest)
+          echo "astro latest=$V"
+          npm view "astro@$V" engines dependencies optionalDependencies peerDependencies --json
+          npm view sharp dist-tags --json
+          npm view esbuild dist-tags --json
+      - name: Install
+        run: |
+          V=$(npm view astro dist-tags.latest)
+          npm pkg set "dependencies.astro=^$V" "engines.node=>=24"
+          npm install --no-audit --no-fund
+          npm ls astro sharp esbuild vite --all 2>&1 | head -60 || true
+          cat package.json
+          echo "LOCK-SIZE $(wc -c < package-lock.json)"
+          echo "LOCK-B64-BEGIN"
+          gzip -9c package-lock.json | base64 -w0; echo
+          echo "LOCK-B64-END"
+  build:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install
+        run: |
+          V=$(npm view astro dist-tags.latest)
+          npm pkg set "dependencies.astro=^$V" "engines.node=>=24"
+          npm install --no-audit --no-fund >/dev/null 2>&1
+          npm ls astro sharp esbuild vite 2>&1 || true
+      - name: Build
+        run: npm run build 2>&1 | grep -v -E '^\s+(├|└)─' | tail -150
+      - name: Check
+        run: node scripts/check-dist.mjs && npm run readme-kit:check

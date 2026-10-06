@@ -5,7 +5,8 @@
 // STATUS: active — run by .gitea/workflows/trial-compare-dist.yml (an on-demand trial, not part of CI)
 //
 // Usage: node scripts/compare-dist.mjs <baseDist> <headDist>
-// No dependencies: node built-ins only (image sizes are read from the file headers).
+// Node built-ins only (image sizes are read from the file headers), plus lightningcss when it is
+// installed (Vite ships it), for the stylesheets.
 //
 // WHY. A change that must not alter the rendered site (a framework upgrade, a new data source for the
 // catalog) is proved by building the base ref and the branch and comparing the two dist/ trees.
@@ -13,9 +14,9 @@
 //
 // Hashed asset names (`/_astro/<name>.<hash>.<ext>`) are normalised to `/_astro/<name>.#.<ext>`
 // everywhere (`/_astro/*.#.<ext>` for CSS and JS bundles, named by the bundler): a hash changes
-// with any byte of the asset, its URL is not part of the contract. The
-// build stamp (commit hash, build date) differs between two builds by design: it is masked in the
-// comparisons and checked on its own (rendered, well-formed).
+// with any byte of the asset, its URL is not part of the contract. The build stamp (commit hash,
+// build date) differs between two builds by design: it is masked in the comparisons and checked on
+// its own (rendered, well-formed).
 //
 // FAILS (exit 1) on any difference in what the site promises to stay the same:
 //   - the set of files in dist/ (hashed names normalised);
@@ -26,7 +27,7 @@
 //   - each image of each page (<img> src and every srcset candidate, og:image, twitter:image, icon
 //     links): the pixel size of the file it points to, and its descriptor;
 //   - the pixel size of every image file in dist/ (by normalised name);
-//   - the build stamp on every page of the branch (a 7-hex commit and a `YYYY-MM-DD HH:MMZ` date).
+//   - the build stamp on every page of the branch (a 7-hex commit and a `YYYY-MM-DD HH:MMZ` date);
 //   - the stylesheets of each page, in cascade order, once both are rewritten by lightningcss into
 //     one canonical form (when lightningcss is installed — Vite ships it; otherwise reported only).
 // REPORTS (no failure) what may legitimately move with a toolchain: the normalised markup of each

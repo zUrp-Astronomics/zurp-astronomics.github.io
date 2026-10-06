@@ -156,8 +156,9 @@ jobs:
       # The trial returns only the end of the job's log, and the report is longer: it is printed in
       # full, then once more as one gzip+base64 line (with the build logs and the built pages of both
       # sides) between REPORT-B64 markers — decode with `base64 -d | tar xz` — and last, the verdicts
-      # of the three comparisons (dist/, README kit, brand images) and the basilisk header with its
-      # status JSON, so that the end of the log carries them all.
+      # of the three comparisons (README kit, brand images, dist/ with its admitted differences), the
+      # basilisk header and the licence stamps check-dist found, so that the end of the log carries
+      # them all.
       - name: Compare dist/
         run: |
           rc=0
@@ -171,21 +172,18 @@ jobs:
           tar -C /tmp/bundle -cf - . | gzip -9n | base64 -w0; echo
           echo "REPORT-B64-END"
           echo "=== VERDICTS"
-          echo "--- dist/ (scripts/compare-dist.mjs)"
-          sed -n '/^FILES/p;/^    brand\/status\//p;/^IMAGE /p;/markup (report only)/p;/^    [+-] /p' /tmp/report.txt | sort | uniq -c
-          echo "--- dist/: per page (text, URLs, stylesheets)"
-          grep -E '^=== |^  (text|urls)|^  [^ ]+\.html: ' /tmp/report.txt || true
-          sed -n '/^ADMITTED DIFFERENCES/,/^$/p;/^DIFFERENCES/,$p' /tmp/report.txt
-          tail -1 /tmp/report.txt
-          echo "--- the licence stamps of the head's pages (scripts/check-dist.mjs)"
-          sed -n '/^Licence stamps/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
-          tail -1 /tmp/check-dist.log
           echo "--- README kit"
           sed -n '/^--- verdict/,$p' /tmp/kit-report.txt
           echo "--- brand images (scripts/compare-brand.mjs)"
-          cat /tmp/brand-report.txt
+          head -1 /tmp/brand-report.txt
           echo "--- the basilisk header, as it will be pasted (readme-kit/repos/basilisk.md of the head kit)"
           cat .zurp-catalog/readme-kit/readme-kit/repos/basilisk.md
-          echo "--- its status JSON (dist/brand/status/basilisk.json)"
-          cat dist/brand/status/basilisk.json
+          echo "--- the licence stamps of the head's pages (scripts/check-dist.mjs)"
+          sed -n '/^Licence stamps/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
+          tail -1 /tmp/check-dist.log
+          echo "--- dist/ (scripts/compare-dist.mjs), last: the trial's end of log carries it whole"
+          sed -n '/^FILES/p;/^IMAGE /p' /tmp/report.txt | sort | uniq -c
+          grep -E '^=== |^  (text \(strict\)|urls)|^  [^ ]+\.html: ' /tmp/report.txt | grep -v -E '^  [^ ]+\.html: same \([0-9]+ chars\)$' || true
+          sed -n '/^ADMITTED DIFFERENCES/,/^$/p;/^DIFFERENCES/,$p' /tmp/report.txt
+          tail -1 /tmp/report.txt
           exit $rc

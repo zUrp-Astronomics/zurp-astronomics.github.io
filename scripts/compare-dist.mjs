@@ -663,6 +663,8 @@ function admitCss(page, a, b) {
       const hit = styleRules(css).filter((r) => unscoped(r.selector) === adm.value);
       let out = css;
       for (const r of [...hit].sort((x, y) => y.start - x.start)) out = out.slice(0, r.start) + out.slice(r.end);
+      // An at-rule (@media…) left empty by the cut goes with it: the head has no such block at all.
+      if (hit.length) for (let prev = null; prev !== out; ) [prev, out] = [out, out.replace(/@[^{};]+\{\}/g, '')];
       return [out, hit.length];
     };
     let inBase;

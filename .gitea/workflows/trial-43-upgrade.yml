@@ -20,7 +20,8 @@ jobs:
           npm ci --no-audit --no-fund >/dev/null 2>&1
           ls -d node_modules/lightningcss node_modules/postcss 2>&1 || true
           cd node_modules/astro/dist/assets
-          find . -name '*.js' | sort
+          files=$(grep -l -E "widths|\bfit\b|getSizes|srcset|cover" $(find . -name '*.js' -not -path '*/vendor/*' -not -path '*/svg/*'))
+          wc -c $files
           echo "REPORT-B64-BEGIN"
-          tar -cf - $(find . -name '*.js') ../../package.json ../../dist/types/public/config.d.ts | gzip -9n | base64 -w0; echo
+          tar -cf - $files | gzip -9n | base64 -w 2000
           echo "REPORT-B64-END"

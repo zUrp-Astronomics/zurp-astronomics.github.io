@@ -80,12 +80,12 @@ test('content/products: a sheet is validated like a repository sheet — `repo` 
   const root = tempContent();
   const kaiju = join(root, 'content', 'products', 'kaiju', 'zurp.yml');
   writeFileSync(kaiju, readFileSync(kaiju, 'utf8') + 'repo: https://github.com/zUrp-Astronomics/kaiju\n');
-  const unicorn = join(root, 'content', 'products', 'unicorn', 'zurp.yml');
-  writeFileSync(unicorn, readFileSync(unicorn, 'utf8').replace(/^section: \w+/m, 'section: telescopes').replace(/^poster: \S+/m, 'poster: missing.webp'));
+  const kraken = join(root, 'content', 'products', 'kraken', 'zurp.yml');
+  writeFileSync(kraken, readFileSync(kraken, 'utf8').replace(/^section: \w+/m, 'section: telescopes').replace(/^poster: \S+/m, 'poster: missing.webp'));
   await assert.rejects(readLocalProducts({ root, sectionIds }), (e) => {
     assert.match(e.message, /content\/products\/kaiju\/zurp\.yml: field `repo`: not allowed in the sheet/);
-    assert.match(e.message, /content\/products\/unicorn\/zurp\.yml: field `section`: unknown section "telescopes"/);
-    assert.match(e.message, /content\/products\/unicorn\/zurp\.yml: field `poster`: content\/products\/unicorn\/missing\.webp does not exist/);
+    assert.match(e.message, /content\/products\/kraken\/zurp\.yml: field `section`: unknown section "telescopes"/);
+    assert.match(e.message, /content\/products\/kraken\/zurp\.yml: field `poster`: content\/products\/kraken\/missing\.webp does not exist/);
     return true;
   });
 });

@@ -4,6 +4,8 @@
 // STATUS: active — run by `npm test` (CLAUDE.md `## Test`, job `build` of .gitea/workflows/ci.yml)
 // REVISED: 2026-10-06 (ticket #49) — the local products are content/products/ (test/content.test.mjs tests them); sections from content/catalog.yml
 // REVISED: 2026-10-06 (ticket #53) — the basilisk header points to its status JSON, which carries the release tag (was: a static status badge)
+// REVISED: 2026-10-06 (ticket #61) — the simulator holds maelstrom and unicorn too, byte copies of their workshop kits;
+//   the assembly fixtures follow (LOCAL: content/products/, REMOTE: the simulator), checked against both
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet, a slug twice, a published product gone) are built here, in temporary simulators and a
@@ -14,13 +16,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { catalogSource, githubBackend, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { latestRelease, readRepoProducts, sheetProblems } from '../src/lib/catalog/read.mjs';
+import { readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { assembleCatalog } from '../src/lib/catalog/assemble.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogContent } from '../src/lib/content.mjs';
@@ -114,10 +117,37 @@ test('simulator: basilisk files are the workshop kit, byte for byte', () => {
   assert.equal(existsSync(join(SIM, 'releases', 'basilisk.json')), false, 'basilisk has no release');
 });
 
+// Ticket #61: maelstrom's kit is byte for byte its former content/products/maelstrom/ (main 47d9bb2);
+// unicorn's is that sheet with the human's 2.7 poster (poster, posterAlt, accent, comments changed).
+const KITS = {
+  maelstrom: {
+    'zurp.yml': '9a773b9df864d497b4b89fb873bbe407c40918726b0b5e2185d67b6a17b134a1',
+    'maelstrom.webp': '8c3cad6d6430d4650e41ca85529dcc3fe28023bc5b248373fda67a8ddf130ce2',
+  },
+  unicorn: {
+    'zurp.yml': '1347d0b12c305addf313e983fce6e1890e8e9ee4ddf4d3c5dff3b860fa442a04',
+    'unicorn.png': '4abf22ce2805aaecafb1b69d1cbbcfddb51e950464343210324e93392c3380d8',
+  },
+};
+
+test('simulator: maelstrom and unicorn files are their workshop kits, byte for byte, in lower-case folders, no release', () => {
+  for (const [slug, files] of Object.entries(KITS)) {
+    const dir = join(SIM, 'repos', slug, '9_Assets');
+    assert.deepEqual(readdirSync(dir).sort(), Object.keys(files).sort(), slug);
+    for (const [name, hash] of Object.entries(files)) assert.equal(sha256(readFileSync(join(dir, name))), hash, `${slug}/${name}`);
+    assert.equal(existsSync(join(SIM, 'releases', `${slug}.json`)), false, `${slug} has no release`);
+  }
+});
+
 test('simulator: basilisk reads exactly as products.ts held it on main, no release', async () => {
   const products = await read(SIM);
-  assert.deepEqual(products.map((p) => p.slug), ['basilisk']);
-  const { posterBytes, posterFile, posterPath, origin, release, ...fields } = products[0];
+  assert.deepEqual(products.map((p) => p.slug).sort(), ['basilisk', 'maelstrom', 'unicorn']);
+  for (const p of products) {
+    assert.equal(p.origin, `repository ${p.slug}`);
+    assert.equal(p.repo, `https://github.com/zUrp-Astronomics/${p.slug}`);
+    assert.equal(p.release, null);
+  }
+  const { posterBytes, posterFile, posterPath, origin, release, ...fields } = products.find((p) => p.slug === 'basilisk');
   assert.deepEqual(fields, BASILISK_ON_MAIN);
   assert.equal(posterPath, 'poster.png', 'the poster as the sheet names it');
   assert.equal(release, null);
@@ -213,16 +243,28 @@ test('two releases: the latest by published_at, whatever the list order; drafts 
 const LOCAL = [
   ['kaiju', 'Kaiju', 'mounts'],
   ['berserker', 'Berserker', 'mounts'],
-  ['unicorn', 'Unicorn', 'gadgets'],
   ['kraken', 'Kraken', 'gadgets'],
-  ['maelstrom', 'Maelstrom', 'cameras'],
   ['cyclops', 'Cyclops', 'cameras'],
   ['wraith', 'Wraith', 'future'],
 ].map(([slug, name, section]) => ({ slug, name, section, release: null, origin: `content/products/${slug}/` }));
-const basilisk = { slug: 'basilisk', name: 'Basilisk', section: 'gadgets', release: null, origin: 'repository basilisk' };
+// The products of the simulator's repositories (catalog-simulator/repos/), as the catalog sees them.
+const REMOTE = [
+  ['basilisk', 'Basilisk', 'gadgets'],
+  ['maelstrom', 'Maelstrom', 'cameras'],
+  ['unicorn', 'Unicorn', 'gadgets'],
+].map(([slug, name, section]) => ({ slug, name, section, release: null, origin: `repository ${slug}` }));
+const basilisk = REMOTE[0];
+
+test('the fixtures above are the products of content/products/ and of the simulator', async () => {
+  const strip = ({ slug, name, section, release, origin }) => ({ slug, name, section, release, origin });
+  const bySlug = (a, b) => a.slug.localeCompare(b.slug);
+  const local = await readLocalProducts({ root: ROOT, sectionIds });
+  assert.deepEqual(local.map(strip).sort(bySlug), [...LOCAL].sort(bySlug));
+  assert.deepEqual((await read(SIM)).map(strip).sort(bySlug), [...REMOTE].sort(bySlug));
+});
 
 test('order with no release anywhere: alphabetical inside each section (the expected rendering)', () => {
-  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: [basilisk], published: publishedSlugs, sections });
+  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: REMOTE, published: publishedSlugs, sections });
   assert.deepEqual(
     products.map((p) => p.name),
     ['Berserker', 'Kaiju', 'Cyclops', 'Maelstrom', 'Basilisk', 'Kraken', 'Unicorn', 'Wraith'],
@@ -251,24 +293,24 @@ test('order: latest release on top, then the others by name; sections keep their
 test('a slug in content/products/ and in a repository fails the build', () => {
   const local = { slug: 'basilisk', name: 'Basilisk', section: 'gadgets', release: null, origin: 'content/products/basilisk/' };
   assert.throws(
-    () => assembleCatalog({ local: [...LOCAL, local], remote: [basilisk], published: publishedSlugs, sections }),
+    () => assembleCatalog({ local: [...LOCAL, local], remote: REMOTE, published: publishedSlugs, sections }),
     /slug `basilisk` is defined twice: in content\/products\/basilisk\/ and in repository basilisk/,
   );
   assert.throws(
-    () => assembleCatalog({ local: [...LOCAL, { ...local, origin: undefined }], remote: [basilisk], published: publishedSlugs, sections }),
+    () => assembleCatalog({ local: [...LOCAL, { ...local, origin: undefined }], remote: REMOTE, published: publishedSlugs, sections }),
     /in content\/products\/ and in repository basilisk — a product lives in one place \(move its folder out of content\/products\//,
   );
 });
 
 test('a published product missing from the catalog fails the build (sheet not pushed, repository renamed)', () => {
   assert.throws(
-    () => assembleCatalog({ local: LOCAL, remote: [], published: publishedSlugs, sections }),
-    /published product\(s\) missing from the catalog: basilisk/,
+    () => assembleCatalog({ local: LOCAL, remote: REMOTE.filter((p) => p !== basilisk), published: publishedSlugs, sections }),
+    /published product\(s\) missing from the catalog: basilisk\./,
   );
 });
 
 test('a new product not on the published list is built, and reported as unguarded', () => {
-  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: [basilisk, { slug: 'gizmo', name: 'Gizmo', section: 'gadgets', release: null }], published: publishedSlugs, sections });
+  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: [...REMOTE, { slug: 'gizmo', name: 'Gizmo', section: 'gadgets', release: null }], published: publishedSlugs, sections });
   assert.ok(products.some((p) => p.slug === 'gizmo'));
   assert.deepEqual(unguarded, ['gizmo']);
 });

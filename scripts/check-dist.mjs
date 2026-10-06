@@ -5,10 +5,10 @@
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
-// Runs after the build, in CI and in the deploy workflow. Needs `npm ci` (esbuild reads
-// products.ts) and the catalog snapshot the build wrote (.zurp-catalog/remote.json): the products
-// are THE CATALOG THE SITE WAS BUILT WITH — products.ts plus the products read from their
-// repositories — assembled by scripts/lib/catalog.mjs, never read from products.ts alone.
+// Runs after the build, in CI and in the deploy workflow. Needs `npm ci` and the catalog snapshot
+// the build wrote (.zurp-catalog/remote.json): the products are THE CATALOG THE SITE WAS BUILT WITH
+// — content/products/ plus the products read from their repositories — assembled by
+// scripts/lib/catalog.mjs, never read from one of the two alone.
 //
 // Fails (exit 1) when:
 //   - an image file in dist/ (webp, jpg/jpeg, png, avif, gif, svg, ico) weighs more than 600 KB

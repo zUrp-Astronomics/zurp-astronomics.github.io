@@ -1,0 +1,36 @@
+# SOURCE: zurp-astronomics-site — fiche vitrine de Kraken, lue par le site zurp-astronomics.github.io
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
+#
+# Sa place est 9_Assets/zurp.yml dans le dépôt du produit. Tant que le dépôt ne la porte pas, le
+# site la lit ici, dans content/products/kraken/, au même format et avec le même code de validation
+# (src/lib/catalog/read.mjs). Migrer le produit = déplacer ce dossier, tel quel, dans 9_Assets/.
+#
+# Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /kraken/), le
+# lien vers le dépôt (https://github.com/zUrp-Astronomics/kraken), le statut « released » et la
+# version (tag de la dernière release GitHub), le rang dans sa section.
+
+name: Kraken
+tagline: Compact but efficient powerbox, in a Raspberry Pi case.
+slogan: Power to the people
+category: Powerbox
+section: gadgets          # mounts | cameras | gadgets | future
+status: wip               # wip | future — devient « released » dès qu'une release existe sur GitHub
+basedOn: NAFAbox / Astralim
+
+description:
+  - >-
+    Kraken is a compact powerbox the size of a Raspberry Pi case. Based on the NAFAbox and Astralim
+    projects, with zUrp opinions on layout and bring-up sequencing.
+  - >-
+    Multiple 12V regulated outputs, PWM dew heaters, current monitoring, temperature/humidity
+    sensors, all exposed over a simple protocol. Fits in the footprint of an RPi 4, plugs into your
+    scope saddle.
+
+poster: kraken.webp       # à côté de cette fiche — l'affiche série 2 (1254 × 1254)
+posterAlt: >-
+  Kraken poster on a worn, chipped cream plate: a teal-plated mechanical kraken with a golden eye
+  coils its riveted tentacles, lined with steel suckers, out of crashing waves in front of the full
+  moon, teal rays and blueprint sketches, above the slogan “Power to the people”.
+accent: '#0d7268'         # couleur des rayons de l'affiche

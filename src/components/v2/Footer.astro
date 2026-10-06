@@ -3,9 +3,11 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #49) — every text comes from content/ (site.yml, footer/legalese.md)
 //
-// The copy began as the v1 footer's, word for word (v1 deleted in ticket #35): home line without a
-// product, product line with one.
+// The copy began as the v1 footer's, word for word (v1 deleted in ticket #35), and lives in
+// content/site.yml (`name`, `affiliation`, `signature`, `org`, `footer`) and content/footer/legalese.md: home line
+// (the site's signature) without a product, product line with one.
 // The "Low-Tech & DIY" panel (the worn version, src/assets/header/low-tech-diy-poster.webp) signs
 // the footer of EVERY page of the main site, home included, small (~140 px, the size of the v1
 // sticker). Ticket #14 had left it out of the home page (its header shows the same poster full
@@ -24,40 +26,41 @@
 // instead, as Astro 4 did: 280 × 187, the whole panel. `fit` never reaches the HTML.
 import { Image } from 'astro:assets';
 import lowTechPoster from '../../assets/header/low-tech-diy-poster.webp';
+import { fill, inlineMarkdown, readMarkdown, siteContent, siteView } from '../../lib/content.mjs';
 
 interface Props {
   productName?: string;
 }
 
 const { productName } = Astro.props;
+
+const site = siteContent();
+const legalese = inlineMarkdown(readMarkdown('footer/legalese.md'));
 ---
 
 <footer class="foot">
   <div class="z2-container foot-inner">
-    <p class="z2-signature foot-sig" aria-hidden="true"><span>zUrp Astronomics</span></p>
+    <p class="z2-signature foot-sig" aria-hidden="true"><span>{site.name}</span></p>
     <p class="org-link">
-      GitHub · <a href="https://github.com/zUrp-Astronomics">@zUrp-Astronomics</a>
+      {site.footer.orgLabel} <a href={site.org.url}>{site.org.handle}</a>
     </p>
     {
       productName ? (
         <p>
-          <em>{productName} — a product of zUrp Astronomics, a subsidiary of zUrp Industries.</em>
+          <em>{fill(site.footer.productLine, { ...siteView(site), product: productName })}</em>
         </p>
       ) : (
         <p>
-          <em>zUrp Astronomics — a subsidiary of zUrp Industries.</em>
+          <em>{site.signature}</em>
         </p>
       )
     }
-    <p class="legalese">
-      Built with <a href="https://astro.build">Astro</a>, ~1&nbsp;MB of bash, and stubbornness.
-      Hosted on GitHub Pages because the cloud is just someone else's keiretsu.
-    </p>
-    <a class="lowtech-link" href="#top" aria-label="Back to top">
+    <p class="legalese" set:html={legalese} />
+    <a class="lowtech-link" href="#top" aria-label={site.footer.backToTop}>
       <Image
         src={lowTechPoster}
-        alt="Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front of a moon, on a blueprint with red rays."
-        title="Low-Tech & DIY — culture zUrp"
+        alt={site.footer.panelAlt}
+        title={site.footer.panelTitle}
         width={140}
         widths={[140, 280]}
         fit="outside"

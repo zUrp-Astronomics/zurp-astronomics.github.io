@@ -3,6 +3,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #49) — the subtitle, the plate's alt and the link's label come from content/site.yml (`header`)
 //
 // Tickets #27, #29, #31. The header is the plate (src/assets/header/zurp-astronomics-plate.webp, a
 // link to `/`), the subtitle "Because buying is cheating." and the hairline under them. It exists
@@ -43,6 +44,7 @@
 // <div>; the bar (<header>) on product pages.
 import { Image } from 'astro:assets';
 import plate from '../../assets/header/zurp-astronomics-plate.webp';
+import { siteContent } from '../../lib/content.mjs';
 
 interface Props {
   /** 'bar' (default): the compact bar, drawn by V2Layout. 'full': the home page's big header. */
@@ -52,6 +54,7 @@ interface Props {
 }
 
 const { part = 'bar', home = false } = Astro.props;
+const { header } = siteContent();
 const full = part === 'full';
 // The bar's element. Home: a <div> (the big header is the page's banner), inert and hidden until
 // the script shows it. Product pages: the page's <header>, always visible.
@@ -65,10 +68,10 @@ const Bar = home ? 'div' : 'header';
         <!-- The plate is a real enamel plate, photographed (screws, rust and chips are in the
              image, so no CSS frame around it), hung straight. 1x/2x variants up to 880 px. -->
         <h1 class="site-head-title">
-          <a class="site-head-home" href="/" aria-label="zUrp Astronomics — home" aria-current="page">
+          <a class="site-head-home" href="/" aria-label={header.homeLabel} aria-current="page">
             <Image
               src={plate}
-              alt="zUrp Astronomics"
+              alt={header.plateAlt}
               width={880}
               widths={[300, 440, 600, 880]}
               sizes="(max-width: 640px) min(82vw, 300px), 440px"
@@ -80,7 +83,7 @@ const Bar = home ? 'div' : 'header';
           </a>
         </h1>
         <!-- The subtitle: part of the title block, not of the h1 (the plate stays alone in it). -->
-        <p class="site-head-subtitle">Because buying is cheating.</p>
+        <p class="site-head-subtitle">{header.subtitle}</p>
         <!-- The hairline closes the header. Decorative only. -->
         <hr class="site-head-rule" aria-hidden="true" />
       </div>
@@ -92,12 +95,12 @@ const Bar = home ? 'div' : 'header';
           <a
             class="site-head-home"
             href="/"
-            aria-label="zUrp Astronomics — home"
+            aria-label={header.homeLabel}
             aria-current={home ? 'page' : undefined}
           >
             <Image
               src={plate}
-              alt="zUrp Astronomics"
+              alt={header.plateAlt}
               width={880}
               widths={[300, 440, 600, 880]}
               sizes="(max-width: 640px) 120px, 168px"
@@ -108,7 +111,7 @@ const Bar = home ? 'div' : 'header';
             />
           </a>
         </div>
-        <p class="site-head-subtitle">Because buying is cheating.</p>
+        <p class="site-head-subtitle">{header.subtitle}</p>
         <hr class="site-head-rule" aria-hidden="true" />
       </div>
     </Bar>

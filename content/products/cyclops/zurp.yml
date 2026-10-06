@@ -1,0 +1,41 @@
+# SOURCE: zurp-astronomics-site — fiche vitrine de Cyclops, lue par le site zurp-astronomics.github.io
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
+#
+# Sa place est 9_Assets/zurp.yml dans le dépôt du produit. Tant que le dépôt ne la porte pas, le
+# site la lit ici, dans content/products/cyclops/, au même format et avec le même code de validation
+# (src/lib/catalog/read.mjs). Migrer le produit = déplacer ce dossier, tel quel, dans 9_Assets/.
+#
+# Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /cyclops/), le
+# lien vers le dépôt (ce produit n'a pas encore de dépôt : il est listé dans `withoutRepository`
+# de content/catalog.yml, et son lien « Source » mène à l'organisation), le statut « released » et
+# la version (tag de la dernière release GitHub), le rang dans sa section.
+
+name: Cyclops
+tagline: >-
+  Autonomous embedded astrometry finder: one eye on the sky, so your visual scope always knows where
+  it points.
+slogan: One eye to find them all
+category: Camera
+section: cameras          # mounts | cameras | gadgets | future
+status: future            # wip | future — devient « released » dès qu'une release existe sur GitHub
+basedOn: diofinder
+
+description:
+  - >-
+    Cyclops is an autonomous astrometry finder: a Raspberry Pi Zero 2 W and an HQ camera behind a
+    telephoto lens, riding on the tube and plate-solving the sky to know exactly where your
+    telescope is pointing.
+  - >-
+    Based on the diofinder project. It talks to the mount and to your phone, so a purely visual
+    telescope gets precise pointing with no imaging camera and no laptop in the field. Status:
+    design phase — no public repo yet.
+
+poster: cyclops.webp      # à côté de cette fiche — l'affiche série 2 (1254 × 1254)
+posterAlt: >-
+  Cyclops poster on a worn, chipped cream plate: a hulking mechanical giant in yellow and steel
+  armour plates bristling with spikes, a single glowing yellow lens for an eye, looms in front of
+  the full moon, yellow rays and blueprint sketches of itself, above the slogan “One eye to find
+  them all”.
+accent: '#fbd102'         # couleur des rayons de l'affiche

@@ -2,11 +2,12 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — run by `npm test` (CLAUDE.md `## Test`, job `build` of .gitea/workflows/ci.yml)
+// REVISED: 2026-10-06 (ticket #49) — the local products are content/products/ (test/content.test.mjs tests them); sections from content/catalog.yml
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet, a slug twice, a published product gone) are built here, in temporary simulators and a
 // mocked GitHub: no fictitious product ever enters a deployable build. The README kit test needs
-// `npm ci` (esbuild reads products.ts), like the build.
+// `npm ci`, like the build.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,11 +22,12 @@ import { catalogSource, githubBackend, simulatorBackend } from '../src/lib/catal
 import { latestRelease, readRepoProducts, sheetProblems } from '../src/lib/catalog/read.mjs';
 import { assembleCatalog } from '../src/lib/catalog/assemble.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { sections } from '../src/data/sections.mjs';
+import { catalogContent } from '../src/lib/content.mjs';
 import { publishedSlugs } from '../src/data/published-slugs.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SIM = join(ROOT, 'catalog-simulator');
+const { sections } = catalogContent(ROOT);
 const sectionIds = sections.map((s) => s.id);
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
@@ -112,8 +114,9 @@ test('simulator: basilisk files are the workshop kit, byte for byte', () => {
 test('simulator: basilisk reads exactly as products.ts held it on main, no release', async () => {
   const products = await read(SIM);
   assert.deepEqual(products.map((p) => p.slug), ['basilisk']);
-  const { posterBytes, posterFile, origin, release, ...fields } = products[0];
+  const { posterBytes, posterFile, posterPath, origin, release, ...fields } = products[0];
   assert.deepEqual(fields, BASILISK_ON_MAIN);
+  assert.equal(posterPath, 'poster.png', 'the poster as the sheet names it');
   assert.equal(release, null);
   assert.equal(posterFile, 'basilisk.png', 'the local poster is named after the slug, not after the sheet');
   assert.equal(origin, 'repository basilisk');
@@ -203,7 +206,7 @@ test('two releases: the latest by published_at, whatever the list order; drafts 
 
 // --- Assembly: one place, published guard, order ----------------------------------------------
 
-// The products still in src/data/products.ts after this ticket (slug, name, section).
+// The products of content/products/ (slug, name, section), as the catalog sees them.
 const LOCAL = [
   ['kaiju', 'Kaiju', 'mounts'],
   ['berserker', 'Berserker', 'mounts'],
@@ -212,7 +215,7 @@ const LOCAL = [
   ['maelstrom', 'Maelstrom', 'cameras'],
   ['cyclops', 'Cyclops', 'cameras'],
   ['wraith', 'Wraith', 'future'],
-].map(([slug, name, section]) => ({ slug, name, section, release: null }));
+].map(([slug, name, section]) => ({ slug, name, section, release: null, origin: `content/products/${slug}/` }));
 const basilisk = { slug: 'basilisk', name: 'Basilisk', section: 'gadgets', release: null, origin: 'repository basilisk' };
 
 test('order with no release anywhere: alphabetical inside each section (the expected rendering)', () => {
@@ -242,10 +245,15 @@ test('order: latest release on top, then the others by name; sections keep their
   assert.deepEqual(products.map((p) => p.slug), ['mnt', 'yak', 'zed', 'amp', 'bee', 'fut']);
 });
 
-test('a slug in products.ts and in a repository fails the build', () => {
+test('a slug in content/products/ and in a repository fails the build', () => {
+  const local = { slug: 'basilisk', name: 'Basilisk', section: 'gadgets', release: null, origin: 'content/products/basilisk/' };
   assert.throws(
-    () => assembleCatalog({ local: [...LOCAL, { slug: 'basilisk', name: 'Basilisk', section: 'gadgets', release: null }], remote: [basilisk], published: publishedSlugs, sections }),
-    /slug `basilisk` is defined twice: in src\/data\/products\.ts and in repository basilisk/,
+    () => assembleCatalog({ local: [...LOCAL, local], remote: [basilisk], published: publishedSlugs, sections }),
+    /slug `basilisk` is defined twice: in content\/products\/basilisk\/ and in repository basilisk/,
+  );
+  assert.throws(
+    () => assembleCatalog({ local: [...LOCAL, { ...local, origin: undefined }], remote: [basilisk], published: publishedSlugs, sections }),
+    /in content\/products\/ and in repository basilisk — a product lives in one place \(move its folder out of content\/products\//,
   );
 });
 
@@ -375,7 +383,7 @@ test('snapshot: a failed read (or no source) leaves nothing of the previous buil
   assert.equal(existsSync(join(root, '.zurp-catalog')), false);
 });
 
-// --- README kit (needs `npm ci`: esbuild reads products.ts) -------------------------------------
+// --- README kit (needs `npm ci`) ------------------------------------------------------------------
 
 test('README kit: generated from the built catalog — order, Released section, one header per product', async () => {
   const root = tempSiteWith(SIM);

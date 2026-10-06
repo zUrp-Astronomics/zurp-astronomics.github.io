@@ -1,0 +1,63 @@
+# SOURCE: zurp-astronomics-site — the site's short texts: name, tagline, signature, titles, labels, alt texts
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — read by src/lib/content.mjs (site pages, layout, components, social cards) and by scripts/readme-kit.mjs
+#
+# Edit the texts freely: the code only places them. `{{product}}` / `{{basedOn}}` are markers the code
+# fills (the product's name, its upstream project). Prose (several sentences) is in the .md files of
+# content/, see content/README.md.
+
+# The name, as everywhere: <title> of the home page, og:site_name, the footer's signature band, the
+# signature drawn on the social preview cards (/brand/social/<slug>.jpg), the title of the org README.
+name: zUrp Astronomics
+
+# The tagline: home page (exhibition label), default meta description of every page, org README.
+tagline: Low-tech, DIY, amateur astronomy hardware.
+
+# Who owns us, written ONCE: the signature just below and the footer's product line (`productLine`)
+# both take it through their `{{affiliation}}` marker.
+affiliation: a subsidiary of zUrp Industries
+
+# The signature: footer of the home page, foot of the org README. `{{name}}` / `{{affiliation}}` are
+# the two texts above.
+signature: '{{name}} — {{affiliation}}.'
+
+# The organisation on GitHub: the « => GitHub » stamp, the footer link, the README kit.
+org:
+  url: https://github.com/zUrp-Astronomics
+  handle: '@zUrp-Astronomics'
+
+# The header of every page: the zUrp plate (a link to the home page) and the subtitle under it.
+header:
+  plateAlt: zUrp Astronomics
+  homeLabel: zUrp Astronomics — home
+  subtitle: Because buying is cheating.
+
+# Home page.
+home:
+  posterAlt: >-
+    Worn, creased poster reading “Low-Tech & DIY”: a riveted Nyan Cat trailing a pixel rainbow in
+    front of a moon, on a blueprint with red rays.
+  stampArrow: '=>'
+  stampLabel: GitHub
+  catalogTitle: Catalog
+  manifestoTitle: Manifesto
+
+# Product pages.
+product:
+  title: '{{product}} — zUrp Astronomics'
+  basedOn: 'based on {{basedOn}}'
+  aboutTitle: About
+  sourceTitle: Source
+  sourceArrow: ⟶
+
+# Footer of every page. `productLine` replaces the signature on a product page: `{{product}}` is the
+# product's name, `{{name}}` / `{{affiliation}}` the texts at the top of this file.
+footer:
+  orgLabel: GitHub ·
+  productLine: '{{product}} — a product of {{name}}, {{affiliation}}.'
+  backToTop: Back to top
+  panelAlt: >-
+    Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front
+    of a moon, on a blueprint with red rays.
+  panelTitle: Low-Tech & DIY — culture zUrp

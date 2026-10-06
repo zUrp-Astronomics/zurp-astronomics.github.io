@@ -9,7 +9,8 @@
 //   3. EMPTIES .zurp-catalog/ (git-ignored) and writes there:
 //        posters/<slug>.<ext>   each poster, named after the SLUG (Astro names the optimised
 //                               variants after the source file: _astro/<slug>.<hash>.webp, the
-//                               names the posters imported from src/assets/posters/ always had);
+//                               names the posters of content/products/ have, and those of
+//                               src/assets/posters/ had before ticket #49);
 //        remote.json            the snapshot of what was read (no image bytes): the scripts that run
 //                               after the build (scripts/check-dist.mjs, scripts/readme-kit.mjs)
 //                               read THIS, so they see the catalog that was built — the source is

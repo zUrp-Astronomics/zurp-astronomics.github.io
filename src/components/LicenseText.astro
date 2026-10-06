@@ -3,16 +3,15 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #49) — the sentence is content/licences/site.md, the licences content/licences/licences.yml
 //
 // Inline content only (text + two links), no wrapper and no style: each product page puts it in
 // its own `<p class="repo-note">`, so the page's scoped styles still dress the paragraph. Used by
-// src/pages/[slug]/index.astro. Rule and sources: src/data/licenses.ts.
-import { licenses } from '../data/licenses';
+// src/pages/[slug]/index.astro. The sentence (Markdown, its markers filled with the licences) is
+// the site's own: the README kit has two others (content/licences/), different texts on purpose.
+import { fill, inlineMarkdown, licencesContent, readMarkdown } from '../lib/content.mjs';
 
-const { hardware, software } = licenses;
+const sentence = inlineMarkdown(fill(readMarkdown('licences/site.md'), licencesContent()));
 ---
 
-Open hardware — BOM, 3D files, firmware, docs. Hardware (BOM, 3D/CAD files, PCB, mechanics) is
-under <a href={hardware.url} title={hardware.name}>{hardware.short}</a>, software and firmware under
-<a href={software.url} title={software.name}>{software.short}</a>. A project derived from upstream
-work follows its upstream licence: the project's repository has the final word.
+<Fragment set:html={sentence} />

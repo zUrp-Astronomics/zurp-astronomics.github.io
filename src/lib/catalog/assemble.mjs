@@ -1,20 +1,21 @@
-// SOURCE: zurp-astronomics-site — assembles the full catalog: products still in products.ts + products read from their repositories; one place per product, published products guarded, order inside a section
+// SOURCE: zurp-astronomics-site — assembles the full catalog: products still in content/products/ + products read from their repositories; one place per product, published products guarded, order inside a section
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #49) — the local products are content/products/<slug>/, no longer src/data/products.ts
 //
 // Used, with the same inputs, by the site (src/data/catalog.ts) and by the scripts that run after
 // the build (scripts/lib/catalog.mjs → check-dist, readme-kit): they all see the same catalog.
 //
 // RULES (the human's, 2026-10-06):
-//   - a product lives in ONE place, its repository's sheet or src/data/products.ts: a slug found in
-//     both (or twice) fails the build;
+//   - a product lives in ONE place, its repository's sheet or its folder content/products/<slug>/: a
+//     slug found in both (or twice) fails the build;
 //   - a published product never disappears in silence: a slug of src/data/published-slugs.mjs
 //     missing from the catalog fails the build;
-//   - sections keep their fixed order (src/data/sections.mjs). Inside a section: the products with a
+//   - sections keep their fixed order (content/catalog.yml). Inside a section: the products with a
 //     release first, the latest release on top (by its `published_at`); then those without a
-//     release, by name in alphabetical order. The products of products.ts have no release. There is
-//     no `order` field.
+//     release, by name in alphabetical order. The products of content/products/ have no release.
+//     There is no `order` field.
 //
 // It never reads anything of a product's `poster` (an image import, see src/lib/brand-images.ts:
 // reading a property of it would copy the original file into dist/).
@@ -43,14 +44,14 @@ export function compareInSection(a, b) {
 export function assembleCatalog({ local, remote, published, sections }) {
   const problems = [];
   const all = [
-    ...local.map((p) => ({ p, origin: p.origin ?? 'src/data/products.ts' })),
+    ...local.map((p) => ({ p, origin: p.origin ?? 'content/products/' })),
     ...remote.map((p) => ({ p, origin: p.origin ?? 'a product repository' })),
   ];
   const seen = new Map();
   for (const { p, origin } of all) {
     if (seen.has(p.slug)) {
       problems.push(
-        `slug \`${p.slug}\` is defined twice: in ${seen.get(p.slug)} and in ${origin} — a product lives in one place (move it out of src/data/products.ts once its sheet is in its repository)`,
+        `slug \`${p.slug}\` is defined twice: in ${seen.get(p.slug)} and in ${origin} — a product lives in one place (move its folder out of content/products/ once its sheet is in its repository)`,
       );
     } else seen.set(p.slug, origin);
   }

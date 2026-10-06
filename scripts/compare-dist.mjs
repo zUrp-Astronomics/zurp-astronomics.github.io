@@ -5,8 +5,31 @@
 // STATUS: active — run by .gitea/workflows/trial-compare-dist.yml (an on-demand trial, not part of CI)
 // REVISED: 2026-10-06 (ticket #46) — the CSS mask of scoping hashes is a valid identifier again
 // REVISED: 2026-10-06 (ticket #53) — `--admit-new`: a closed list of files the change adds on purpose
+// REVISED: 2026-10-06 (ticket #66) — `--admitted`: a closed list of declared differences inside pages
+//   present on both sides (visible text removed or added, URL removed, CSS rule removed)
 //
-// Usage: node scripts/compare-dist.mjs <baseDist> <headDist> [--admit-new <path>...]
+// Usage: node scripts/compare-dist.mjs <baseDist> <headDist> [--admitted <declarations>] [--admit-new <path>...]
+//
+// ADMITTED DIFFERENCES (ticket #66). A change that alters pages on purpose declares each difference,
+// one per line, in ONE argument after `--admitted` (the trial declares the list, in the repository,
+// readable in the diff). A line is `<kind> <pages> <value>`: the kind, then a page pattern (a path
+// of dist/, `*` for any characters but `/`, `{a,b}` for alternatives), then the rest of the line;
+// blank lines and lines starting with `#` are skipped. The kinds:
+//   text-removed  <pages> <fragment>   a fragment of visible text the base shows and the head no
+//                                      longer does;
+//   text-added    <pages> <fragment>   a fragment of visible text the head shows and the base did not;
+//   url-removed   <pages> <url>        a URL the base references and the head no longer does;
+//   css-removed   <pages> <selector>   a CSS rule (by its selector, as written in the source, without
+//                                      Astro's scoping attribute) the base applies and the head no
+//                                      longer does.
+// Each declaration must be OBSERVED on EVERY page its pattern matches, in each reading where it
+// applies (both text readings, the URLs, the stylesheets) — the base holds more of it than the head
+// (removed), or the head more than the base (added) — and its pattern must match at least one page:
+// a declaration that is not observed fails, so the list cannot hide anything. A declared difference
+// is then taken out of both sides (every occurrence: text fragments matched whitespace-insensitively,
+// as the two readings place spaces differently around tags; whitespace runs collapsed again after)
+// before they are compared: everything else on the page still has to be the same, and still fails
+// otherwise.
 //
 // ADMITTED NEW FILES. A change that adds files to dist/ on purpose names each of them, by its path
 // in dist/, after `--admit-new` (the trial declares the list, in the repository, readable in the
@@ -45,18 +68,109 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep, posix } from 'node:path';
 
+const USAGE = 'usage: node scripts/compare-dist.mjs <baseDist> <headDist> [--admitted <declarations>] [--admit-new <path>...]';
 const [baseArg, headArg, ...rest] = process.argv.slice(2);
-if (!baseArg || !headArg || (rest.length && rest[0] !== '--admit-new')) {
-  console.error('usage: node scripts/compare-dist.mjs <baseDist> <headDist> [--admit-new <path>...]');
+if (!baseArg || !headArg) {
+  console.error(USAGE);
   process.exit(2);
 }
-const ADMITTED_NEW = new Set(rest.slice(1));
+const ADMITTED_NEW = new Set();
+let declarations = '';
+for (let i = 0, mode = null; i < rest.length; i++) {
+  if (rest[i] === '--admitted') {
+    if (i + 1 >= rest.length) {
+      console.error(`--admitted needs one argument (the declarations)\n${USAGE}`);
+      process.exit(2);
+    }
+    declarations += `${rest[++i]}\n`;
+    mode = null;
+  } else if (rest[i] === '--admit-new') mode = 'new';
+  else if (mode === 'new') ADMITTED_NEW.add(rest[i]);
+  else {
+    console.error(`unexpected argument ${JSON.stringify(rest[i])}\n${USAGE}`);
+    process.exit(2);
+  }
+}
 const BASE = resolve(baseArg);
 const HEAD = resolve(headArg);
 const SITE = 'https://zurp-astronomics.github.io';
 
 const failures = [];
 const fail = (msg) => failures.push(msg);
+
+// ---------- admitted differences (--admitted) -----------------------------------------------------
+const KINDS = ['text-removed', 'text-added', 'url-removed', 'css-removed'];
+/** A page pattern → RegExp over a path of dist/ (`*`: anything but `/`, `?`: one such character, `{a,b}`). */
+function globRegExp(glob) {
+  let re = '';
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === '*') re += '[^/]*';
+    else if (c === '?') re += '[^/]';
+    else if (c === '{') {
+      const end = glob.indexOf('}', i);
+      if (end < 0) throw new Error(`unclosed { in page pattern ${JSON.stringify(glob)}`);
+      re += `(?:${glob.slice(i + 1, end).split(',').map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`;
+      i = end;
+    } else re += c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`^${re}$`);
+}
+const ADMITTED = [];
+for (const [n, raw] of declarations.split('\n').entries()) {
+  const line = raw.trim();
+  if (!line || line.startsWith('#')) continue;
+  const m = line.match(/^(\S+)\s+(\S+)\s+(.+)$/);
+  if (!m || !KINDS.includes(m[1])) {
+    console.error(`--admitted, line ${n + 1}: ${JSON.stringify(line)} is not \`<kind> <pages> <value>\` with a kind among ${KINDS.join(', ')}`);
+    process.exit(2);
+  }
+  ADMITTED.push({ kind: m[1], pages: m[2], match: globRegExp(m[2]), value: m[3].trim(), observed: new Map(), missed: [] });
+}
+const admittedOn = (page, kind) => ADMITTED.filter((a) => a.kind === kind && a.match.test(page));
+/** Records where a declaration was looked for: observed (true) or not, per page and reading. */
+function observe(a, page, reading, ok) {
+  if (ok) a.observed.set(page, [...(a.observed.get(page) ?? []), reading]);
+  else a.missed.push(`${page} (${reading})`);
+}
+const describeAdmitted = (a) => `${a.kind} ${a.pages} ${a.value}`;
+
+// A visible-text fragment, matched whitespace-insensitively: the strict reading glues an element to
+// the punctuation that follows it (`OCL v1.1,`), the loose one does not (`OCL v1.1 ,`).
+function fragmentRegExp(fragment) {
+  const chars = [...fragment.replace(/\s+/g, '')].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(chars.join('\\s*'), 'g');
+}
+const countMatches = (text, re) => (text.match(re) ?? []).length;
+const squeezeText = (t) => t.replace(/[ \t\n\r\f]+/g, ' ').trim();
+
+/** Takes the admitted text differences of `page` out of both readings; records what was observed. */
+function admitText(page, reading, a, b) {
+  for (const kind of ['text-removed', 'text-added']) {
+    for (const adm of admittedOn(page, kind)) {
+      const re = fragmentRegExp(adm.value);
+      const inBase = countMatches(a, re);
+      const inHead = countMatches(b, re);
+      observe(adm, page, `text ${reading}: ${inBase} in base, ${inHead} in head`, kind === 'text-removed' ? inBase > inHead : inHead > inBase);
+      a = squeezeText(a.replace(re, ''));
+      b = squeezeText(b.replace(re, ''));
+    }
+  }
+  return [a, b];
+}
+
+/** Takes the admitted URL removals of `page` out of both lists of URLs (`tag[attr] url`). */
+function admitUrls(page, a, b) {
+  for (const adm of admittedOn(page, 'url-removed')) {
+    const is = (entry) => entry.slice(entry.indexOf(' ') + 1) === adm.value;
+    const inBase = a.filter(is).length;
+    const inHead = b.filter(is).length;
+    observe(adm, page, `urls: ${inBase} in base, ${inHead} in head`, inBase > inHead);
+    a = a.filter((e) => !is(e));
+    b = b.filter((e) => !is(e));
+  }
+  return [a, b];
+}
 
 // ---------- files -------------------------------------------------------------------------------
 function walk(dir) {
@@ -406,9 +520,9 @@ for (const page of pages) {
   console.log(`  stamp: head "${stamp.text}" ${stamp.ok ? 'ok' : 'BAD'} | base "${baseStamp.text}"`);
 
   for (const [mode, tagAs] of [['strict', ''], ['loose', ' ']]) {
-    const a = visibleText(maskStamp(bh), tagAs);
-    const b = visibleText(maskStamp(hh), tagAs);
-    if (a === b) console.log(`  text (${mode}): same (${b.length} chars)`);
+    const admitted = admittedOn(page, 'text-removed').length + admittedOn(page, 'text-added').length;
+    const [a, b] = admitText(page, mode, visibleText(maskStamp(bh), tagAs), visibleText(maskStamp(hh), tagAs));
+    if (a === b) console.log(`  text (${mode}): same (${b.length} chars)${admitted ? `, once the ${admitted} admitted fragment(s) are taken out` : ''}`);
     else {
       fail(`${page}: visible text differs (${mode})`);
       console.log(`  text (${mode}): DIFFERS ${firstDifference(a, b)}`);
@@ -416,12 +530,14 @@ for (const page of pages) {
   }
 
   {
-    const { onlyA, onlyB } = diffMultisets(urls(bh), urls(hh));
+    const [ua, ub] = admitUrls(page, urls(bh), urls(hh));
+    const admitted = urls(bh).length - ua.length;
+    const { onlyA, onlyB } = diffMultisets(ua, ub);
     if (onlyA.length || onlyB.length) {
       fail(`${page}: referenced URLs differ`);
       show('  URLS only in base:', onlyA);
       show('  URLS only in head:', onlyB);
-    } else console.log(`  urls: same (${urls(hh).length})`);
+    } else console.log(`  urls: same (${ub.length})${admitted ? `, apart from ${admitted} admitted removed reference(s)` : ''}`);
   }
 
   {
@@ -508,16 +624,82 @@ function pageCss(root, html) {
   return sheets.join('\n');
 }
 const cssLines = (css) => css.split(/(?<=[{};])/).map((s) => normHash(s.trim())).filter(Boolean);
+
+// The style rules of a canonical (minified) stylesheet: [start, end) of each `selector{…}` that holds
+// declarations, at any depth (inside @media too), with its selector. At-rule blocks are walked into,
+// not returned. Strings and escapes are skipped.
+function styleRules(css) {
+  const rules = [];
+  const stack = []; // { start, prelude }
+  let preludeStart = 0;
+  let quote = null;
+  for (let i = 0; i < css.length; i++) {
+    const c = css[i];
+    if (quote) {
+      if (c === '\\') i++;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") quote = c;
+    else if (c === '\\') i++;
+    else if (c === '{') {
+      stack.push({ start: preludeStart, prelude: css.slice(preludeStart, i).trim() });
+      preludeStart = i + 1;
+    } else if (c === '}') {
+      const open = stack.pop();
+      if (open && !open.prelude.startsWith('@')) rules.push({ start: open.start, end: i + 1, selector: open.prelude });
+      preludeStart = i + 1;
+    } else if (c === ';') preludeStart = i + 1;
+  }
+  return rules;
+}
+// A rule's selector as written in the source: Astro's scoping attribute (masked) taken out.
+const unscoped = (selector) => selector.replace(/\[data-astro-cid-masked\]|:where\(\.astro-masked\)|\.astro-masked/g, '').trim();
+
+/** Takes the admitted CSS rules of `page` out of both stylesheets; records what was observed. */
+function admitCss(page, a, b) {
+  for (const adm of admittedOn(page, 'css-removed')) {
+    const cut = (css) => {
+      const hit = styleRules(css).filter((r) => unscoped(r.selector) === adm.value);
+      let out = css;
+      for (const r of [...hit].sort((x, y) => y.start - x.start)) out = out.slice(0, r.start) + out.slice(r.end);
+      return [out, hit.length];
+    };
+    let inBase;
+    let inHead;
+    [a, inBase] = cut(a);
+    [b, inHead] = cut(b);
+    observe(adm, page, `css: ${inBase} rule(s) in base, ${inHead} in head`, inBase > inHead);
+  }
+  return [a, b];
+}
 console.log(`\nCSS: ${lightningcss ? 'canonical form (lightningcss), per page, in cascade order' : 'lightningcss not found — raw comparison, report only'}`);
 for (const page of pages.filter((p) => basePages.has(p))) {
-  const a = pageCss(BASE, readFileSync(join(BASE, page), 'utf8'));
-  const b = pageCss(HEAD, readFileSync(join(HEAD, page), 'utf8'));
+  const admitted = admittedOn(page, 'css-removed').length;
+  if (admitted && !lightningcss) fail(`${page}: CSS rules are admitted (css-removed), but lightningcss is not installed to read the stylesheets`);
+  const [a, b] = admitCss(page, pageCss(BASE, readFileSync(join(BASE, page), 'utf8')), pageCss(HEAD, readFileSync(join(HEAD, page), 'utf8')));
   if (a === b) {
-    console.log(`  ${page}: same (${b.length} chars)`);
+    console.log(`  ${page}: same (${b.length} chars)${admitted ? `, once the ${admitted} admitted removed rule selector(s) are taken out` : ''}`);
     continue;
   }
   if (lightningcss) fail(`${page}: stylesheets differ`);
   show(`  ${page}: DIFFERS`, lineDiff(cssLines(a), cssLines(b)), 40);
+}
+
+// ---------- admitted differences: each one observed, on every page its pattern matches -------------
+if (ADMITTED.length) {
+  console.log(`\nADMITTED DIFFERENCES (--admitted, ${ADMITTED.length} declared):`);
+  for (const a of ADMITTED) {
+    const matched = pages.filter((p) => basePages.has(p) && a.match.test(p));
+    if (!matched.length) fail(`admitted difference matches no page present on both sides: ${describeAdmitted(a)}`);
+    if (a.missed.length) {
+      fail(`admitted difference not observed: ${describeAdmitted(a)} — on ${a.missed.join('; ')}`);
+    }
+    const unchecked = matched.filter((p) => !a.observed.has(p) && !a.missed.some((m) => m.startsWith(`${p} (`)));
+    if (unchecked.length) fail(`admitted difference never looked for on: ${unchecked.join(', ')} (${describeAdmitted(a)})`);
+    console.log(`  ${a.missed.length || !matched.length || unchecked.length ? 'NOT OBSERVED' : 'observed    '}  ${describeAdmitted(a)}`);
+    console.log(`      on ${matched.length} page(s): ${matched.join(', ') || 'none'}`);
+  }
 }
 
 console.log('');
@@ -526,4 +708,4 @@ if (failures.length) {
   for (const f of failures) console.log(`  - ${f}`);
   process.exit(1);
 }
-console.log(`SAME: files${ADMITTED_NEW.size ? ` (apart from the ${ADMITTED_NEW.size} admitted new)` : ''}, image sizes, visible text, URLs, page images${lightningcss ? ', stylesheets' : ''}; build stamp rendered on every page.`);
+console.log(`SAME: files${ADMITTED_NEW.size ? ` (apart from the ${ADMITTED_NEW.size} admitted new)` : ''}, image sizes, visible text, URLs, page images${lightningcss ? ', stylesheets' : ''}${ADMITTED.length ? ` (apart from the ${ADMITTED.length} admitted differences, each observed)` : ''}; build stamp rendered on every page.`);

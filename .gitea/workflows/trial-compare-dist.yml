@@ -8,20 +8,24 @@
 # REVISED: 2026-10-06 (ticket #53) — a CLOSED list of admitted differences, declared below (env):
 #   DIST_ADMITTED_NEW, KIT_MAY_DIFFER. KIT_ADMITTED (ticket #49, in main since) is gone
 # REVISED: 2026-10-06 (ticket #61) — both lists emptied: the #53 differences are in main
+# REVISED: 2026-10-06 (ticket #66) — DIST_ADMITTED: differences declared INSIDE pages present on both
+#   sides (scripts/compare-dist.mjs --admitted), each one required to be observed; the lists of #66
 #
 # For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
 # lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
 # it — BOTH with their catalog read on the simulator (ZURP_CATALOG=simulator: the source is always
 # named, and the same catalog on both sides) — and compares:
-#   - the two dist/ (pages, URLs, visible text, image sizes, build stamp: scripts/compare-dist.mjs);
+#   - the two dist/ (pages, URLs, visible text, image sizes, stylesheets, build stamp:
+#     scripts/compare-dist.mjs);
 #   - the two README kits (npm run readme-kit), byte for byte — compare-dist does not cover them;
 #   - the stable brand images (dist/brand/: posters, social preview cards with their drawn text,
 #     panel, avatar), byte for byte; a file whose bytes differ is compared pixel by pixel, in case
 #     the encoder is not deterministic (scripts/compare-brand.mjs).
 # Red when anything differs, apart from the differences the change under trial declares on purpose
 # in `env` below — a CLOSED list, in the repository, readable in the diff: every difference outside
-# it still turns the trial red, and an admitted new file that does not appear does too. Empty both
-# lists once the change is in main. The report lists every difference, admitted ones included.
+# it still turns the trial red, and an admitted difference (or new file) that does not appear does
+# too. Empty the lists once the change is in main. The report lists every difference, admitted ones
+# included.
 #
 # The name must not start with `CI`: it would become a required status of `main`.
 name: trial-compare-dist
@@ -35,10 +39,33 @@ jobs:
     timeout-minutes: 30
     env:
       BASE_REF: main
-      # ADMITTED DIFFERENCES — none (ticket #61 adds no served file and does not change the README kit;
-      # the lists of #53 are in main since). Each list is space-separated; empty = nothing admitted.
+      # ADMITTED DIFFERENCES — ticket #66: the licence of a product is its repository's LICENSE, as
+      # GitHub detects it; the site's licence rule is gone.
+      #   DIST_ADMITTED_NEW  files new in dist/ (space-separated): none.
+      #   DIST_ADMITTED      differences inside the pages, one per line, `<kind> <pages> <value>`
+      #                      (scripts/compare-dist.mjs, `--admitted`), each required to be observed on
+      #                      every page its pattern matches:
+      #     - removed from every product page: the two stamps of the old rule, the licence sentence of
+      #       the Source section with its two links, and its paragraph's style (.repo-note);
+      #     - added: the stamp of the licence GitHub detects, as the simulator imitates it — GPL-3.0 on
+      #       /maelstrom/ and /unicorn/, the generic stamp (content/site.yml product.licenseOther) on
+      #       /basilisk/ (an OCL LICENSE GitHub does not recognise). The other products have no
+      #       repository, or none in the simulator: no stamp.
+      #   KIT_MAY_DIFFER     README kit files that may differ (shell patterns): the product headers
+      #                      (licence badge gone), the guide (its paragraphs on that badge), the org
+      #                      README (licence badges and line gone) — their raw diff is printed in full.
+      # Each list empty = nothing admitted.
       DIST_ADMITTED_NEW: ''
-      KIT_MAY_DIFFER: ''
+      DIST_ADMITTED: |
+        text-removed */index.html Hardware · OCL v1.1
+        text-removed */index.html Software · GPL-3.0
+        text-removed */index.html Open hardware — BOM, 3D files, firmware, docs. Hardware (BOM, 3D/CAD files, PCB, mechanics) is under OCL v1.1, software and firmware under GPL-3.0. A project derived from upstream work follows its upstream licence: the project's repository has the final word.
+        url-removed */index.html https://github.com/OpenCommunityLicence/OpenCommunityLicence
+        url-removed */index.html https://www.gnu.org/licenses/gpl-3.0.html
+        css-removed */index.html .repo-note
+        text-added {maelstrom,unicorn}/index.html GPL-3.0
+        text-added basilisk/index.html Other licence
+      KIT_MAY_DIFFER: 'readme-kit/repos/* readme-kit/README.md profile/README.md'
     steps:
       - uses: actions/checkout@v4
 
@@ -134,7 +161,7 @@ jobs:
       - name: Compare dist/
         run: |
           rc=0
-          node scripts/compare-dist.mjs /tmp/base/dist dist --admit-new $DIST_ADMITTED_NEW > /tmp/report.txt 2>&1 || rc=$?
+          node scripts/compare-dist.mjs /tmp/base/dist dist --admitted "$DIST_ADMITTED" --admit-new $DIST_ADMITTED_NEW > /tmp/report.txt 2>&1 || rc=$?
           cat /tmp/report.txt
           mkdir -p /tmp/bundle/base /tmp/bundle/head
           cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
@@ -146,7 +173,13 @@ jobs:
           echo "=== VERDICTS"
           echo "--- dist/ (scripts/compare-dist.mjs)"
           sed -n '/^FILES/p;/^    brand\/status\//p;/^IMAGE /p;/markup (report only)/p;/^    [+-] /p' /tmp/report.txt | sort | uniq -c
+          echo "--- dist/: per page (text, URLs, stylesheets)"
+          grep -E '^=== |^  (text|urls)|^  [^ ]+\.html: ' /tmp/report.txt || true
+          sed -n '/^ADMITTED DIFFERENCES/,/^$/p;/^DIFFERENCES/,$p' /tmp/report.txt
           tail -1 /tmp/report.txt
+          echo "--- the licence stamps of the head's pages (scripts/check-dist.mjs)"
+          sed -n '/^Licence stamps/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
+          tail -1 /tmp/check-dist.log
           echo "--- README kit"
           sed -n '/^--- verdict/,$p' /tmp/kit-report.txt
           echo "--- brand images (scripts/compare-brand.mjs)"

@@ -2,6 +2,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — shrinking: a product leaves content/products/ when its folder moves to its repository's 9_Assets/
+// REVISED: 2026-10-06 (ticket #66) — a local product carries the licence of its repository when the
+//   organisation has one by its name (`repositories`, the list the build read, in its snapshot)
 //
 // THE RULE (ticket #49). A product not migrated yet lives in content/products/<slug>/: its sheet
 // `zurp.yml`, in the EXACT format of a repository's 9_Assets/zurp.yml, and its poster next to it.
@@ -14,7 +16,13 @@
 //             or the organisation itself (content/site.yml, org.url) for a slug listed in
 //             `withoutRepository` of content/catalog.yml (Cyclops, Wraith: no repository yet; a
 //             sheet may not carry `repo`, it is deduced, read.mjs DEDUCED.repo);
-//   releases  none (a product with releases has a repository, so its sheet is there).
+//   releases  none (a product with releases has a repository, so its sheet is there);
+//   license   the licence GitHub detects in the repository of the organisation named like the folder,
+//             the case ignored (the real repositories are `Kraken`, `Kaiju`…), taken from the
+//             repositories the build listed (`repositories`: the snapshot's, src/lib/catalog/loader.mjs)
+//             — so the page and the scripts after the build see the same one. None (null) for a slug
+//             of `withoutRepository`, for a repository without a LICENSE, and when the organisation has
+//             no repository by that name: never an error.
 // A slug both here and in a repository fails the build (src/lib/catalog/assemble.mjs).
 //
 // Read by the site (src/data/catalog.ts, which imports the posters) and by the scripts that run
@@ -30,11 +38,22 @@ import { CONTENT_DIR, catalogContent, contentDir, siteContent } from '../content
 export const LOCAL_PRODUCTS_DIR = `${CONTENT_DIR}/products`;
 
 /**
+ * The licence of the repository of the organisation named `slug`, the case ignored; null when there
+ * is none (no such repository, or no LICENSE detected).
+ * @param {string} slug
+ * @param {ReadonlyArray<{ name: string, license?: { spdx_id: string | null, name: string | null } | null }>} repositories
+ */
+export function licenseOf(slug, repositories) {
+  const key = slug.toLowerCase();
+  return repositories.find((r) => r.name.toLowerCase() === key)?.license ?? null;
+}
+
+/**
  * content/products/ seen as repositories: each folder is a repository's 9_Assets/.
  * @param {string} dir content/products/
- * @param {{ orgUrl: string, withoutRepository?: readonly string[] }} options
+ * @param {{ orgUrl: string, withoutRepository?: readonly string[], repositories?: ReadonlyArray<{ name: string, license?: any }> }} options
  */
-export function localBackend(dir, { orgUrl, withoutRepository = [] }) {
+export function localBackend(dir, { orgUrl, withoutRepository = [], repositories = [] }) {
   const root = resolve(dir);
   const org = orgUrl.replace(/\/+$/, '');
   const folder = (repo) => {
@@ -53,7 +72,11 @@ export function localBackend(dir, { orgUrl, withoutRepository = [] }) {
         .filter((e) => e.isDirectory())
         .map((e) => e.name)
         .sort()
-        .map((name) => ({ name, url: withoutRepository.includes(name) ? org : `${org}/${name}` }));
+        .map((name) =>
+          withoutRepository.includes(name)
+            ? { name, url: org, license: null }
+            : { name, url: `${org}/${name}`, license: licenseOf(name, repositories) },
+        );
     },
     async readFile(repo, path) {
       // Only 9_Assets/ exists in a product repository's eyes, and the folder is that 9_Assets/.
@@ -73,9 +96,15 @@ export function localBackend(dir, { orgUrl, withoutRepository = [] }) {
  * The local products, validated like the repositories' sheets. Each one also carries `posterFile`
  * (named after the slug), `posterPath` (as the sheet names it, relative to its folder) and
  * `posterBytes`. Throws on any problem, every problem at once.
- * @param {{ root?: string, sectionIds: readonly string[] }} options
+ * `repositories` is REQUIRED: the organisation's repositories as the build listed them, with their
+ * licence (the snapshot's `repositories`) — `[]` says on purpose that there is none to look up. No
+ * default: a caller that forgot it would lose the licences without a sound.
+ * @param {{ root?: string, sectionIds: readonly string[], repositories: ReadonlyArray<{ name: string, license?: any }> }} options
  */
-export async function readLocalProducts({ root = process.cwd(), sectionIds }) {
+export async function readLocalProducts({ root = process.cwd(), sectionIds, repositories }) {
+  if (!Array.isArray(repositories)) {
+    throw new Error('catalog: readLocalProducts needs `repositories` (the organisation\'s repositories with their licence, from the build\'s snapshot; [] for none)');
+  }
   const dir = join(contentDir(root), 'products');
   const { withoutRepository } = catalogContent(root);
   const orgUrl = siteContent(root)?.org?.url;
@@ -93,5 +122,5 @@ export async function readLocalProducts({ root = process.cwd(), sectionIds }) {
     }
   }
   if (problems.length) throw new Error(`catalog: ${problems.length} problem(s) in ${LOCAL_PRODUCTS_DIR}/:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
-  return readRepoProducts(localBackend(dir, { orgUrl, withoutRepository }), { sectionIds });
+  return readRepoProducts(localBackend(dir, { orgUrl, withoutRepository, repositories }), { sectionIds });
 }

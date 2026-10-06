@@ -5,6 +5,9 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #49) — the texts and the layout are Mustache templates in content/readme-kit/; this script only computes what they show
 // REVISED: 2026-10-06 (ticket #53) — the product header is pasted ONCE: URLs only (poster, status badge served from the site's JSON, GitHub licence badge), no text of the sheet
+// REVISED: 2026-10-06 (ticket #66) — no licence anywhere in the kit: the org README's licence badges
+//   and sentence and the product header's GitHub licence badge are gone (a project's licence is its
+//   repository's LICENSE, which GitHub shows in the repository's « About » box)
 //
 // Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
 //   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
@@ -28,10 +31,9 @@
 //
 // TEMPLATES (ticket #49). Every word and the whole layout of the three kinds of file are in
 // content/readme-kit/ — org-readme.md (+ projects-table.md), product-header.md, guide.md — and
-// content/ (site.yml, catalog.yml, home/pitch.md, licences/): logic-less Mustache templates, which
-// the human edits without touching this script. This script computes their values (URLs, the
-// grouping of the projects, which product has a repository, the org README's licence sentence) and
-// provides one helper, `{{#badge}}label|message|colour{{/badge}}`: a shields.io static badge.
+// content/ (site.yml, catalog.yml, home/pitch.md): logic-less Mustache templates, which the human
+// edits without touching this script. This script computes their values (URLs, the grouping of the
+// projects, which product has a repository) and provides one helper, `{{#badge}}label|message|colour{{/badge}}`: a shields.io static badge.
 // `{{x}}` is HTML-escaped (for HTML tags), `{{{x}}}` is inserted as is (for Markdown).
 //
 // DETERMINISTIC. The output depends only on the catalog, content/, the `site` of astro.config.mjs
@@ -47,7 +49,7 @@ import { dirname, join, resolve } from 'node:path';
 import Mustache from 'mustache';
 import { loadBuiltCatalog, repoRoot } from './lib/catalog.mjs';
 import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
-import { escapeHtml, fill, licencesContent, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
+import { escapeHtml, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
 import { shieldsEndpoint, statusBadgePath } from '../src/lib/status-badge.mjs';
 
 const arg = (name) => {
@@ -61,7 +63,6 @@ const snapshotFile = arg('--catalog') && resolve(arg('--catalog'));
 
 const { products, sections } = await loadBuiltCatalog({ snapshotFile });
 const site = siteContent(repoRoot);
-const licences = licencesContent(repoRoot);
 const kit = readYaml('readme-kit/kit.yml', repoRoot);
 const template = (name) => readMarkdown(`readme-kit/${name}.md`, repoRoot);
 
@@ -107,10 +108,7 @@ const badge = () => (text, render) => {
 const render = (name, view, partials = {}) =>
   Mustache.render(template(name), { ...view, badge }, partials, { escape: escapeHtml });
 
-/** A licence sentence of content/licences/, its markers filled (Markdown, inserted as is). */
-const licenceSentence = (name, view = {}) => fill(readMarkdown(`licences/${name}.md`, repoRoot), { ...licences, ...view }).trim();
-
-const common = { generated: kit.generated, licences, siteUrl: SITE, orgUrl: ORG_URL };
+const common = { generated: kit.generated, siteUrl: SITE, orgUrl: ORG_URL };
 
 // --- 1. Organisation README (zUrp-Astronomics/.github → profile/README.md) ---------------------------
 
@@ -150,7 +148,6 @@ function orgReadme() {
       panelUrl,
       panelAlt: kit.panelAlt,
       siteHost,
-      licence: licenceSentence('org-readme'),
       wipSections: bySection(notReleased.filter((p) => p.section !== FUTURE)),
       future: future.length ? { title: sections.find((s) => s.id === FUTURE).title, products: future.map(projectView) } : null,
       releasedSections: bySection(released),
@@ -167,10 +164,10 @@ function orgReadme() {
 // slogan, tagline, « based on », posterAlt): it is never pasted again, such a text would go stale:
 //   - the poster, /brand/posters/<slug>.webp, linking to the product page;
 //   - the status badge: shields.io renders /brand/status/<slug>.json, which the site rewrites at each
-//     build (src/lib/status-badge.mjs);
-//   - for a product with a repository, GitHub's standard licence badge: shields.io reads the licence
-//     GitHub detects in the repository's LICENSE file (no LICENSE: « not specified », and that is
-//     true). The licence of a project is its LICENSE file, nothing else.
+//     build (src/lib/status-badge.mjs).
+// No licence badge (ticket #66): pasted once, it would show « not specified » for a repository
+// without a LICENSE, and could not appear the day the LICENSE arrives; GitHub already shows the
+// licence in the repository's « About » box.
 // Its alt texts and the comments around it come from content/readme-kit/kit.yml (`header`).
 
 function repoHeader(p) {
@@ -179,7 +176,6 @@ function repoHeader(p) {
     pageUrl: pageUrl(p),
     posterUrl: posterUrl(p),
     statusBadgeUrl: shieldsEndpoint(statusJsonUrl(p)),
-    licenceBadgeUrl: hasRepo(p) ? `https://img.shields.io/github/license/${repoPath(p)}` : null,
   });
 }
 

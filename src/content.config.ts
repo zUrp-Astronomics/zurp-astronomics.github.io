@@ -3,6 +3,9 @@
 // DATE: 2026-10-06
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #49) — the section ids come from content/catalog.yml
+// REVISED: 2026-10-06 (ticket #66) — `license`, the repository's licence as GitHub detects it. zod
+//   drops in silence every key this schema does not declare: a field of the snapshot missing here
+//   never reaches the page
 //
 // The loader (src/lib/catalog/loader.mjs) reads the source named by ZURP_CATALOG (simulator |
 // github, no default) and validates every sheet with messages naming the repository and the field
@@ -35,6 +38,7 @@ const repoProducts = defineCollection({
       posterAlt: z.string(),
       accent: z.string(),
       release: z.object({ tag: z.string(), publishedAt: z.string() }).nullable(),
+      license: z.object({ spdx_id: z.string().nullable(), name: z.string().nullable() }).nullable(),
     }),
 });
 

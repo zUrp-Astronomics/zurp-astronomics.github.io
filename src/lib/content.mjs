@@ -2,10 +2,12 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #66) — content/licences/ is gone: a product's licence is its repository's
+//   LICENSE, as GitHub detects it (src/lib/license-stamp.mjs); the site holds no licence rule of its own
 //
 // THE RULE (the human's, ticket #49): a fixed structure on one side (src/, scripts/), the resources
 // on the other — content/, at the repository root. Every text meant for a reader (prose, titles, link
-// texts, labels, alt / title / aria-label, meta, licence sentences, the README templates) is in
+// texts, labels, alt / title / aria-label, meta, the README templates) is in
 // content/, and the code only places it. content/README.md says what is where.
 //
 // Plain JavaScript, so that the site (Astro), the scripts that run after the build
@@ -138,6 +140,3 @@ export function catalogContent(root) {
   if (problems.length) throw new Error(`content: ${CONTENT_DIR}/catalog.yml: ${problems.join('; ')}`);
   return { sections: c.sections, statuses: c.statuses, statusBadge: c.statusBadge, withoutRepository: c.withoutRepository ?? [] };
 }
-
-/** content/licences/licences.yml: name, URL, short label and badge of each licence. */
-export const licencesContent = (root) => readYaml('licences/licences.yml', root);

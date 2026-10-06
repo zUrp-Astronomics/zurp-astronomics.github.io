@@ -1,9 +1,9 @@
 # content/ — les textes et les ressources du site
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-06 (ticket #53 : JSON de statut, en-tête produit collé une fois)
+**Dernière révision** : 2026-10-06 (ticket #66 : la licence d'un produit est le `LICENSE` de son dépôt, `licences/` retiré)
 **Statut** : actif — tout texte destiné au lecteur vit ici ; le code (`src/`, `scripts/`) ne fait que le placer
-**Référencé par** : `src/lib/content.mjs`, `src/lib/catalog/local.mjs`, `src/lib/status-badge.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
+**Référencé par** : `src/lib/content.mjs`, `src/lib/catalog/local.mjs`, `src/lib/status-badge.mjs`, `src/lib/license-stamp.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
 
 Une structure fixe d'un côté (`src/`, `scripts/`), les ressources de l'autre : ce dossier. Pour
 changer un mot du site ou du README de l'organisation, on édite un fichier d'ici, jamais du code. Le
@@ -13,24 +13,24 @@ changement part au déploiement suivant (push sur `main`).
 
 | Fichier | Ce qu'il porte | Où ça sort |
 |---|---|---|
-| `site.yml` | le nom, l'accroche, l'affiliation (« a subsidiary of… », écrite une fois : la signature et la ligne produit du pied de page la reprennent), la signature, l'organisation GitHub, les titres, libellés et textes alternatifs des pages | tout le site ; nom, accroche et signature aussi dans le README de l'org, le nom aussi sur les cartes d'aperçu |
+| `site.yml` | le nom, l'accroche, l'affiliation (« a subsidiary of… », écrite une fois : la signature et la ligne produit du pied de page la reprennent), la signature, l'organisation GitHub, les titres, libellés et textes alternatifs des pages (dont `product.licenseOther`, le tampon d'une licence que GitHub ne reconnaît pas) | tout le site ; nom, accroche et signature aussi dans le README de l'org, le nom aussi sur les cartes d'aperçu |
 | `catalog.yml` | les sections (ordre, titres), les libellés de statut (et la couleur de leur badge README), les textes du badge de statut (`statusBadge`), les produits sans dépôt | accueil, pages produit, README de l'org et JSON de statut des badges (`/brand/status/<slug>.json`, rendu par shields.io dans l'en-tête de chaque README produit) |
 | `home/pitch.md` | le pitch, sur une ligne | accueil (étiquette de l'affiche), README de l'org (« Hi here ») |
 | `home/manifesto.md` | le manifeste | accueil |
 | `footer/legalese.md` | la ligne en petit du pied de page | toutes les pages |
-| `licences/licences.yml` | les licences : nom, URL, libellé court, libellé de badge | pages produit, README |
-| `licences/site.md` | la phrase de licence du site | pages produit (section « Source ») |
-| `licences/org-readme.md` | la phrase de licence du README de l'org | README de l'org |
 | `readme-kit/org-readme.md` | le gabarit du README de l'organisation | `zUrp-Astronomics/.github` → `profile/README.md` |
 | `readme-kit/projects-table.md` | le tableau d'une liste de projets de ce README | idem |
-| `readme-kit/product-header.md` | le gabarit de l'en-tête de README d'un produit, collé une fois : que des URL (affiche, badge de statut, badge de licence GitHub), aucun texte de la fiche | `…/.github` → `readme-kit/repos/<slug>.md` |
+| `readme-kit/product-header.md` | le gabarit de l'en-tête de README d'un produit, collé une fois : que des URL (affiche, badge de statut), aucun texte de la fiche | `…/.github` → `readme-kit/repos/<slug>.md` |
 | `readme-kit/guide.md` | le gabarit du mode d'emploi du kit (en français) | `…/.github` → `readme-kit/README.md` |
 | `readme-kit/kit.yml` | les textes courts partagés par ces gabarits (dont `header` : marqueurs, commentaire et textes alternatifs de l'en-tête produit) | idem |
 | `products/<slug>/` | un produit pas encore migré vers son dépôt : sa fiche `zurp.yml` et son affiche | une page `/<slug>/`, sa tuile, ses images `/brand/…`, ses lignes du README |
 
-Les deux phrases de licence sont deux textes différents, exprès : chacune sert un lecteur. Un
-produit n'en a pas : sa licence, c'est le fichier `LICENSE` de son dépôt, que le badge de licence
-de son en-tête README affiche.
+**Les licences ne sont pas ici.** La licence d'un produit, c'est le fichier `LICENSE` à la racine
+de son dépôt, telle que GitHub la détecte : la page du produit l'affiche (un tampon, son identifiant
+SPDX, ou `product.licenseOther` de `site.yml` quand GitHub ne la reconnaît pas), et rien quand il
+n'y en a pas — pas de dépôt, ou un dépôt sans `LICENSE`. Le site ne tient aucune règle de licence,
+et le README de l'organisation n'en affiche aucune. Pour changer la licence d'un produit, on change
+le `LICENSE` de son dépôt.
 
 ## Les formats
 

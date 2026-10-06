@@ -4,6 +4,8 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #62) — the status is the sheet's, never deduced from a release (the
 //   human: « repo public != projet releasé »); a release gives the version, the rank, a rebuild
+// REVISED: 2026-10-06 (ticket #66) — each product carries `license`, its repository's licence as the
+//   backend lists it (GitHub's detection of the LICENSE file; null when there is none)
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases. Never the
@@ -15,6 +17,9 @@
 //       repo      the repository's URL (the « Source » link)
 //       release   the latest release: its tag, as is (the version shown), and its `published_at`
 //                 (the moment it appears on the Releases page; it ranks the product in its section)
+//       license   the licence GitHub detects in the repository's LICENSE file, as the list of the
+//                 organisation's repositories gives it (no other request, no file read); null when
+//                 there is none — never an error
 //     The poster is the file of 9_Assets/ named by `poster:`;
 //   - the status (`wip`, `future`, `released`) is WRITTEN in the sheet: the human decides it. It is
 //     never deduced from the releases — an alpha release of a firmware does not make the product
@@ -46,6 +51,7 @@ const DEDUCED = {
   slug: 'the slug is the repository name in lower case',
   repo: 'the « Source » link is the repository URL',
   release: 'the release comes from the GitHub releases',
+  license: "the licence is the repository's LICENSE file, as GitHub detects it",
   version: 'the version is the tag of the latest GitHub release',
   order: 'the order inside a section comes from the release dates, then the names',
 };
@@ -123,13 +129,15 @@ export function latestRelease(releases) {
  * Reads every repository of the backend and returns the products it holds, in repository-name
  * order. Throws one error listing every problem found, each prefixed by its repository.
  * Each product also carries `posterPath`, the poster's path inside 9_Assets/ as the sheet names it.
- * @param {{ listRepos(): Promise<Array<{name: string, url: string}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string, where?(repo: string): string, origin?(repo: string): string, filePath?(repo: string, path: string): string }} backend
- * @param {{ sectionIds: readonly string[] }} options
+ * `repos`: the backend's repositories when the caller has already listed them (the loader keeps the
+ * list for the snapshot: the organisation is listed once per build).
+ * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string, where?(repo: string): string, origin?(repo: string): string, filePath?(repo: string, path: string): string }} backend
+ * @param {{ sectionIds: readonly string[], repos?: Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}> }} options
  */
-export async function readRepoProducts(backend, { sectionIds }) {
+export async function readRepoProducts(backend, { sectionIds, repos }) {
   const products = [];
   const problems = [];
-  for (const { name: repoName, url } of await backend.listRepos()) {
+  for (const { name: repoName, url, license } of repos ?? (await backend.listRepos())) {
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
     const where = backend.where?.(repoName) ?? `repository ${repoName} (${SHEET_PATH})`;
@@ -180,6 +188,7 @@ export async function readRepoProducts(backend, { sectionIds }) {
       posterAlt: sheet.posterAlt.trim(),
       accent: sheet.accent,
       release,
+      license: license ?? null,
       // Named after the slug, not after the sheet's file: Astro names the optimised variants after
       // the source file (_astro/<name>.<hash>.webp).
       posterFile: `${slug}${ext}`,

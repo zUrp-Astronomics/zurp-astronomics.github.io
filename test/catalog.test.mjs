@@ -4,6 +4,7 @@
 // STATUS: active — run by `npm test` (CLAUDE.md `## Test`, job `build` of .gitea/workflows/ci.yml)
 // REVISED: 2026-10-06 (ticket #49) — the local products are content/products/ (test/content.test.mjs tests them); sections from content/catalog.yml
 // REVISED: 2026-10-06 (ticket #53) — the basilisk header points to its status JSON, which carries the release tag (was: a static status badge)
+// REVISED: 2026-10-06 (ticket #61) — the simulator holds maelstrom and unicorn too, byte copies of their workshop kits
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet, a slug twice, a published product gone) are built here, in temporary simulators and a
@@ -14,7 +15,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -114,10 +115,37 @@ test('simulator: basilisk files are the workshop kit, byte for byte', () => {
   assert.equal(existsSync(join(SIM, 'releases', 'basilisk.json')), false, 'basilisk has no release');
 });
 
+// Ticket #61: maelstrom's kit is byte for byte its former content/products/maelstrom/ (main 47d9bb2);
+// unicorn's is that sheet with the human's 2.7 poster (poster, posterAlt, accent, comments changed).
+const KITS = {
+  maelstrom: {
+    'zurp.yml': '9a773b9df864d497b4b89fb873bbe407c40918726b0b5e2185d67b6a17b134a1',
+    'maelstrom.webp': '8c3cad6d6430d4650e41ca85529dcc3fe28023bc5b248373fda67a8ddf130ce2',
+  },
+  unicorn: {
+    'zurp.yml': '1347d0b12c305addf313e983fce6e1890e8e9ee4ddf4d3c5dff3b860fa442a04',
+    'unicorn.png': '4abf22ce2805aaecafb1b69d1cbbcfddb51e950464343210324e93392c3380d8',
+  },
+};
+
+test('simulator: maelstrom and unicorn files are their workshop kits, byte for byte, in lower-case folders, no release', () => {
+  for (const [slug, files] of Object.entries(KITS)) {
+    const dir = join(SIM, 'repos', slug, '9_Assets');
+    assert.deepEqual(readdirSync(dir).sort(), Object.keys(files).sort(), slug);
+    for (const [name, hash] of Object.entries(files)) assert.equal(sha256(readFileSync(join(dir, name))), hash, `${slug}/${name}`);
+    assert.equal(existsSync(join(SIM, 'releases', `${slug}.json`)), false, `${slug} has no release`);
+  }
+});
+
 test('simulator: basilisk reads exactly as products.ts held it on main, no release', async () => {
   const products = await read(SIM);
-  assert.deepEqual(products.map((p) => p.slug), ['basilisk']);
-  const { posterBytes, posterFile, posterPath, origin, release, ...fields } = products[0];
+  assert.deepEqual(products.map((p) => p.slug).sort(), ['basilisk', 'maelstrom', 'unicorn']);
+  for (const p of products) {
+    assert.equal(p.origin, `repository ${p.slug}`);
+    assert.equal(p.repo, `https://github.com/zUrp-Astronomics/${p.slug}`);
+    assert.equal(p.release, null);
+  }
+  const { posterBytes, posterFile, posterPath, origin, release, ...fields } = products.find((p) => p.slug === 'basilisk');
   assert.deepEqual(fields, BASILISK_ON_MAIN);
   assert.equal(posterPath, 'poster.png', 'the poster as the sheet names it');
   assert.equal(release, null);

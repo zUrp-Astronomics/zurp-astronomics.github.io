@@ -6,6 +6,8 @@
 // REVISED: 2026-10-06 (ticket #66) — content/licences/ is gone (the licence is the repository's LICENSE,
 //   as GitHub detects it: test/catalog.test.mjs): its tests go with it; the product header has no
 //   licence badge any more
+// REVISED: 2026-10-06 (ticket #72) — full discovery: no `withoutRepository`, no published list — the
+//   « Source » link of a local product is its discovered repository, or the organisation
 //
 // Ticket #49. These tests check the MECHANISM, never the words: content/ is the human's to edit, and
 // no test here breaks when a text changes. That the output did not change when the texts moved is
@@ -25,13 +27,12 @@ import { simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogContent, escapeHtml, fill, inlineMarkdown, markdownParagraphs, readMarkdown, readYaml, siteContent, siteView } from '../src/lib/content.mjs';
-import { publishedSlugs } from '../src/data/published-slugs.mjs';
 import { statusBadge, statusBadgeJson } from '../src/lib/status-badge.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = join(ROOT, 'content');
-const { sections, statuses, withoutRepository } = catalogContent(ROOT);
+const { sections, statuses } = catalogContent(ROOT);
 const sectionIds = sections.map((s) => s.id);
 const site = siteContent(ROOT);
 const SITE = readFileSync(join(ROOT, 'astro.config.mjs'), 'utf8').match(/\bsite:\s*['"`]([^'"`]+)['"`]/)[1].replace(/\/+$/, '');
@@ -60,20 +61,21 @@ test('content/products: every folder is a valid sheet, read by the code that rea
   }
 });
 
-test('content/products: the « Source » link — the organisation for a product without a repository, its future repository otherwise', async () => {
-  const products = await readLocalProducts({ root: ROOT, sectionIds, repositories: [] });
-  for (const p of products) {
-    const expected = withoutRepository.includes(p.slug) ? site.org.url : `${site.org.url}/${p.slug}`;
-    assert.equal(p.repo, expected, p.slug);
-  }
-  assert.ok(withoutRepository.every((s) => folders.includes(s)));
+test('content/products: the « Source » link — its repository when the organisation has one by its name, the organisation otherwise', async () => {
+  const none = await readLocalProducts({ root: ROOT, sectionIds, repositories: [] });
+  assert.ok(none.every((p) => p.repo === site.org.url), 'no repository listed: every link is the organisation');
+  const repositories = [{ name: 'Kaiju', url: `${site.org.url}/Kaiju`, license: null }];
+  const one = await readLocalProducts({ root: ROOT, sectionIds, repositories });
+  for (const p of one) assert.equal(p.repo, p.slug === 'kaiju' ? `${site.org.url}/Kaiju` : site.org.url, p.slug);
+  assert.equal(catalogContent(ROOT).withoutRepository, undefined, 'no list of products without a repository');
+  assert.doesNotMatch(readFileSync(join(CONTENT, 'catalog.yml'), 'utf8'), /^withoutRepository:/m);
 });
 
 test('content/products: migrating a product is moving its folder into a repository’s 9_Assets/ — the same product is read', async () => {
   const local = await readLocalProducts({ root: ROOT, sectionIds, repositories: [] });
   const sim = mkdtempSync(join(tmpdir(), 'zurp-sim-'));
   for (const slug of folders) cpSync(join(CONTENT, 'products', slug), join(sim, 'repos', slug, '9_Assets'), { recursive: true });
-  const moved = await readRepoProducts(simulatorBackend(sim), { sectionIds });
+  const { products: moved } = await readRepoProducts(simulatorBackend(sim), { sectionIds });
   const strip = ({ origin, repo, ...rest }) => rest;
   assert.deepEqual(moved.map(strip), local.map(strip), 'every field, the poster bytes included');
   assert.ok(moved.every((p) => p.origin === `repository ${p.slug}` && p.repo === `https://github.com/zUrp-Astronomics/${p.slug}`));
@@ -93,22 +95,24 @@ test('content/products: a sheet is validated like a repository sheet — `repo` 
   });
 });
 
-test('content/products: a stale `withoutRepository` entry and a folder name in capitals fail the build', async () => {
+test('content/products: a folder name in capitals fails the build', async () => {
   const root = tempContent();
-  const catalog = join(root, 'content', 'catalog.yml');
-  writeFileSync(catalog, readFileSync(catalog, 'utf8').replace(/withoutRepository:\n/, 'withoutRepository:\n  - ghost\n'));
   cpSync(join(root, 'content', 'products', 'kaiju'), join(root, 'content', 'products', 'Gizmo'), { recursive: true });
-  await assert.rejects(readLocalProducts({ root, sectionIds, repositories: [] }), (e) => {
-    assert.match(e.message, /withoutRepository names "ghost", which is not a folder of content\/products\//);
-    assert.match(e.message, /content\/products\/Gizmo\/: the folder name is the slug, in lower case/);
-    return true;
-  });
+  await assert.rejects(readLocalProducts({ root, sectionIds, repositories: [] }), /content\/products\/Gizmo\/: the folder name is the slug, in lower case/);
 });
 
-test('content/products: every published product the repositories do not hold is here', async () => {
+// The simulator imitates the organisation (catalog-simulator/README.md): a repository with a sheet
+// holds a product that is no longer in content/products/; the other products of content/products/
+// have an imitated repository without a sheet (kaiju, kraken, berserker: real ones), or none
+// (cyclops, wraith: none in the organisation).
+test('content/products and the simulator: each product in one place; the imitated repositories without a sheet are those of local products', async () => {
   const local = (await readLocalProducts({ root: ROOT, sectionIds, repositories: [] })).map((p) => p.slug);
-  const sim = readdirSync(join(ROOT, 'catalog-simulator', 'repos'));
-  assert.deepEqual([...local, ...sim].sort(), [...publishedSlugs].sort());
+  const repos = readdirSync(join(ROOT, 'catalog-simulator', 'repos'));
+  const withSheet = repos.filter((r) => existsSync(join(ROOT, 'catalog-simulator', 'repos', r, '9_Assets', 'zurp.yml')));
+  assert.deepEqual(withSheet.sort(), ['basilisk', 'maelstrom', 'unicorn']);
+  assert.deepEqual(withSheet.filter((r) => local.includes(r)), [], 'no slug both in a repository of the simulator and in content/products/');
+  assert.deepEqual(repos.filter((r) => !withSheet.includes(r)).sort(), ['berserker', 'kaiju', 'kraken']);
+  assert.deepEqual(local.filter((s) => !repos.includes(s)).sort(), ['cyclops', 'wraith']);
 });
 
 // --- content/ files --------------------------------------------------------------------------------
@@ -223,7 +227,7 @@ test('README kit: every marker filled, and the shared texts come from their one 
   const { out, products } = await simulatorKit();
 
   const files = walk(out);
-  assert.equal(files.length, 2 + publishedSlugs.length);
+  assert.equal(files.length, 2 + products.length, 'the org README, the guide, one header per product of the built catalog');
   for (const f of files) assert.doesNotMatch(readFileSync(f, 'utf8'), /\{\{|\}\}/, relative(out, f));
 
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');

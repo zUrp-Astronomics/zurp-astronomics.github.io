@@ -2,14 +2,15 @@
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
+# REVISED: 2026-10-06 (ticket #72) — le dépôt est découvert, `withoutRepository` n'existe plus
 #
 # Sa place est 9_Assets/zurp.yml dans le dépôt du produit. Tant que le dépôt ne la porte pas, le
 # site la lit ici, dans content/products/cyclops/, au même format et avec le même code de validation
 # (src/lib/catalog/read.mjs). Migrer le produit = déplacer ce dossier, tel quel, dans 9_Assets/.
 #
 # Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /cyclops/), le
-# lien vers le dépôt (ce produit n'a pas encore de dépôt : il est listé dans `withoutRepository`
-# de content/catalog.yml, et son lien « Source » mène à l'organisation), la version
+# lien vers le dépôt (découvert dans l'organisation par son nom, casse ignorée ; tant que ce
+# produit n'a pas de dépôt, son lien « Source » mène à l'organisation), la version
 # (tag de la dernière release GitHub), le rang dans sa section.
 
 name: Cyclops

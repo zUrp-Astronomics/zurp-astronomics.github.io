@@ -4,6 +4,8 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #66) — content/licences/ is gone: a product's licence is its repository's
 //   LICENSE, as GitHub detects it (src/lib/license-stamp.mjs); the site holds no licence rule of its own
+// REVISED: 2026-10-06 (ticket #72) — `withoutRepository` of content/catalog.yml is gone: the repository
+//   of a local product is discovered (src/lib/catalog/local.mjs)
 //
 // THE RULE (the human's, ticket #49): a fixed structure on one side (src/, scripts/), the resources
 // on the other — content/, at the repository root. Every text meant for a reader (prose, titles, link
@@ -118,8 +120,7 @@ export const siteView = (site) => ({ name: site.name, affiliation: site.affiliat
 
 /**
  * content/catalog.yml: the sections (display order, titles), the status labels and badge colours,
- * the texts of the status badge JSON (src/lib/status-badge.mjs), the local products without a
- * repository.
+ * the texts of the status badge JSON (src/lib/status-badge.mjs).
  */
 export function catalogContent(root) {
   const c = readYaml('catalog.yml', root);
@@ -134,9 +135,6 @@ export function catalogContent(root) {
   for (const key of ['label', 'message']) {
     if (typeof c?.statusBadge?.[key] !== 'string' || !c.statusBadge[key].trim()) problems.push(`\`statusBadge.${key}\` missing`);
   }
-  if (c?.withoutRepository !== undefined && !(Array.isArray(c.withoutRepository) && c.withoutRepository.every((s) => typeof s === 'string'))) {
-    problems.push('`withoutRepository` must be a list of slugs');
-  }
   if (problems.length) throw new Error(`content: ${CONTENT_DIR}/catalog.yml: ${problems.join('; ')}`);
-  return { sections: c.sections, statuses: c.statuses, statusBadge: c.statusBadge, withoutRepository: c.withoutRepository ?? [] };
+  return { sections: c.sections, statuses: c.statuses, statusBadge: c.statusBadge };
 }

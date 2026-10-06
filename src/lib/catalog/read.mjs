@@ -6,6 +6,9 @@
 //   human: « repo public != projet releasé »); a release gives the version, the rank, a rebuild
 // REVISED: 2026-10-06 (ticket #66) — each product carries `license`, its repository's licence as the
 //   backend lists it (GitHub's detection of the LICENSE file; null when there is none)
+// REVISED: 2026-10-06 (ticket #72) — full discovery: an invalid product is SKIPPED (reported, never
+//   thrown: the caller decides — content/products/ fails, a repository does not); the poster is
+//   decoded (sharp); a release with an unreadable `published_at` is ignored, reported
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases. Never the
@@ -28,9 +31,17 @@
 //     analysis of a release's name, tag or pre-release box: « tant que ça pop ça update ». A
 //     prerelease counts like any other. Only drafts are left out: they are not on the Releases page
 //     (no `published_at`, and invisible without push access anyway);
-//   - the sheets come from elsewhere, so they are validated here: an invalid one (missing field,
-//     unknown section, missing poster, …) fails the build with a message naming the repository and
-//     the field. Every problem of every repository is reported at once.
+//   - the sheets come from elsewhere, so they are validated here. An invalid product (missing or
+//     forbidden field, unknown section or status, unreadable YAML, poster absent, of a refused
+//     extension, or whose bytes do not decode as an image) is SKIPPED: it is returned in `skipped`,
+//     with every problem naming the repository and the field, and the others are read (ticket #72,
+//     the human: « le site publie ce qu'il découvre »). The caller decides what a skipped product
+//     means: a repository's is left out of the catalog with a warning (loader.mjs); one of
+//     content/products/, the site's own repository, fails the build (local.mjs);
+//   - a release whose `published_at` cannot be read is IGNORED (`ignoredReleases`), the product is
+//     read with its other releases;
+//   - only what was READ and is wrong, or is absent (a 404), skips a product: an error of the
+//     backend itself (GitHub answering badly, source.mjs) is never caught here, it fails the build.
 //
 // The products not migrated yet (content/products/<slug>/, ticket #49) are read by THIS code too,
 // through a third backend that sees each folder as a repository's 9_Assets/ (local.mjs): same
@@ -38,6 +49,7 @@
 // for the messages.
 
 import yaml from 'js-yaml';
+import sharp from 'sharp';
 
 /** Where a product repository keeps what the site reads. */
 export const ASSETS_DIR = '9_Assets';
@@ -46,6 +58,8 @@ export const SHEET_PATH = `${ASSETS_DIR}/zurp.yml`;
 const STRING_FIELDS = ['name', 'tagline', 'slogan', 'category', 'posterAlt'];
 const SHEET_STATUSES = ['wip', 'future', 'released'];
 const POSTER_EXT = /\.(png|jpe?g|webp|avif)$/i;
+/** What sharp reports for the formats of POSTER_EXT (AVIF is a HEIF container). */
+const POSTER_FORMATS = new Set(['png', 'jpeg', 'webp', 'heif']);
 const ALLOWED = new Set([...STRING_FIELDS, 'section', 'status', 'description', 'basedOn', 'poster', 'accent']);
 const DEDUCED = {
   slug: 'the slug is the repository name in lower case',
@@ -110,42 +124,72 @@ export function sheetProblems(sheet, sectionIds) {
 
 /**
  * The latest release of a list as GitHub returns it, by `published_at`; null when there is none.
- * Drafts (not on the Releases page) are left out; nothing else is looked at.
+ * Drafts (not on the Releases page) are left out; nothing else is looked at. A release whose
+ * `published_at` cannot be read is left out too, and described in `ignored` (when given).
  * @param {Array<{ tag_name?: string, published_at?: string | null, draft?: boolean }>} releases
+ * @param {string[]} [ignored] receives one message per release left out for an unreadable date
  * @returns {{ tag: string, publishedAt: string } | null}
  */
-export function latestRelease(releases) {
+export function latestRelease(releases, ignored = []) {
   let best = null;
   for (const r of releases) {
     if (r.draft || !r.published_at) continue;
     const t = Date.parse(r.published_at);
-    if (Number.isNaN(t)) throw new Error(`release ${JSON.stringify(r.tag_name)}: unreadable published_at ${JSON.stringify(r.published_at)}`);
+    if (Number.isNaN(t)) {
+      ignored.push(`release ${JSON.stringify(r.tag_name)}: unreadable published_at ${JSON.stringify(r.published_at)} — release ignored`);
+      continue;
+    }
     if (!best || t > best.t) best = { t, tag: String(r.tag_name), publishedAt: new Date(t).toISOString() };
   }
   return best && { tag: best.tag, publishedAt: best.publishedAt };
 }
 
 /**
+ * Why `bytes` cannot be a poster, or null when they decode as a PNG, JPEG, WebP or AVIF image.
+ * Decoded in full here, so that a corrupt file is a problem of its product, not a failure of Astro's
+ * image pipeline later in the build.
+ * @param {Buffer} bytes
+ */
+export async function posterImageProblem(bytes) {
+  try {
+    const meta = await sharp(bytes).metadata();
+    if (!POSTER_FORMATS.has(meta.format) || !meta.width || !meta.height) {
+      return `is not a PNG, JPEG, WebP or AVIF image (read as ${JSON.stringify(meta.format ?? null)})`;
+    }
+    await sharp(bytes).stats();
+    return null;
+  } catch (e) {
+    return `does not decode as an image (${String(e?.message ?? e).split('\n')[0]})`;
+  }
+}
+
+/**
  * Reads every repository of the backend and returns the products it holds, in repository-name
- * order. Throws one error listing every problem found, each prefixed by its repository.
+ * order, with the products skipped and the releases ignored — never throws for a product: an
+ * invalid one is in `skipped`, with every problem prefixed by its place. An error of the backend
+ * (a failed request) is not caught: it throws.
  * Each product also carries `posterPath`, the poster's path inside 9_Assets/ as the sheet names it.
  * `repos`: the backend's repositories when the caller has already listed them (the loader keeps the
  * list for the snapshot: the organisation is listed once per build).
  * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string, where?(repo: string): string, origin?(repo: string): string, filePath?(repo: string, path: string): string }} backend
  * @param {{ sectionIds: readonly string[], repos?: Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}> }} options
+ * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }> }>}
  */
 export async function readRepoProducts(backend, { sectionIds, repos }) {
   const products = [];
-  const problems = [];
+  const skipped = [];
+  const ignoredReleases = [];
   for (const { name: repoName, url, license } of repos ?? (await backend.listRepos())) {
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
     const where = backend.where?.(repoName) ?? `repository ${repoName} (${SHEET_PATH})`;
+    const origin = backend.origin?.(repoName) ?? `repository ${repoName}`;
+    const skip = (problems) => skipped.push({ repo: repoName, origin, problems: problems.map((p) => `${where}: ${p}`) });
     let sheet;
     try {
       sheet = yaml.load(raw.toString('utf8'), { filename: `${repoName}/${SHEET_PATH}` });
     } catch (e) {
-      problems.push(`${where}: not valid YAML — ${e.message.split('\n')[0]}`);
+      skip([`not valid YAML — ${e.message.split('\n')[0]}`]);
       continue;
     }
     const slug = repoName.toLowerCase();
@@ -155,27 +199,27 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
     }
     let posterBytes = null;
     if (!own.some((p) => p.startsWith('field `poster`'))) {
-      posterBytes = await backend.readFile(repoName, `${ASSETS_DIR}/${sheet.poster}`);
+      const path = `${ASSETS_DIR}/${sheet.poster}`;
+      const shown = backend.filePath?.(repoName, path);
+      posterBytes = await backend.readFile(repoName, path);
       if (posterBytes === null) {
-        const shown = backend.filePath?.(repoName, `${ASSETS_DIR}/${sheet.poster}`);
-        own.push(`field \`poster\`: ${shown ?? `${ASSETS_DIR}/${sheet.poster}`} does not exist${shown ? '' : ' in the repository'}`);
+        own.push(`field \`poster\`: ${shown ?? path} does not exist${shown ? '' : ' in the repository'}`);
+      } else {
+        const bad = await posterImageProblem(posterBytes);
+        if (bad) own.push(`field \`poster\`: ${shown ?? path} ${bad}`);
       }
     }
-    let release = null;
-    try {
-      release = latestRelease(await backend.listReleases(repoName));
-    } catch (e) {
-      if (/^release /.test(e.message)) own.push(e.message);
-      else throw e;
-    }
     if (own.length) {
-      problems.push(...own.map((p) => `${where}: ${p}`));
+      skip(own);
       continue;
     }
+    const ignored = [];
+    const release = latestRelease(await backend.listReleases(repoName), ignored);
+    for (const message of ignored) ignoredReleases.push({ repo: repoName, origin, message: `${origin}: ${message}` });
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({
       slug,
-      origin: backend.origin?.(repoName) ?? `repository ${repoName}`,
+      origin,
       name: sheet.name.trim(),
       tagline: sheet.tagline.trim(),
       slogan: sheet.slogan.trim(),
@@ -196,11 +240,5 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
       posterBytes,
     });
   }
-  if (problems.length) {
-    throw new Error(
-      `catalog: ${problems.length} problem(s) in the product sheets read from ${backend.describe ?? 'the source'}:\n` +
-        problems.map((p) => `  - ${p}`).join('\n'),
-    );
-  }
-  return products;
+  return { products, skipped, ignoredReleases };
 }

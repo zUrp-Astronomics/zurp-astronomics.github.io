@@ -2,6 +2,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — run by `npm test` (CLAUDE.md `## Test`, job `build` of .gitea/workflows/ci.yml)
+// REVISED: 2026-10-06 (ticket #53) — the product header holds only URLs (poster, status badge, GitHub licence badge) and its markers; the status JSON
 //
 // Ticket #49. These tests check the MECHANISM, never the words: content/ is the human's to edit, and
 // no test here breaks when a text changes. That the output did not change when the texts moved is
@@ -20,14 +21,18 @@ import { readRepoProducts } from '../src/lib/catalog/read.mjs';
 import { simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { catalogContent, fill, inlineMarkdown, licencesContent, markdownParagraphs, readMarkdown, readYaml, siteContent, siteView } from '../src/lib/content.mjs';
+import { catalogContent, escapeHtml, fill, inlineMarkdown, licencesContent, markdownParagraphs, readMarkdown, readYaml, siteContent, siteView } from '../src/lib/content.mjs';
 import { publishedSlugs } from '../src/data/published-slugs.mjs';
+import { statusBadge, statusBadgeJson } from '../src/lib/status-badge.mjs';
+import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = join(ROOT, 'content');
 const { sections, statuses, withoutRepository } = catalogContent(ROOT);
 const sectionIds = sections.map((s) => s.id);
 const site = siteContent(ROOT);
+const SITE = readFileSync(join(ROOT, 'astro.config.mjs'), 'utf8').match(/\bsite:\s*['"`]([^'"`]+)['"`]/)[1].replace(/\/+$/, '');
+const kitTexts = readYaml('readme-kit/kit.yml', ROOT);
 const folders = readdirSync(join(CONTENT, 'products')).filter((n) => statSync(join(CONTENT, 'products', n)).isDirectory());
 
 /** A temporary root holding a copy of content/ (and nothing else). */
@@ -160,7 +165,7 @@ test('the code (src/, scripts/) holds none of the texts of content/ — they hav
     ...strings(readYaml('readme-kit/kit.yml', ROOT)),
     ...sections.map((s) => s.title),
     ...Object.values(statuses).map((s) => s.label),
-    ...['home/pitch.md', 'home/manifesto.md', 'footer/legalese.md', 'licences/site.md', 'licences/org-readme.md', 'licences/product-readme.md']
+    ...['home/pitch.md', 'home/manifesto.md', 'footer/legalese.md', 'licences/site.md', 'licences/org-readme.md']
       .flatMap((f) => readMarkdown(f, ROOT).split(/[\n.:;]/))
       .map((s) => s.replace(/\{\{\{?[^}]*\}?\}\}|\*\*|\[|\]\([^)]*\)/g, ' ').trim()),
     ...['org-readme', 'product-header', 'guide', 'projects-table']
@@ -206,7 +211,8 @@ test('the shared texts (tagline, pitch, affiliation of the signature) are writte
 
 // --- README kit: the templates of content/readme-kit/ ------------------------------------------------
 
-test('README kit: every marker filled, and the shared texts come from their one source', async () => {
+/** The README kit generated from the simulator's catalog, in a temporary directory, and that catalog. */
+async function simulatorKit() {
   const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
   cpSync(join(ROOT, 'catalog-simulator'), join(root, 'catalog-simulator'), { recursive: true });
   const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds });
@@ -214,6 +220,12 @@ test('README kit: every marker filled, and the shared texts come from their one 
   writeFileSync(snap, JSON.stringify(snapshot));
   const out = join(root, 'kit');
   execFileSync(process.execPath, [join(ROOT, 'scripts', 'readme-kit.mjs'), '--catalog', snap, '--out', out], { stdio: 'pipe' });
+  const { products } = await loadBuiltCatalog({ snapshotFile: snap });
+  return { out, products };
+}
+
+test('README kit: every marker filled, and the shared texts come from their one source', async () => {
+  const { out, products } = await simulatorKit();
 
   const files = walk(out);
   assert.equal(files.length, 2 + publishedSlugs.length);
@@ -224,9 +236,79 @@ test('README kit: every marker filled, and the shared texts come from their one 
   assert.ok(org.includes(readMarkdown('home/pitch.md', ROOT).trim()), 'pitch: content/home/pitch.md');
   assert.ok(org.includes(`*${site.signature}*`), 'signature: content/site.yml');
   for (const s of sections.filter((s) => s.id !== 'future')) assert.ok(org.includes(`#### ${s.title}\n`), `section title ${s.title}: content/catalog.yml`);
-  const kaiju = readFileSync(join(out, 'readme-kit', 'repos', 'kaiju.md'), 'utf8');
-  assert.ok(kaiju.includes(`status-${statuses.wip.label}-${statuses.wip.badgeColor}`), 'status label: content/catalog.yml');
+  // Ticket #53: kaiju's status is no longer written in its header, it is in its status JSON.
+  const kaiju = JSON.parse(statusBadgeJson(products.find((p) => p.slug === 'kaiju'), catalogContent(ROOT)));
+  assert.ok(kaiju.message.includes(statuses.wip.label), 'status label: content/catalog.yml');
+  assert.equal(kaiju.color, statuses.wip.badgeColor, 'status colour: content/catalog.yml');
   const guide = readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8');
   assert.ok(guide.includes('`content/products/<slug>/` du site'), 'the guide points to content/products/ (the one text change of ticket #49)');
   assert.ok(!guide.includes('products.ts'));
+});
+
+// Ticket #53. The header is pasted ONCE in the product repository and never again: it holds only
+// URLs whose content is served elsewhere — the poster (to the product page), the status badge (the
+// site's JSON, through shields.io), GitHub's licence badge for a product with a repository — and its
+// two markers. No text of the sheet: it would go stale.
+test('README kit: a product header holds only the poster, the status badge, the licence badge (with a repository) and its markers', async () => {
+  const { out, products } = await simulatorKit();
+  const org = site.org.url.replace(/\/+$/, '');
+  let withRepo = 0;
+  let withoutRepo = 0;
+  for (const p of products) {
+    const text = readFileSync(join(out, 'readme-kit', 'repos', `${p.slug}.md`), 'utf8');
+    const hasRepo = p.repo.replace(/\/+$/, '') !== org;
+    if (hasRepo) withRepo++;
+    else withoutRepo++;
+    const expected = [
+      `${SITE}/${p.slug}/`,
+      `${SITE}/brand/posters/${p.slug}.webp`,
+      `https://img.shields.io/endpoint?url=${encodeURIComponent(`${SITE}/brand/status/${p.slug}.json`)}`,
+      ...(hasRepo ? [`https://img.shields.io/github/license/${p.repo.replace('https://github.com/', '').replace(/\/+$/, '')}`] : []),
+    ];
+    const urls = [...text.matchAll(/\b(?:src|href)="([^"]*)"|\]\(([^)\s]*)\)/g)].map((m) => m[1] ?? m[2]);
+    assert.deepEqual([...urls].sort(), [...expected].sort(), `${p.slug}: the URLs of the header`);
+
+    // The markers that delimit the block (content/readme-kit/kit.yml), naming no product.
+    assert.ok(text.startsWith(`<!-- ${kitTexts.header.begin} `), `${p.slug}: opens with the begin marker`);
+    assert.ok(text.trimEnd().endsWith(`<!-- ${kitTexts.header.end} -->`), `${p.slug}: closes with the end marker`);
+
+    // No text of the sheet, outside the URLs (a repository URL may hold the product's name).
+    let rest = text;
+    for (const u of expected) rest = rest.split(u).join(' ');
+    for (const t of [p.name, p.slogan, p.tagline, p.posterAlt, p.basedOn].filter(Boolean)) {
+      assert.ok(!rest.toLowerCase().includes(t.toLowerCase()), `${p.slug}: the header holds ${JSON.stringify(t)}, a text of the sheet`);
+    }
+    // Nothing else: once the URLs and the texts of kit.yml `header` are removed, only markup is left.
+    for (const t of Object.values(kitTexts.header).sort((a, b) => b.length - a.length)) {
+      rest = rest.split(escapeHtml(t)).join(' ').split(t).join(' ');
+    }
+    assert.equal(rest.replace(/<[^>]*>|!\[\s*\]\(\s*\)|—|\s/g, ''), '', `${p.slug}: something else than the poster, the badges and the markers`);
+  }
+  assert.ok(withRepo > 0 && withoutRepo > 0, `products with (${withRepo}) and without (${withoutRepo}) a repository both checked`);
+});
+
+// The status JSON (/brand/status/<slug>.json, src/lib/status-badge.mjs): shields' endpoint schema,
+// the label and colour of content/catalog.yml, the release tag only when there is a release. The
+// product with a release is checked in test/catalog.test.mjs (its scenario injects one), the file in
+// dist/ by scripts/check-dist.mjs.
+test('status JSON: a product without a release (wip) and a future one — label and colour of the status, no tag', async () => {
+  const { products } = await simulatorKit();
+  const texts = catalogContent(ROOT);
+  const cases = [products.find((p) => p.slug === 'kaiju'), products.find((p) => p.status === 'future')];
+  assert.deepEqual(cases.map((p) => p?.status), ['wip', 'future'], 'kaiju is wip, and one product is future');
+  for (const p of cases) {
+    assert.equal(p.release, null, p.slug);
+    const json = JSON.parse(statusBadgeJson(p, texts));
+    assert.deepEqual(json, statusBadge(p, texts));
+    assert.equal(json.schemaVersion, 1);
+    assert.equal(json.label, texts.statusBadge.label);
+    assert.ok(typeof json.message === 'string' && json.message.includes(statuses[p.status].label), `${p.slug}: ${json.message}`);
+    assert.equal(json.color, statuses[p.status].badgeColor);
+    assert.doesNotMatch(json.message, /\{\{|\}\}/);
+    // The release part of the message shows only with a release.
+    const tag = 'zz-tag-53';
+    assert.ok(!json.message.includes(tag));
+    assert.ok(statusBadge({ ...p, release: { tag, publishedAt: '2026-10-06T00:00:00.000Z' } }, texts).message.includes(tag), `${p.slug}: the tag shows with a release`);
+  }
+  assert.throws(() => statusBadge({ slug: 'x', status: 'nope', release: null }, texts), /no status "nope"/);
 });

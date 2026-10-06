@@ -1,7 +1,7 @@
 # Kit README — où le trouver
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-06 (ticket #49 : ses textes et sa mise en page sont des gabarits de `content/readme-kit/`)
+**Dernière révision** : 2026-10-06 (ticket #53 : l'en-tête produit se colle une fois et se met à jour seul)
 **Statut** : actif — page fixe, sans donnée du catalogue
 **Référencé par** : `scripts/readme-kit.mjs`, `.github/workflows/deploy.yml`, `content/README.md`
 
@@ -17,7 +17,7 @@ l'org »), et copié dans le dépôt [zUrp-Astronomics/.github](https://github.c
 | Quoi | Où |
 |---|---|
 | README de l'organisation (affiché sur la page de l'org) | [`profile/README.md`](https://github.com/zUrp-Astronomics/.github/blob/main/profile/README.md) |
-| **En-tête de README de chaque produit**, à coller en tête du README de son dépôt | [`readme-kit/repos/<produit>.md`](https://github.com/zUrp-Astronomics/.github/tree/main/readme-kit/repos) |
+| **En-tête de README de chaque produit**, à coller **une fois** en tête du README de son dépôt (que des URL : il se met à jour seul) | [`readme-kit/repos/<produit>.md`](https://github.com/zUrp-Astronomics/.github/tree/main/readme-kit/repos) |
 | Mode d'emploi complet (en-têtes, cartes d'aperçu, avatar, liens) | [`readme-kit/README.md`](https://github.com/zUrp-Astronomics/.github/blob/main/readme-kit/README.md) |
 
 **Pour changer un texte ou la mise en page du kit**, édite ses gabarits, `content/readme-kit/`

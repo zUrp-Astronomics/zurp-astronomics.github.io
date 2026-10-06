@@ -115,8 +115,9 @@ export function siteContent(root) {
 export const siteView = (site) => ({ name: site.name, affiliation: site.affiliation });
 
 /**
- * content/catalog.yml: the sections (display order, titles), the status labels, the local products
- * without a repository.
+ * content/catalog.yml: the sections (display order, titles), the status labels and badge colours,
+ * the texts of the status badge JSON (src/lib/status-badge.mjs), the local products without a
+ * repository.
  */
 export function catalogContent(root) {
   const c = readYaml('catalog.yml', root);
@@ -126,12 +127,16 @@ export function catalogContent(root) {
   }
   for (const status of ['wip', 'future', 'released']) {
     if (typeof c?.statuses?.[status]?.label !== 'string') problems.push(`\`statuses.${status}.label\` missing`);
+    if (typeof c?.statuses?.[status]?.badgeColor !== 'string') problems.push(`\`statuses.${status}.badgeColor\` missing`);
+  }
+  for (const key of ['label', 'message']) {
+    if (typeof c?.statusBadge?.[key] !== 'string' || !c.statusBadge[key].trim()) problems.push(`\`statusBadge.${key}\` missing`);
   }
   if (c?.withoutRepository !== undefined && !(Array.isArray(c.withoutRepository) && c.withoutRepository.every((s) => typeof s === 'string'))) {
     problems.push('`withoutRepository` must be a list of slugs');
   }
   if (problems.length) throw new Error(`content: ${CONTENT_DIR}/catalog.yml: ${problems.join('; ')}`);
-  return { sections: c.sections, statuses: c.statuses, withoutRepository: c.withoutRepository ?? [] };
+  return { sections: c.sections, statuses: c.statuses, statusBadge: c.statusBadge, withoutRepository: c.withoutRepository ?? [] };
 }
 
 /** content/licences/licences.yml: name, URL, short label and badge of each licence. */

@@ -3,6 +3,7 @@
 // DATE: 2026-10-06
 // STATUS: active — run by `npm test` (CLAUDE.md `## Test`, job `build` of .gitea/workflows/ci.yml)
 // REVISED: 2026-10-06 (ticket #49) — the local products are content/products/ (test/content.test.mjs tests them); sections from content/catalog.yml
+// REVISED: 2026-10-06 (ticket #53) — the basilisk header points to its status JSON, which carries the release tag (was: a static status badge)
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet, a slug twice, a published product gone) are built here, in temporary simulators and a
@@ -24,10 +25,12 @@ import { assembleCatalog } from '../src/lib/catalog/assemble.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogContent } from '../src/lib/content.mjs';
 import { publishedSlugs } from '../src/data/published-slugs.mjs';
+import { statusBadgeJson } from '../src/lib/status-badge.mjs';
+import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SIM = join(ROOT, 'catalog-simulator');
-const { sections } = catalogContent(ROOT);
+const { sections, statuses } = catalogContent(ROOT);
 const sectionIds = sections.map((s) => s.id);
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
@@ -403,6 +406,18 @@ test('README kit: generated from the built catalog — order, Released section, 
   assert.deepEqual(order(released), ['Basilisk']);
   assert.match(released, /#### Gadgets/);
   for (const slug of publishedSlugs) assert.ok(existsSync(join(out, 'readme-kit', 'repos', `${slug}.md`)), slug);
-  assert.match(readFileSync(join(out, 'readme-kit', 'repos', 'basilisk.md'), 'utf8'), /status-Released-brightgreen/);
+  // Ticket #53: the header carries no status any more, only the shields.io badge of the status JSON
+  // the site publishes for basilisk; that JSON carries the status and the tag of the release.
+  const header = readFileSync(join(out, 'readme-kit', 'repos', 'basilisk.md'), 'utf8');
+  const site = readFileSync(join(ROOT, 'astro.config.mjs'), 'utf8').match(/\bsite:\s*['"`]([^'"`]+)['"`]/)[1].replace(/\/+$/, '');
+  const endpoint = header.match(/https:\/\/img\.shields\.io\/endpoint\?url=([^)"\s]+)/);
+  assert.ok(endpoint, 'the header of basilisk has a shields.io endpoint badge');
+  assert.equal(decodeURIComponent(endpoint[1]), `${site}/brand/status/basilisk.json`);
+  const { products } = await loadBuiltCatalog({ snapshotFile: snap });
+  const json = JSON.parse(statusBadgeJson(products.find((p) => p.slug === 'basilisk'), catalogContent(ROOT)));
+  assert.equal(json.schemaVersion, 1);
+  assert.ok(json.message.includes(statuses.released.label), json.message);
+  assert.ok(json.message.includes('v1.0'), json.message);
+  assert.equal(json.color, statuses.released.badgeColor);
   assert.match(readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8'), /\| Basilisk \| \[`repos\/basilisk\.md`\]/);
 });

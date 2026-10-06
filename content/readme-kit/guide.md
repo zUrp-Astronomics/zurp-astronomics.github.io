@@ -1,8 +1,9 @@
 ---
 Date: 2026-10-06
+Dernière révision: 2026-10-06 (ticket #53 : l'en-tête produit se colle une fois)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
-Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end ; products (name, slug, hasRepo, repo, repoPath, socialUrl) ; noRepo (name, last), noRepoOne / noRepoMany
+Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug) ; products (name, slug, hasRepo, repo, repoPath, socialUrl) ; noRepo (name, last), noRepoOne / noRepoMany
 ---
 
 # Kit README — mode d'emploi
@@ -46,12 +47,24 @@ est la plus récente vient en tête ; les produits sans release suivent, par ord
 ## 2. En-tête de README de chaque produit
 
 Pour chaque produit, copie le bloc de `repos/<produit>.md` (ce dossier) **en tête** du `README.md`
-de son dépôt. Le bloc va du commentaire `<!-- {{{begin}}} … -->` au commentaire `<!-- {{{end}}} -->`,
-tous deux inclus. À la mise à jour suivante, remplace tout ce qui se trouve entre ces deux marqueurs
-(marqueurs compris) par le nouveau bloc : le reste du README du dépôt n'est pas touché.
+de son dépôt, **une seule fois**. Le bloc va du commentaire `<!-- {{{begin}}} … -->` au commentaire
+`<!-- {{{end}}} -->`, tous deux inclus. Il ne contient que des adresses, dont le contenu est servi
+ailleurs : **il se met à jour seul** quand le site se reconstruit (release publiée dans un dépôt,
+`9_Assets/` modifié). Ne le recolle pas, ne le modifie pas. Le texte du README (titre, présentation,
+documentation) s'écrit à la main sous le bloc, comme dans tout dépôt.
 
-L'affiche et le nom du produit mènent à sa page sur le site. Pas de badge GitHub : on est déjà dans
-le dépôt.
+- **L'affiche** du produit, servie par le site ; elle mène à sa page sur le site.
+- **Le badge de statut**, dessiné par shields.io depuis `{{{statusJsonUrl}}}`, que le site réécrit à
+  chaque build : le statut du produit et, s'il en a une, le tag de sa dernière release.
+- **Le badge de licence** standard de GitHub, pour un produit qui a un dépôt : shields.io lit la
+  licence que GitHub détecte dans le fichier `LICENSE` à la racine du dépôt. La licence d'un projet,
+  c'est son `LICENSE`. Un dépôt sans `LICENSE` affiche « not specified ».
+
+GitHub met en cache les images des README : après un build, un badge peut montrer l'ancienne valeur
+pendant quelques minutes.
+
+Un dépôt qui porte encore un ancien en-tête (nom, slogan, badges de licence, phrase de licence) :
+remplace-le une dernière fois, marqueurs compris, par ce bloc.
 
 ## 3. Carte d'aperçu (Social preview) de chaque dépôt
 

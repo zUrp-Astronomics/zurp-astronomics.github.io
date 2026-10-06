@@ -8,6 +8,9 @@
 //   the assembly fixtures follow (LOCAL: content/products/, REMOTE: the simulator), checked against both
 // REVISED: 2026-10-06 (ticket #62) — the status is the sheet's, never deduced from a release: `released`
 //   accepted in a sheet; a release gives the tag and the rank, the status stays the sheet's
+// REVISED: 2026-10-06 (ticket #66) — the licence is the repository's LICENSE as GitHub detects it: read
+//   from the list of repositories (simulator and mocked GitHub), snapshotted, given to the products of
+//   content/products/ by their repository's name (case ignored), stamped or not
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet, a slug twice, a published product gone) are built here, in temporary simulators and a
@@ -23,12 +26,13 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { catalogSource, githubBackend, simulatorBackend } from '../src/lib/catalog/source.mjs';
+import { catalogSource, githubBackend, repoLicense, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { latestRelease, readRepoProducts, sheetProblems } from '../src/lib/catalog/read.mjs';
-import { readLocalProducts } from '../src/lib/catalog/local.mjs';
+import { licenseOf, readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { assembleCatalog } from '../src/lib/catalog/assemble.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { catalogContent } from '../src/lib/content.mjs';
+import { catalogContent, siteContent } from '../src/lib/content.mjs';
+import { licenseStamp } from '../src/lib/license-stamp.mjs';
 import { publishedSlugs } from '../src/data/published-slugs.mjs';
 import { statusBadge, statusBadgeJson } from '../src/lib/status-badge.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
@@ -75,8 +79,8 @@ accent: '#123456'
 `;
 const PNG = Buffer.from('89504e470d0a1a0a', 'hex');
 
-/** A temporary simulator: { repoName: { 'path': content } }, releases: { repoName: [...] }. */
-function makeSim(repos, releases = {}) {
+/** A temporary simulator: { repoName: { 'path': content } }, releases: { repoName: [...] }, licenses: { repoName: license }. */
+function makeSim(repos, releases = {}, licenses = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'zurp-sim-'));
   for (const [name, files] of Object.entries(repos)) {
     mkdirSync(join(dir, 'repos', name), { recursive: true });
@@ -87,6 +91,8 @@ function makeSim(repos, releases = {}) {
   }
   mkdirSync(join(dir, 'releases'), { recursive: true });
   for (const [name, list] of Object.entries(releases)) writeFileSync(join(dir, 'releases', `${name}.json`), JSON.stringify(list));
+  mkdirSync(join(dir, 'licenses'), { recursive: true });
+  for (const [name, license] of Object.entries(licenses)) writeFileSync(join(dir, 'licenses', `${name}.json`), JSON.stringify(license));
   return dir;
 }
 const gizmo = (sheet = VALID_SHEET) => ({ '9_Assets/zurp.yml': sheet, '9_Assets/poster.png': PNG });
@@ -141,7 +147,7 @@ test('simulator: maelstrom and unicorn files are their workshop kits, byte for b
   }
 });
 
-test('simulator: basilisk reads exactly as products.ts held it on main, no release', async () => {
+test('simulator: basilisk reads exactly as products.ts held it on main, no release; its licence is GitHub’s « Other »', async () => {
   const products = await read(SIM);
   assert.deepEqual(products.map((p) => p.slug).sort(), ['basilisk', 'maelstrom', 'unicorn']);
   for (const p of products) {
@@ -149,8 +155,10 @@ test('simulator: basilisk reads exactly as products.ts held it on main, no relea
     assert.equal(p.repo, `https://github.com/zUrp-Astronomics/${p.slug}`);
     assert.equal(p.release, null);
   }
-  const { posterBytes, posterFile, posterPath, origin, release, ...fields } = products.find((p) => p.slug === 'basilisk');
+  const { posterBytes, posterFile, posterPath, origin, release, license, ...fields } = products.find((p) => p.slug === 'basilisk');
   assert.deepEqual(fields, BASILISK_ON_MAIN);
+  // Ticket #66: its LICENSE (OCL v1.1, plus a LICENSE-MIT) is not recognised by GitHub.
+  assert.deepEqual(license, { spdx_id: 'NOASSERTION', name: 'Other' });
   assert.equal(posterPath, 'poster.png', 'the poster as the sheet names it');
   assert.equal(release, null);
   assert.equal(posterFile, 'basilisk.png', 'the local poster is named after the slug, not after the sheet');
@@ -302,7 +310,7 @@ const basilisk = REMOTE[0];
 test('the fixtures above are the products of content/products/ and of the simulator', async () => {
   const strip = ({ slug, name, section, release, origin }) => ({ slug, name, section, release, origin });
   const bySlug = (a, b) => a.slug.localeCompare(b.slug);
-  const local = await readLocalProducts({ root: ROOT, sectionIds });
+  const local = await readLocalProducts({ root: ROOT, sectionIds, repositories: [] });
   assert.deepEqual(local.map(strip).sort(bySlug), [...LOCAL].sort(bySlug));
   assert.deepEqual((await read(SIM)).map(strip).sort(bySlug), [...REMOTE].sort(bySlug));
 });
@@ -365,7 +373,7 @@ test('the published list holds every product published before this ticket', () =
 
 // --- GitHub backend (mocked fetch) -------------------------------------------------------------
 
-function mockGitHub({ repos, files = {}, releases = {}, failOn } = {}) {
+function mockGitHub({ repos, files = {}, releases = {}, licenses = {}, failOn } = {}) {
   const calls = [];
   const fetchImpl = async (url, { headers }) => {
     calls.push({ url, headers });
@@ -376,7 +384,10 @@ function mockGitHub({ repos, files = {}, releases = {}, failOn } = {}) {
     if ((m = u.pathname.match(/^\/orgs\/zUrp-Astronomics\/repos$/))) {
       const page = Number(u.searchParams.get('page') ?? '1');
       const per = 2;
-      const slice = repos.slice((page - 1) * per, page * per).map((name) => ({ name, html_url: `https://github.com/zUrp-Astronomics/${name}` }));
+      // A repository object of the list carries `license` (null without a LICENSE), as GitHub's does.
+      const slice = repos
+        .slice((page - 1) * per, page * per)
+        .map((name) => ({ name, html_url: `https://github.com/zUrp-Astronomics/${name}`, license: licenses[name] ?? null }));
       const next = page * per < repos.length ? { link: `<https://api.github.com/orgs/zUrp-Astronomics/repos?type=public&per_page=100&page=${page + 1}>; rel="next"` } : {};
       return json(slice, next);
     }
@@ -516,4 +527,136 @@ test('README kit: generated from the built catalog — order, Released section b
   assert.equal(wipJson.message, `${statuses.wip.label} · v0.3`);
   assert.equal(wipJson.color, statuses.wip.badgeColor);
   assert.match(readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8'), /\| Basilisk \| \[`repos\/basilisk\.md`\]/);
+});
+
+// --- Licences (ticket #66) -------------------------------------------------------------------------
+// The human's rule: the licence of a product is the LICENSE file of its repository, as GitHub detects
+// it — the `license` of the repository in the list of the organisation's repositories, which the
+// build already reads (no other request, no file read). Nothing to show is never an error. That the
+// page shows it is checked on the built pages by scripts/check-dist.mjs.
+
+const GPL_API = { key: 'gpl-3.0', name: 'GNU General Public License v3.0', spdx_id: 'GPL-3.0', url: 'https://api.github.com/licenses/gpl-3.0', node_id: 'n' };
+const OTHER_API = { key: 'other', name: 'Other', spdx_id: 'NOASSERTION', url: null, node_id: 'o' };
+const GPL = { spdx_id: 'GPL-3.0', name: 'GNU General Public License v3.0' };
+const OTHER = { spdx_id: 'NOASSERTION', name: 'Other' };
+const productTexts = siteContent(ROOT).product;
+
+/** A temporary site root holding the simulator plus `extra` repositories ({ name: license | undefined }, no sheet). */
+function tempSiteWithRepos(extra) {
+  const root = tempSiteWith(SIM);
+  for (const [name, license] of Object.entries(extra)) {
+    mkdirSync(join(root, 'catalog-simulator', 'repos', name), { recursive: true });
+    writeFileSync(join(root, 'catalog-simulator', 'repos', name, 'README.md'), `# ${name}\n`);
+    if (license !== undefined) {
+      mkdirSync(join(root, 'catalog-simulator', 'licenses'), { recursive: true });
+      writeFileSync(join(root, 'catalog-simulator', 'licenses', `${name}.json`), JSON.stringify(license));
+    }
+  }
+  return root;
+}
+
+/** The snapshot of a temporary site, written next to it, and the catalog the scripts build from it. */
+async function builtFrom(root) {
+  const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds });
+  const { products } = await loadBuiltCatalog({ snapshotFile: join(root, '.zurp-catalog', 'remote.json') });
+  return { snapshot, bySlug: Object.fromEntries(products.map((p) => [p.slug, p])) };
+}
+
+test('licence: the simulator imitates the real repositories — maelstrom and unicorn GPL-3.0, basilisk « Other » (NOASSERTION)', async () => {
+  const products = await read(SIM);
+  assert.deepEqual(Object.fromEntries(products.map((p) => [p.slug, p.license])), { basilisk: OTHER, maelstrom: GPL, unicorn: GPL });
+});
+
+test('licence recognised: its SPDX id in the snapshot (the product and its repository), stamped with it', async () => {
+  const { snapshot, bySlug } = await builtFrom(tempSiteWith(SIM));
+  assert.deepEqual(snapshot.products.find((p) => p.slug === 'maelstrom').license, GPL);
+  assert.deepEqual(snapshot.repositories, [
+    { name: 'basilisk', license: OTHER },
+    { name: 'maelstrom', license: GPL },
+    { name: 'unicorn', license: GPL },
+  ]);
+  for (const slug of ['maelstrom', 'unicorn']) {
+    assert.deepEqual(bySlug[slug].license, GPL, slug);
+    assert.deepEqual(licenseStamp(bySlug[slug].license, productTexts), { label: 'GPL-3.0', title: GPL.name }, slug);
+  }
+});
+
+test('licence not recognised (NOASSERTION, « Other »): the generic stamp of content/site.yml, no name invented', async () => {
+  const { bySlug } = await builtFrom(tempSiteWith(SIM));
+  assert.deepEqual(bySlug.basilisk.license, OTHER);
+  const stamp = licenseStamp(bySlug.basilisk.license, productTexts);
+  assert.deepEqual(stamp, { label: productTexts.licenseOther.trim(), title: null });
+  assert.notEqual(stamp.label, 'Other', 'GitHub’s « Other » is not shown as a licence name');
+  assert.deepEqual(licenseStamp({ spdx_id: null, name: null }, productTexts), stamp, 'a licence without an SPDX id: the generic stamp too');
+});
+
+test('no LICENSE: no licence, no stamp, never an error — no file, or `null`, in the simulator; `null` from GitHub', async () => {
+  assert.equal((await read(makeSim({ Gizmo: gizmo() })))[0].license, null);
+  assert.equal((await read(makeSim({ Gizmo: gizmo() }, {}, { Gizmo: null })))[0].license, null);
+  const { fetchImpl } = mockGitHub({ repos: ['Gizmo'], files: { 'Gizmo/9_Assets/zurp.yml': VALID_SHEET, 'Gizmo/9_Assets/poster.png': PNG } });
+  assert.equal((await readRepoProducts(githubBackend({ fetchImpl }), { sectionIds }))[0].license, null);
+  assert.equal(licenseStamp(null, productTexts), null);
+  assert.equal(licenseStamp(undefined, productTexts), null);
+  assert.equal(repoLicense(null), null);
+  assert.equal(repoLicense(undefined), null);
+});
+
+test('a product without a repository (withoutRepository: Cyclops, Wraith): no licence, even when a repository by its name has one', async () => {
+  const { bySlug } = await builtFrom(tempSiteWithRepos({ Cyclops: GPL_API, wraith: OTHER_API }));
+  for (const slug of catalogContent(ROOT).withoutRepository) {
+    assert.equal(bySlug[slug].license, null, slug);
+    assert.equal(licenseStamp(bySlug[slug].license, productTexts), null, slug);
+  }
+});
+
+test('a product of content/products/ takes the licence of its repository, the case of the name ignored (Kraken → kraken); none when the repository has no LICENSE or is not listed', async () => {
+  const { snapshot, bySlug } = await builtFrom(tempSiteWithRepos({ Kraken: GPL_API, Kaiju: undefined }));
+  // Kraken and Kaiju have no sheet: they are not products of the snapshot, only repositories.
+  assert.ok(!snapshot.products.some((p) => ['kraken', 'kaiju'].includes(p.slug)));
+  assert.deepEqual(snapshot.repositories.find((r) => r.name === 'Kraken'), { name: 'Kraken', license: GPL });
+  assert.equal(bySlug.kraken.origin, 'content/products/kraken/');
+  assert.deepEqual(bySlug.kraken.license, GPL, 'kraken: the licence of Kraken');
+  assert.equal(licenseStamp(bySlug.kraken.license, productTexts).label, 'GPL-3.0');
+  assert.equal(bySlug.kaiju.license, null, 'kaiju: its repository has no LICENSE');
+  assert.equal(bySlug.berserker.license, null, 'berserker: no repository by that name in the list');
+  // The same lookup, on its own.
+  assert.deepEqual(licenseOf('kraken', [{ name: 'Kraken', license: GPL }]), GPL);
+  assert.equal(licenseOf('kraken', []), null);
+  assert.equal(licenseOf('kraken', [{ name: 'Kraken-firmware', license: GPL }]), null, 'the whole name, not a prefix');
+});
+
+test('the licence of a local product is never guessed: readLocalProducts needs the repositories of the build', async () => {
+  await assert.rejects(readLocalProducts({ root: ROOT, sectionIds }), /needs `repositories`/);
+  const local = await readLocalProducts({ root: ROOT, sectionIds, repositories: [{ name: 'Kaiju', license: GPL }] });
+  assert.deepEqual(local.find((p) => p.slug === 'kaiju').license, GPL);
+  assert.ok(local.filter((p) => p.slug !== 'kaiju').every((p) => p.license === null));
+});
+
+test('GitHub: the licence comes with the list of repositories — listed once, no other request, no LICENSE read', async () => {
+  const { fetchImpl, calls } = mockGitHub({
+    repos: ['.github', 'Basilisk', 'Kraken'],
+    files: {
+      'Basilisk/9_Assets/zurp.yml': readFileSync(join(SIM, 'repos', 'basilisk', '9_Assets', 'zurp.yml')),
+      'Basilisk/9_Assets/poster.png': PNG,
+    },
+    licenses: { Basilisk: OTHER_API, Kraken: GPL_API },
+  });
+  const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
+  const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'github' }, sectionIds, backend: githubBackend({ fetchImpl }) });
+  assert.deepEqual(snapshot.repositories, [
+    { name: '.github', license: null },
+    { name: 'Basilisk', license: OTHER },
+    { name: 'Kraken', license: GPL },
+  ]);
+  assert.deepEqual(snapshot.products.map((p) => [p.slug, p.license]), [['basilisk', OTHER]]);
+  assert.equal(calls.filter((c) => c.url.includes('/orgs/')).length, 2, 'the two pages of repositories, read once');
+  assert.ok(!calls.some((c) => /\/license\b/i.test(c.url)), 'no request to the licence endpoint');
+  const contents = calls.filter((c) => c.url.includes('/contents/'));
+  assert.ok(contents.every((c) => c.url.split('/contents/')[1].startsWith('9_Assets/')), 'no LICENSE file read');
+  assert.equal(calls.length, 2 + contents.length + 1, 'repositories (2 pages), 9_Assets/ files, the releases of the one repository with a sheet — nothing else');
+});
+
+test('a sheet may not carry a licence: it is the repository’s LICENSE', async () => {
+  await assert.rejects(read(makeSim({ Gizmo: gizmo(VALID_SHEET + 'license: MIT\n') })), /field `license`: not allowed in the sheet \(the licence is the repository's LICENSE file/);
+  assert.throws(() => repoLicense('MIT', 'repository Gizmo'), /repository Gizmo: `license` is not a licence object/);
 });

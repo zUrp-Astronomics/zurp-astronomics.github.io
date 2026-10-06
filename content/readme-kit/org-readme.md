@@ -1,5 +1,6 @@
 ---
 Date: 2026-10-06
+Dernière révision: 2026-10-06 (ticket #66 : plus de badges ni de phrase de licence — la licence d'un projet est le LICENSE de son dépôt)
 Statut: actif — gabarit du README de l'organisation (zUrp-Astronomics/.github → profile/README.md), régénéré à chaque déploiement
 Référencé par: scripts/readme-kit.mjs
 Marqueurs: voir content/README.md — {{x}} échappé pour le HTML, {{{x}}} tel quel ; {{#badge}}libellé|message|couleur{{/badge}} = un badge shields.io ; {{> projects}} = le tableau de projects-table.md
@@ -15,11 +16,7 @@ Marqueurs: voir content/README.md — {{x}} échappé pour le HTML, {{{x}}} tel 
 *{{{tagline}}}*
 
 {{#badge}}status|work in progress|orange{{/badge}}
-[{{#badge}}hardware|{{{licences.hardware.short}}}|blue{{/badge}}]({{{licences.hardware.url}}})
-[{{#badge}}software|{{{licences.software.short}}}|blue{{/badge}}]({{{licences.software.url}}})
 {{#badge}}tech|open hardware|informational{{/badge}}
-
-<sub>{{{licence}}}</sub>
 
 [**🌐 {{{siteHost}}}**]({{{siteUrl}}})
 

@@ -3,6 +3,15 @@
 // DATE: 2026-10-06
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #49) — the local products are the folders of content/products/ (src/data/products.ts is gone), the sections come from content/catalog.yml
+// REVISED: 2026-10-06 (ticket #66) — every product carries `license`, the licence GitHub detects in its
+//   repository, from the build's snapshot
+//
+// THE LICENCE (ticket #66). A product of a repository gets it through the collection (the loader
+// stores it with the sheet; src/content.config.ts declares it, or zod would drop it). A product of
+// content/products/ gets it from the repositories the loader listed, in the snapshot it wrote
+// (.zurp-catalog/remote.json, read once the collection is loaded): the same list, and so the same
+// licence, as the scripts that run after the build (scripts/lib/catalog.mjs) — check-dist checks that
+// the page shows it.
 //
 // Every page and endpoint that lists products reads `getCatalog()`: src/pages/index.astro,
 // src/pages/[slug]/index.astro, src/pages/brand/posters/[slug].webp.ts,
@@ -17,13 +26,22 @@
 // named after the file — <slug>.webp, so _astro/<slug>.<hash>.webp as before). Only the import
 // object is passed on; nothing reads a property of it here (src/lib/brand-images.ts says why).
 import type { ImageMetadata } from 'astro';
+import { join } from 'node:path';
 import { getCollection } from 'astro:content';
 import { publishedSlugs } from './published-slugs.mjs';
 import { assembleCatalog, unguardedWarning } from '../lib/catalog/assemble.mjs';
 import { LOCAL_PRODUCTS_DIR, readLocalProducts } from '../lib/catalog/local.mjs';
+import { SNAPSHOT_FILE, readSnapshot } from '../lib/catalog/loader.mjs';
 import { catalogContent } from '../lib/content.mjs';
 
 export type ProductStatus = 'wip' | 'future' | 'released';
+
+/** The licence GitHub detects in a repository (its `license`, src/lib/catalog/source.mjs). */
+export interface RepoLicense {
+  /** SPDX id (`GPL-3.0`), or `NOASSERTION` for a LICENSE GitHub does not recognise. */
+  spdx_id: string | null;
+  name: string | null;
+}
 
 export interface Product {
   slug: string;
@@ -47,6 +65,8 @@ export interface Product {
   posterAlt: string;
   /** Accent, read off the poster's rays. Tints the product page (badge fill nudged to ≥ 4.5:1). */
   accent: string;
+  /** Licence of its repository as GitHub detects it; null: no repository, no LICENSE — no stamp. */
+  license: RepoLicense | null;
 }
 
 export interface Release {
@@ -74,13 +94,15 @@ export function getCatalog(): Promise<CatalogProduct[]> {
   catalog ??= (async () => {
     const { sections } = catalogContent();
     const sectionIds = sections.map((s) => s.id);
-    const local = (await readLocalProducts({ sectionIds })).map(({ posterBytes, posterFile, posterPath, ...p }) => {
+    // The collection first: loading it is what writes the snapshot (src/lib/catalog/loader.mjs).
+    const remote = (await getCollection('repoProducts')).map((entry) => entry.data as CatalogProduct);
+    const { repositories } = readSnapshot(join(process.cwd(), SNAPSHOT_FILE));
+    const local = (await readLocalProducts({ sectionIds, repositories })).map(({ posterBytes, posterFile, posterPath, ...p }) => {
       const key = `/${LOCAL_PRODUCTS_DIR}/${p.slug}/${posterPath}`;
       const poster = localPosters[key];
       if (!poster) throw new Error(`catalog: ${key.slice(1)} (the poster named by the sheet) was not imported — not an image file?`);
       return { ...p, poster, release: null } as CatalogProduct;
     });
-    const remote = (await getCollection('repoProducts')).map((entry) => entry.data as CatalogProduct);
     const { products, unguarded } = assembleCatalog({
       local,
       remote,

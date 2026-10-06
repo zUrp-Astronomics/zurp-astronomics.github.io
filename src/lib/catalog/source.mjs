@@ -2,6 +2,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active
+// REVISED: 2026-10-06 (ticket #66) — listRepos() also gives each repository's licence, as GitHub detects it
 //
 // THE SOURCE IS ALWAYS NAMED. The environment variable ZURP_CATALOG says where the build reads the
 // product repositories: `github` (the organisation on GitHub, what is deployed) or `simulator`
@@ -16,7 +17,9 @@
 // whatever the workflow says.
 //
 // ONE INTERFACE, TWO BACKENDS. The reader (read.mjs) sees only:
-//   listRepos()               → [{ name, url }]  public repositories of the organisation
+//   listRepos()               → [{ name, url, license }]  public repositories of the organisation;
+//                               `license` is the licence GitHub detects in the repository's LICENSE
+//                               (repoLicense below), null when there is none
 //   readFile(repo, path)      → Buffer | null    a file of the default branch, null when absent
 //   listReleases(repo)        → [{ tag_name, published_at, draft, prerelease }]  (GitHub's objects)
 // so the simulator exercises exactly the code that reads GitHub.
@@ -56,12 +59,31 @@ export function catalogSource(env = process.env) {
   return /** @type {'simulator' | 'github'} */ (value);
 }
 
+/**
+ * The licence of a repository as GitHub's API lists it (`license` of a repository object:
+ * `{ key, name, spdx_id, url, node_id }`, or null when GitHub detects no LICENSE), kept as
+ * `{ spdx_id, name }`. GitHub says `spdx_id: "NOASSERTION"` (name « Other ») for a LICENSE it does
+ * not recognise. Nothing here is a judgement on the licence: the site shows what GitHub detects
+ * (the human's rule, ticket #66), and no licence is never an error.
+ * @param {unknown} raw
+ * @param {string} where for the message when `raw` is not a licence object
+ * @returns {{ spdx_id: string | null, name: string | null } | null}
+ */
+export function repoLicense(raw, where = 'repository') {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error(`catalog: ${where}: \`license\` is not a licence object (${JSON.stringify(raw)})`);
+  const text = (v) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
+  return { spdx_id: text(raw.spdx_id), name: text(raw.name) };
+}
+
 // --- Simulator ----------------------------------------------------------------------------------
 
 /**
  * Imitation repositories on disk:
  *   <dir>/repos/<name>/…           the tree of repository <name> (default branch)
  *   <dir>/releases/<name>.json     its releases, as GitHub's API lists them (absent: none)
+ *   <dir>/licenses/<name>.json     its `license`, as GitHub's API lists it in the repositories of the
+ *                                  organisation (absent, or `null`: no LICENSE detected)
  * @param {string} dir
  */
 export function simulatorBackend(dir, { org = ORG } = {}) {
@@ -82,7 +104,11 @@ export function simulatorBackend(dir, { org = ORG } = {}) {
         .filter((e) => e.isDirectory())
         .map((e) => e.name)
         .sort()
-        .map((name) => ({ name, url: `https://github.com/${org}/${name}` }));
+        .map((name) => {
+          const p = join(root, 'licenses', `${name}.json`);
+          const license = existsSync(p) ? repoLicense(JSON.parse(readFileSync(p, 'utf8')), `simulator ${p}`) : null;
+          return { name, url: `https://github.com/${org}/${name}`, license };
+        });
     },
     async readFile(repo, path) {
       const base = repoDir(repo);
@@ -164,7 +190,9 @@ export function githubBackend({ token, org = ORG, fetchImpl = globalThis.fetch, 
     },
     async listRepos() {
       const repos = await getAll(`${api}/orgs/${encodeURIComponent(org)}/repos?type=public&per_page=100`);
-      return repos.map((r) => ({ name: r.name, url: r.html_url })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+      return repos
+        .map((r) => ({ name: r.name, url: r.html_url, license: repoLicense(r.license, `repository ${r.name}`) }))
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     },
     async readFile(repo, path) {
       const encoded = path.split('/').map(encodeURIComponent).join('/');

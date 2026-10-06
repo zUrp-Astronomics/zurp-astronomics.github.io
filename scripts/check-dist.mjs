@@ -3,6 +3,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03 (revised 2026-10-06, ticket #46: the full catalog of the build)
 // REVISED: 2026-10-06 (ticket #53) — the status JSON of each product (shields.io endpoint, README status badge)
+// REVISED: 2026-10-06 (ticket #66) — the licence stamp of each product page: the licence of the built catalog, or none
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -32,6 +33,13 @@
 //     inside one, the latest release first, then by name — src/lib/catalog/assemble.mjs);
 //   - a product page does not carry its version stamp (`badge-version`, the tag of its latest
 //     release) when it has a release, or carries one when it has none;
+//   - a product page does not carry EXACTLY ONE licence stamp (`badge-license`) whose text is the
+//     licence of the built catalog — the SPDX id GitHub detects in its repository, or the generic
+//     stamp of content/site.yml (`product.licenseOther`) for a LICENSE GitHub does not recognise
+//     (src/lib/license-stamp.mjs) — when it has one, or carries any licence stamp when it has none
+//     (no repository, no LICENSE). The catalog is the one the scripts after the build see (the
+//     snapshot's licences, for the products of content/products/ too): the page shows the licence the
+//     README kit was built with;
 //   - a stable-URL brand image linked by the GitHub READMEs is missing, is not a WebP, or is wider
 //     than its README size:
 //       `brand/low-tech-diy.webp`                    the Low-Tech & DIY panel   (≤ 800 px wide)
@@ -61,7 +69,8 @@ import { join, relative, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
 import { unguardedWarning } from '../src/lib/catalog/assemble.mjs';
-import { catalogContent } from '../src/lib/content.mjs';
+import { catalogContent, siteContent } from '../src/lib/content.mjs';
+import { licenseStamp } from '../src/lib/license-stamp.mjs';
 import { statusBadgeJson, statusBadgePath } from '../src/lib/status-badge.mjs';
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
@@ -164,6 +173,32 @@ for (const p of catalog.products) {
     errors.push(`dist/${page}: version stamp ${JSON.stringify(stamps)} on a product without a release`);
   }
 }
+
+// Licence stamp: exactly one, the licence of the built catalog, only when there is one.
+const licenseTexts = siteContent(repoRoot).product;
+const licenseReport = [];
+for (const p of catalog.products) {
+  const page = `${p.slug}/index.html`;
+  if (!found.has(page)) continue;
+  const html = readFileSync(join(distDir, page), 'utf8');
+  // Any element carrying the class: a licence stamp that became a link (or anything else) is counted.
+  const stamps = [...html.matchAll(/<([a-z][a-z0-9-]*)\b[^>]*\bclass="[^"]*\bbadge-license\b[^"]*"[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => ({
+    tag: m[1],
+    text: decodeText(m[2].replace(/<[^>]*>/g, '')).trim(),
+  }));
+  const expected = licenseStamp(p.license, licenseTexts);
+  const shown = stamps.map((s) => (s.tag === 'span' ? s.text : `<${s.tag}> ${s.text}`));
+  if (expected) {
+    if (stamps.length !== 1 || stamps[0].tag !== 'span' || stamps[0].text !== expected.label) {
+      errors.push(`dist/${page}: expected one licence stamp <span> ${JSON.stringify(expected.label)} (licence of the built catalog: ${JSON.stringify(p.license)}), found ${JSON.stringify(shown)}`);
+    }
+  } else if (stamps.length) {
+    errors.push(`dist/${page}: licence stamp ${JSON.stringify(shown)} on a product without a licence (no repository, or no LICENSE detected)`);
+  }
+  licenseReport.push(`  ${(expected ? expected.label : '—').padEnd(16)} dist/${page}  found ${JSON.stringify(shown)}`);
+}
+console.log(`Licence stamps (the licence GitHub detects in each product's repository, from the built catalog): ${licenseReport.length} page(s)`);
+for (const line of licenseReport) console.log(line);
 
 // --- 3. Catalog tiles: no variant wider than 600 px, one tile per product --------------------
 const catalogPages = [HOME_PAGE].filter((p) => found.has(p));
@@ -463,4 +498,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px and in catalog order, one page per product + home page, version stamps, every stable brand image, social preview card, site icon, the organisation avatar and every status JSON in place.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px and in catalog order, one page per product + home page, version stamps, licence stamps, every stable brand image, social preview card, site icon, the organisation avatar and every status JSON in place.');

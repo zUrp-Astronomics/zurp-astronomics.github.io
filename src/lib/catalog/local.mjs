@@ -5,7 +5,7 @@
 // REVISED: 2026-10-06 (ticket #66) — a local product carries the licence of its repository when the
 //   organisation has one by its name (`repositories`, the list the build read, in its snapshot)
 // REVISED: 2026-10-06 (ticket #72) — full discovery: the repository of a local product is found in
-//   that list (its URL and its licence, one lookup); `withoutRepository` of content/catalog.yml is gone
+//   that list (its URL and its licence, one lookup); no list of products without a repository
 //
 // THE RULE (ticket #49). A product not migrated yet lives in content/products/<slug>/: its sheet
 // `zurp.yml`, in the EXACT format of a repository's 9_Assets/zurp.yml, and its poster next to it.

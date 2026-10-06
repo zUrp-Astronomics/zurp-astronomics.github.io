@@ -4,7 +4,7 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #66) — content/licences/ is gone: a product's licence is its repository's
 //   LICENSE, as GitHub detects it (src/lib/license-stamp.mjs); the site holds no licence rule of its own
-// REVISED: 2026-10-06 (ticket #72) — `withoutRepository` of content/catalog.yml is gone: the repository
+// REVISED: 2026-10-06 (ticket #72) — content/catalog.yml lists no products any more: the repository
 //   of a local product is discovered (src/lib/catalog/local.mjs)
 //
 // THE RULE (the human's, ticket #49): a fixed structure on one side (src/, scripts/), the resources

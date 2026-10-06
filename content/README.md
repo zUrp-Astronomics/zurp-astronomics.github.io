@@ -1,7 +1,7 @@
 # content/ — les textes et les ressources du site
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-06 (ticket #72 : découverte intégrale — le dépôt d'un produit d'ici est découvert, `withoutRepository` retiré)
+**Dernière révision** : 2026-10-06 (ticket #72 : découverte intégrale — le dépôt d'un produit d'ici est découvert, aucune liste de produits)
 **Statut** : actif — tout texte destiné au lecteur vit ici ; le code (`src/`, `scripts/`) ne fait que le placer
 **Référencé par** : `src/lib/content.mjs`, `src/lib/catalog/local.mjs`, `src/lib/status-badge.mjs`, `src/lib/license-stamp.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
 

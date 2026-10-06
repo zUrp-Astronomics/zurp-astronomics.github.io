@@ -441,8 +441,8 @@ test('a product neither in a repository nor in content/products/ is not in the c
   assert.deepEqual(overridden, []);
 });
 
-test('no list of products kept by hand: src/data/published-slugs.mjs is gone, a new product is published as any other', () => {
-  assert.equal(existsSync(join(ROOT, 'src', 'data', 'published-slugs.mjs')), false);
+test('no list of products kept by hand: src/data/ holds only the catalog, a new product is published as any other', () => {
+  assert.deepEqual(readdirSync(join(ROOT, 'src', 'data')), ['catalog.ts']);
   const { products } = assembleCatalog({ local: LOCAL, remote: [...REMOTE, { slug: 'gizmo', name: 'Gizmo', section: 'gadgets', release: null }], sections });
   assert.ok(products.some((p) => p.slug === 'gizmo'));
 });

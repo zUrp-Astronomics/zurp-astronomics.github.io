@@ -2,7 +2,7 @@
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
-# REVISED: 2026-10-06 (ticket #72) — le dépôt est découvert, `withoutRepository` n'existe plus
+# REVISED: 2026-10-06 (ticket #72) — le dépôt est découvert dans l'organisation, aucune liste à tenir
 #
 # Sa place est 9_Assets/zurp.yml dans le dépôt du produit. Tant que le dépôt ne la porte pas, le
 # site la lit ici, dans content/products/cyclops/, au même format et avec le même code de validation

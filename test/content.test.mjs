@@ -6,7 +6,7 @@
 // REVISED: 2026-10-06 (ticket #66) — content/licences/ is gone (the licence is the repository's LICENSE,
 //   as GitHub detects it: test/catalog.test.mjs): its tests go with it; the product header has no
 //   licence badge any more
-// REVISED: 2026-10-06 (ticket #72) — full discovery: no `withoutRepository`, no published list — the
+// REVISED: 2026-10-06 (ticket #72) — full discovery: no list of products kept by hand — the
 //   « Source » link of a local product is its discovered repository, or the organisation
 //
 // Ticket #49. These tests check the MECHANISM, never the words: content/ is the human's to edit, and
@@ -67,8 +67,9 @@ test('content/products: the « Source » link — its repository when the organi
   const repositories = [{ name: 'Kaiju', url: `${site.org.url}/Kaiju`, license: null }];
   const one = await readLocalProducts({ root: ROOT, sectionIds, repositories });
   for (const p of one) assert.equal(p.repo, p.slug === 'kaiju' ? `${site.org.url}/Kaiju` : site.org.url, p.slug);
-  assert.equal(catalogContent(ROOT).withoutRepository, undefined, 'no list of products without a repository');
-  assert.doesNotMatch(readFileSync(join(CONTENT, 'catalog.yml'), 'utf8'), /^withoutRepository:/m);
+  // No list of products kept by hand: content/catalog.yml holds only the vocabulary of the catalog.
+  assert.deepEqual(Object.keys(readYaml('catalog.yml', ROOT)).sort(), ['sections', 'statusBadge', 'statuses']);
+  assert.deepEqual(Object.keys(catalogContent(ROOT)).sort(), ['sections', 'statusBadge', 'statuses']);
 });
 
 test('content/products: migrating a product is moving its folder into a repository’s 9_Assets/ — the same product is read', async () => {

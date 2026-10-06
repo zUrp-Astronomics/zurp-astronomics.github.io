@@ -4,7 +4,7 @@
 // DATE: 2026-10-03 (revised 2026-10-06, ticket #46: the full catalog of the build)
 // REVISED: 2026-10-06 (ticket #53) — the status JSON of each product (shields.io endpoint, README status badge)
 // REVISED: 2026-10-06 (ticket #66) — the licence stamp of each product page: the licence of the built catalog, or none
-// REVISED: 2026-10-06 (ticket #72) — no published list, no « unguarded » warning: the catalog is what was discovered
+// REVISED: 2026-10-06 (ticket #72) — no list of products kept by hand, no warning about it: the catalog is what was discovered
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)

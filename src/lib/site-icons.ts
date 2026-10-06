@@ -32,9 +32,9 @@
 //                                                move or rename it.
 // Declared in the <head> of every page by src/layouts/V2Layout.astro.
 //
-// HOW. sharp (the image library Astro already ships and uses; see src/lib/social-card.ts), reading
-// the source through the import's `fsPath` only — reading any other property of an image import
-// would make Astro copy the original into dist/_astro (src/lib/brand-images.ts explains why).
+// HOW. sharp (the image library Astro uses, declared in package.json; see src/lib/social-card.ts),
+// reading the source through the import's `fsPath` only — reading any other property of an image
+// import would make Astro copy the original into dist/_astro (src/lib/brand-images.ts explains why).
 // No web app manifest: nothing on this site is installable, the 192 px icon is declared directly.
 
 import sharp from 'sharp';

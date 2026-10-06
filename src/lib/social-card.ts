@@ -21,8 +21,8 @@
 // (On a machine without a fontconfig setup, sharp prints "Fontconfig error: Cannot load default
 // config file" during the build. It is harmless: the font comes from the file, not from fontconfig.)
 //
-// sharp is the image library Astro already ships and uses for every image of the site; it is not a
-// new dependency.
+// sharp is the image library Astro uses for every image of the site, declared in package.json at the
+// version Astro pulls (ticket #43: it used to be only a transitive dependency).
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';

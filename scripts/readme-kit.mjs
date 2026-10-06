@@ -23,8 +23,8 @@
 // stamp. Otherwise the CI check could never be green.
 //
 // READING products.ts. It is TypeScript and imports the poster files. The script bundles it with
-// esbuild — the bundler Astro already ships (through Vite), not a new dependency, so it needs
-// `npm ci` first — stubbing every image import (the kit links images by their stable URLs, it never
+// esbuild — the bundler Astro uses, declared in package.json at the version Astro pulls (ticket
+// #43: it used to be only a transitive dependency), so it needs `npm ci` first — stubbing every image import (the kit links images by their stable URLs, it never
 // reads pixels). Nothing is parsed by regex: the kit sees exactly the objects the site sees.
 //
 // URLS. The image URLs mirror the convention of src/lib/brand-images.ts (panel, series 2 posters,

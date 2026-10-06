@@ -74,6 +74,12 @@ jobs:
     container: catthehacker/ubuntu:act-latest
     steps:
       - uses: actions/checkout@v4
+      # Node 24 LTS, celui de `.github/workflows/deploy.yml` et de `engines` dans package.json, quel
+      # que soit le node de l'image : le vert de la CI doit prédire le build déployé. La sonde
+      # (`probe-test-relevance.yml`) pose le même.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       # La vraie preuve de ce dépôt : le site s'installe depuis le lockfile et Astro le compile
       # (pages, optimisation des affiches via astro:assets/sharp). Même commande que le build de
       # `.github/workflows/deploy.yml`.

@@ -443,10 +443,36 @@ try {
 }
 const CSS_TARGETS = { chrome: 111 << 16, edge: 111 << 16, firefox: 114 << 16, safari: (16 << 16) | (4 << 8) };
 const maskCid = (css) => css.replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-#').replace(/\bastro-[a-z0-9]{8}\b/g, 'astro-#');
+// lightningcss leaves some values as it finds them (a value holding `var()`, `clip: rect(…)`): one
+// minifier writes `a, b`, the other `a,b`. Whitespace next to a comma, after `(` or before `)` is
+// never significant in CSS; it is dropped here, outside quoted strings.
+function squeezeCss(css) {
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < css.length; i++) {
+    const c = css[i];
+    if (quote) {
+      out += c;
+      if (c === '\\') out += css[++i] ?? '';
+      else if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+      out += c;
+    } else if (/\s/.test(c)) {
+      let j = i;
+      while (j + 1 < css.length && /\s/.test(css[j + 1])) j++;
+      const prev = out.at(-1);
+      const next = css[j + 1];
+      if (!(prev === ',' || prev === '(' || next === ',' || next === ')')) out += ' ';
+      i = j;
+    } else out += c;
+  }
+  return out;
+}
 function canonicalCss(code, name) {
   if (!lightningcss) return maskCid(code);
   const out = lightningcss.transform({ filename: name, code: Buffer.from(maskCid(code)), minify: true, targets: CSS_TARGETS, errorRecovery: true });
-  return out.code.toString();
+  return squeezeCss(out.code.toString());
 }
 function pageCss(root, html) {
   const sheets = [];

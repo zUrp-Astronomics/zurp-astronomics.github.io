@@ -1,78 +1,10 @@
-name: probe-test-relevance
+# SOURCE: zurp-astronomics-site — ticket #43 trial: the relevance probe's job, as is, with fixed inputs
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: trial (removed before delivery)
+name: trial-43-probe
 
-# LA SONDE DE PERTINENCE — posée par le scaffold, comme `ci.yml`, et servie par la même source unique
-# (`priv/catalogue/project_template/main/`).
-#
-# ELLE NE JUGE RIEN. Elle répond à UNE question, mécaniquement : « si on remet le code de cette
-# livraison à son état de base en gardant sa suite de tests, la suite s'en aperçoit-elle ? » Une
-# suite qui reste VERTE sans le code qu'elle prétend couvrir ne prouve pas ce code. Une suite qui
-# devient ROUGE l'a prouvé.
-#
-# Le verdict est un FAIT, pas une décision : la sonde le mesure et l'écrit, un juge le lit et
-# tranche. C'est pour ça qu'elle SORT TOUJOURS EN 0 — voir plus bas, c'est la partie contre-intuitive.
-#
-# ═══ ENTRÉES PASSÉES PAR `env:`, JAMAIS INTERPOLÉES DANS UN `run:` ═══
-#
-# Les quatre entrées (`harness`, `base_sha`, `head_sha`, `test_cmd`) arrivent dans le script de
-# « Sonder » par le bloc `env:` de l'étape, en variables `PROBE_*`, et le script ne lit QUE ces
-# variables shell, toujours quotées. Une expression d'entrée substituée dans le TEXTE d'un `run:`
-# l'est avant que le shell ne le lise : une valeur portant `"`, `$(…)` ou une ligne bien choisie
-# s'y exécuterait comme du code (injection de script). Le rail refuse un workflow qui interpole
-# ainsi : `verdict=inapplicable reason=probe-workflow-unsafe`. Aucune expression ne doit donc
-# apparaître dans un `run:`, ni même dans ces commentaires.
-#
-# ═══ LE NOM EST UNE GARDE, PAS UNE DÉCORATION ═══
-#
-# `probe-*`, JAMAIS `CI*`. Gitea compose le contexte d'un statut ainsi :
-# `<workflow> / <job> (<déclencheur>)`. Ce fichier produit donc
-# `probe-test-relevance / relevance (workflow_dispatch)`, qui NE MATCHE PAS le glob `CI / *` exigé
-# par la protection de `main`. Renommé `CI-…`, ce workflow deviendrait un statut REQUIS : son rouge
-# bloquerait le merge, et on aurait retiré le CI de la boucle en croyant l'augmenter.
-#
-# ⚠ Ce qui est établi, c'est que LE NOM protège. Il n'est PAS établi qu'un `workflow_dispatch` ne
-# crée aucun statut, quel que soit son nom. Tant que personne n'a dispatché délibérément un workflow
-# nommé `CI / probe` pour regarder, traite le nom comme LA SEULE protection.
-#
-# ═══ TU RÉÉCRIS `ci.yml` ? ALORS RÉÉCRIS CELUI-CI DANS LE MÊME GESTE ═══
-#
-# Ce fichier REJOUE la commande de ta suite. Il doit donc tourner dans un environnement qui sait la
-# jouer. Le label `shell` est mappé sur `alpine:3.20` dans le déploiement de référence : un `sh`
-# POSIX, `git` ajouté ci-dessous, et RIEN D'AUTRE — pas de python, pas de node, pas de mix.
-#
-# Le jour où ton projet pose sa vraie suite, il donne à `ci.yml` une image qui la fait tourner
-# (`container: <image>` sur le job). **Donne la même à celui-ci.** Deux environnements différents
-# font deux verts qui ne se prédisent pas, et cette sonde deviendrait un générateur d'« inapplicable »
-# que personne ne relierait à l'image.
-#
-# ═══ POURQUOI DEUX EXÉCUTIONS ET PAS UNE ═══
-#
-# Le témoin d'abord, la mesure ensuite. Si la suite est DÉJÀ rouge sur la tête livrée, son rouge sur
-# le code de base ne prouve rien du tout — on mesurerait une panne, pas une couverture. Alors :
-#
-#   1. TÉMOIN — la suite sur la tête telle quelle. Doit être VERTE, sinon rien n'est concluable et
-#      la sonde le dit (`verdict=inapplicable reason=head-suite-red`).
-#   2. MESURE — arbre de BASE, plus le harnais rapatrié de la tête. Rouge ⟹ `relevant`,
-#      vert ⟹ `blind`.
-#
-# Ça double le temps (≈ 3 s par exécution, mesuré) et c'est la différence entre une mesure et un
-# tirage au sort.
-
-on:
-  workflow_dispatch:
-    inputs:
-      base_sha:
-        description: "SHA de l'état de BASE — le code y retourne, la suite n'y retourne pas"
-        required: true
-      head_sha:
-        description: "SHA de la tête livrée — d'où vient le harnais, et où tourne le témoin"
-        required: true
-      harness:
-        description: "Chemins de PREUVE, séparés par des blancs (section `## Harness` du CLAUDE.md)"
-        required: false
-        default: ""
-      test_cmd:
-        description: "La commande EXACTE qui joue la suite — la même que `## Test` et que `ci.yml`"
-        required: true
+on: workflow_dispatch
 
 jobs:
   relevance:
@@ -109,10 +41,10 @@ jobs:
         # le runner pose la valeur dans l'environnement, le shell la lit comme une donnée.
         env:
           FORGE_TOKEN: ${{ github.token }}
-          PROBE_HARNESS: ${{ inputs.harness }}
-          PROBE_BASE_SHA: ${{ inputs.base_sha }}
-          PROBE_HEAD_SHA: ${{ inputs.head_sha }}
-          PROBE_TEST_CMD: ${{ inputs.test_cmd }}
+          PROBE_HARNESS: "scripts/check-dist.mjs scripts/readme-kit.mjs"
+          PROBE_BASE_SHA: "cc8939c45559dd41e100768b5ece3dc3a7c57304"
+          PROBE_HEAD_SHA: ${{ github.sha }}
+          PROBE_TEST_CMD: "npm ci && npm run build && node scripts/check-dist.mjs && npm run readme-kit:check"
         run: |
           # PAS de `set -e` ici, et c'est délibéré : ce script FAIT ÉCHOUER des commandes exprès —
           # l'échec de la suite EST la mesure. Un `set -e` avorterait au moment précis où le fait

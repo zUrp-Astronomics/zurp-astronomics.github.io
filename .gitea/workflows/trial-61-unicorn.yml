@@ -70,6 +70,12 @@ jobs:
           diff -ru /tmp/base/.zurp-catalog/readme-kit .zurp-catalog/readme-kit && echo "KIT IDENTICAL" || echo "KIT DIFFERS"
           node scripts/compare-brand.mjs /tmp/base/dist dist > /tmp/brand-report.txt 2>&1 || true
           node scripts/compare-dist.mjs /tmp/base/dist dist > /tmp/report.txt 2>&1 || echo "compare-dist rc=$?"
-          ls -l dist/_astro/ | grep -i unicorn || true; find dist -iname '*unicorn*' -exec ls -l {} \; ; find /tmp/base/dist -iname '*unicorn*' -exec ls -l {} \;
+          echo "=== DIST: index.html and unicorn/index.html sections"
+          awk '/^=== /{show=($2=="index.html"||$2=="unicorn/index.html")} show' /tmp/report.txt | grep -v -E '^\s+(link rel=|img srcset)' | grep -i -E '^===|stamp|text|urls|images|unicorn|accent|markup|style|#6109aa|#bd13ae|^\s+[+-] ' | cut -c1-400
+          echo "=== DIST: summary"; sed -n '/^DIFFERENCES/,$p' /tmp/report.txt
+          echo "=== accent in head / base pages"
+          grep -o -i -E '.{60}#(6109aa|bd13ae).{40}' dist/index.html dist/unicorn/index.html /tmp/base/dist/index.html /tmp/base/dist/unicorn/index.html | cut -c1-260
+          echo "=== unicorn images served (head, then base)"
+          find dist -iname '*unicorn*' -printf '%s %p\n' | sort -k2; echo; find /tmp/base/dist -iname '*unicorn*' -printf '%s %p\n' | sort -k2
+          echo "=== check-dist"; tail -15 /tmp/check-dist.log
           echo "=== BRAND"; cat /tmp/brand-report.txt
-          echo "=== DIST REPORT"; cat /tmp/report.txt

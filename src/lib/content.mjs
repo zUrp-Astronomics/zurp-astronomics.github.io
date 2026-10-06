@@ -100,8 +100,19 @@ export function markdownParagraphs(text) {
 
 // --- The files ------------------------------------------------------------------------------------
 
-/** content/site.yml: the site's name, tagline, signature, titles, labels and alt texts. */
-export const siteContent = (root) => readYaml('site.yml', root);
+/**
+ * content/site.yml: the site's name, tagline, signature, titles, labels and alt texts.
+ * `signature` comes back filled (its `{{name}}` / `{{affiliation}}` markers: one source for the
+ * affiliation, which the footer's `productLine` shares — that one is filled where its product is
+ * known, with `siteView(site)` plus `product`).
+ */
+export function siteContent(root) {
+  const site = readYaml('site.yml', root);
+  return { ...site, signature: fill(site.signature, siteView(site)) };
+}
+
+/** The site-wide markers of content/site.yml's texts: `{{name}}`, `{{affiliation}}`. */
+export const siteView = (site) => ({ name: site.name, affiliation: site.affiliation });
 
 /**
  * content/catalog.yml: the sections (display order, titles), the status labels, the local products

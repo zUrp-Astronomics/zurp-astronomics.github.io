@@ -14,8 +14,13 @@ name: zUrp Astronomics
 # The tagline: home page (exhibition label), default meta description of every page, org README.
 tagline: Low-tech, DIY, amateur astronomy hardware.
 
-# The signature: footer of the home page, foot of the org README.
-signature: zUrp Astronomics — a subsidiary of zUrp Industries.
+# Who owns us, written ONCE: the signature just below and the footer's product line (`productLine`)
+# both take it through their `{{affiliation}}` marker.
+affiliation: a subsidiary of zUrp Industries
+
+# The signature: footer of the home page, foot of the org README. `{{name}}` / `{{affiliation}}` are
+# the two texts above.
+signature: '{{name}} — {{affiliation}}.'
 
 # The organisation on GitHub: the « => GitHub » stamp, the footer link, the README kit.
 org:
@@ -46,10 +51,11 @@ product:
   sourceTitle: Source
   sourceArrow: ⟶
 
-# Footer of every page.
+# Footer of every page. `productLine` replaces the signature on a product page: `{{product}}` is the
+# product's name, `{{name}}` / `{{affiliation}}` the texts at the top of this file.
 footer:
   orgLabel: GitHub ·
-  productLine: '{{product}} — a product of zUrp Astronomics, a subsidiary of zUrp Industries.'
+  productLine: '{{product}} — a product of {{name}}, {{affiliation}}.'
   backToTop: Back to top
   panelAlt: >-
     Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front

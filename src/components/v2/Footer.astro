@@ -6,7 +6,7 @@
 // REVISED: 2026-10-06 (ticket #49) — every text comes from content/ (site.yml, footer/legalese.md)
 //
 // The copy began as the v1 footer's, word for word (v1 deleted in ticket #35), and lives in
-// content/site.yml (`name`, `signature`, `org`, `footer`) and content/footer/legalese.md: home line
+// content/site.yml (`name`, `affiliation`, `signature`, `org`, `footer`) and content/footer/legalese.md: home line
 // (the site's signature) without a product, product line with one.
 // The "Low-Tech & DIY" panel (the worn version, src/assets/header/low-tech-diy-poster.webp) signs
 // the footer of EVERY page of the main site, home included, small (~140 px, the size of the v1
@@ -26,7 +26,7 @@
 // instead, as Astro 4 did: 280 × 187, the whole panel. `fit` never reaches the HTML.
 import { Image } from 'astro:assets';
 import lowTechPoster from '../../assets/header/low-tech-diy-poster.webp';
-import { fill, inlineMarkdown, readMarkdown, siteContent } from '../../lib/content.mjs';
+import { fill, inlineMarkdown, readMarkdown, siteContent, siteView } from '../../lib/content.mjs';
 
 interface Props {
   productName?: string;
@@ -47,7 +47,7 @@ const legalese = inlineMarkdown(readMarkdown('footer/legalese.md'));
     {
       productName ? (
         <p>
-          <em>{fill(site.footer.productLine, { product: productName })}</em>
+          <em>{fill(site.footer.productLine, { ...siteView(site), product: productName })}</em>
         </p>
       ) : (
         <p>

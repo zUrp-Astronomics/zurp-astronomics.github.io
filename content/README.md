@@ -13,7 +13,7 @@ changement part au déploiement suivant (push sur `main`).
 
 | Fichier | Ce qu'il porte | Où ça sort |
 |---|---|---|
-| `site.yml` | le nom, l'accroche, la signature, l'organisation GitHub, les titres, libellés et textes alternatifs des pages | tout le site ; nom, accroche et signature aussi dans le README de l'org, le nom aussi sur les cartes d'aperçu |
+| `site.yml` | le nom, l'accroche, l'affiliation (« a subsidiary of… », écrite une fois : la signature et la ligne produit du pied de page la reprennent), la signature, l'organisation GitHub, les titres, libellés et textes alternatifs des pages | tout le site ; nom, accroche et signature aussi dans le README de l'org, le nom aussi sur les cartes d'aperçu |
 | `catalog.yml` | les sections (ordre, titres), les libellés de statut (et la couleur de leur badge README), les produits sans dépôt | accueil, pages produit, README de l'org et en-têtes produit |
 | `home/pitch.md` | le pitch, sur une ligne | accueil (étiquette de l'affiche), README de l'org (« Hi here ») |
 | `home/manifesto.md` | le manifeste | accueil |

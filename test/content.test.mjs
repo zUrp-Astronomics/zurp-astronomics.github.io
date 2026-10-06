@@ -20,7 +20,7 @@ import { readRepoProducts } from '../src/lib/catalog/read.mjs';
 import { simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { catalogContent, fill, inlineMarkdown, licencesContent, markdownParagraphs, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
+import { catalogContent, fill, inlineMarkdown, licencesContent, markdownParagraphs, readMarkdown, readYaml, siteContent, siteView } from '../src/lib/content.mjs';
 import { publishedSlugs } from '../src/data/published-slugs.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -176,6 +176,32 @@ test('the code (src/, scripts/) holds none of the texts of content/ — they hav
     for (const t of checked) if (code.includes(t)) found.push(`${file}: ${JSON.stringify(t)}`);
   }
   assert.deepEqual(found, []);
+});
+
+// The texts the site and the org README share (ticket #49, criterion 3) are each written ONCE in
+// content/ itself, not only kept out of the code: a second copy in content/ would let one place
+// drift when the other is edited (the affiliation of the signature was once also spelt out in the
+// footer's product line). Read from content/, so the test holds whatever the words.
+test('the shared texts (tagline, pitch, affiliation of the signature) are written once in content/', () => {
+  const texts = walk(CONTENT)
+    .filter((f) => /\.(md|ya?ml)$/.test(f))
+    .map((f) => [relative(ROOT, f), readFileSync(f, 'utf8')]);
+  const shared = {
+    tagline: site.tagline,
+    pitch: readMarkdown('home/pitch.md', ROOT).trim(),
+    affiliation: site.affiliation,
+  };
+  for (const [what, text] of Object.entries(shared)) {
+    assert.ok(typeof text === 'string' && text.length >= 12, `${what}: missing or too short in content/`);
+    const where = texts.flatMap(([file, body]) => Array(body.split(text).length - 1).fill(file));
+    assert.deepEqual(where.length, 1, `${what} ${JSON.stringify(text)} written ${where.length} times: ${where.join(', ')}`);
+  }
+  // The two lines that carry the affiliation both take it from that one source.
+  assert.ok(site.signature.includes(site.affiliation), 'the signature takes `affiliation`');
+  assert.ok(site.signature.includes(site.name), 'the signature takes `name`');
+  const productLine = fill(site.footer.productLine, { ...siteView(site), product: 'Xyzzy' });
+  assert.ok(productLine.includes(site.affiliation), "the footer's product line takes `affiliation`");
+  assert.doesNotMatch(`${site.signature}\n${productLine}`, /\{\{|\}\}/);
 });
 
 // --- README kit: the templates of content/readme-kit/ ------------------------------------------------

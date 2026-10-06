@@ -4,7 +4,8 @@
 // STATUS: active — run by `npm test` (CLAUDE.md `## Test`, job `build` of .gitea/workflows/ci.yml)
 // REVISED: 2026-10-06 (ticket #49) — the local products are content/products/ (test/content.test.mjs tests them); sections from content/catalog.yml
 // REVISED: 2026-10-06 (ticket #53) — the basilisk header points to its status JSON, which carries the release tag (was: a static status badge)
-// REVISED: 2026-10-06 (ticket #61) — the simulator holds maelstrom and unicorn too, byte copies of their workshop kits
+// REVISED: 2026-10-06 (ticket #61) — the simulator holds maelstrom and unicorn too, byte copies of their workshop kits;
+//   the assembly fixtures follow (LOCAL: content/products/, REMOTE: the simulator), checked against both
 //
 // The cases that do not exist in the organisation (a release, a prerelease, two releases, an invalid
 // sheet, a slug twice, a published product gone) are built here, in temporary simulators and a
@@ -22,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 import { catalogSource, githubBackend, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { latestRelease, readRepoProducts, sheetProblems } from '../src/lib/catalog/read.mjs';
+import { readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { assembleCatalog } from '../src/lib/catalog/assemble.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogContent } from '../src/lib/content.mjs';
@@ -241,16 +243,28 @@ test('two releases: the latest by published_at, whatever the list order; drafts 
 const LOCAL = [
   ['kaiju', 'Kaiju', 'mounts'],
   ['berserker', 'Berserker', 'mounts'],
-  ['unicorn', 'Unicorn', 'gadgets'],
   ['kraken', 'Kraken', 'gadgets'],
-  ['maelstrom', 'Maelstrom', 'cameras'],
   ['cyclops', 'Cyclops', 'cameras'],
   ['wraith', 'Wraith', 'future'],
 ].map(([slug, name, section]) => ({ slug, name, section, release: null, origin: `content/products/${slug}/` }));
-const basilisk = { slug: 'basilisk', name: 'Basilisk', section: 'gadgets', release: null, origin: 'repository basilisk' };
+// The products of the simulator's repositories (catalog-simulator/repos/), as the catalog sees them.
+const REMOTE = [
+  ['basilisk', 'Basilisk', 'gadgets'],
+  ['maelstrom', 'Maelstrom', 'cameras'],
+  ['unicorn', 'Unicorn', 'gadgets'],
+].map(([slug, name, section]) => ({ slug, name, section, release: null, origin: `repository ${slug}` }));
+const basilisk = REMOTE[0];
+
+test('the fixtures above are the products of content/products/ and of the simulator', async () => {
+  const strip = ({ slug, name, section, release, origin }) => ({ slug, name, section, release, origin });
+  const bySlug = (a, b) => a.slug.localeCompare(b.slug);
+  const local = await readLocalProducts({ root: ROOT, sectionIds });
+  assert.deepEqual(local.map(strip).sort(bySlug), [...LOCAL].sort(bySlug));
+  assert.deepEqual((await read(SIM)).map(strip).sort(bySlug), [...REMOTE].sort(bySlug));
+});
 
 test('order with no release anywhere: alphabetical inside each section (the expected rendering)', () => {
-  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: [basilisk], published: publishedSlugs, sections });
+  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: REMOTE, published: publishedSlugs, sections });
   assert.deepEqual(
     products.map((p) => p.name),
     ['Berserker', 'Kaiju', 'Cyclops', 'Maelstrom', 'Basilisk', 'Kraken', 'Unicorn', 'Wraith'],
@@ -279,24 +293,24 @@ test('order: latest release on top, then the others by name; sections keep their
 test('a slug in content/products/ and in a repository fails the build', () => {
   const local = { slug: 'basilisk', name: 'Basilisk', section: 'gadgets', release: null, origin: 'content/products/basilisk/' };
   assert.throws(
-    () => assembleCatalog({ local: [...LOCAL, local], remote: [basilisk], published: publishedSlugs, sections }),
+    () => assembleCatalog({ local: [...LOCAL, local], remote: REMOTE, published: publishedSlugs, sections }),
     /slug `basilisk` is defined twice: in content\/products\/basilisk\/ and in repository basilisk/,
   );
   assert.throws(
-    () => assembleCatalog({ local: [...LOCAL, { ...local, origin: undefined }], remote: [basilisk], published: publishedSlugs, sections }),
+    () => assembleCatalog({ local: [...LOCAL, { ...local, origin: undefined }], remote: REMOTE, published: publishedSlugs, sections }),
     /in content\/products\/ and in repository basilisk — a product lives in one place \(move its folder out of content\/products\//,
   );
 });
 
 test('a published product missing from the catalog fails the build (sheet not pushed, repository renamed)', () => {
   assert.throws(
-    () => assembleCatalog({ local: LOCAL, remote: [], published: publishedSlugs, sections }),
-    /published product\(s\) missing from the catalog: basilisk/,
+    () => assembleCatalog({ local: LOCAL, remote: REMOTE.filter((p) => p !== basilisk), published: publishedSlugs, sections }),
+    /published product\(s\) missing from the catalog: basilisk\./,
   );
 });
 
 test('a new product not on the published list is built, and reported as unguarded', () => {
-  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: [basilisk, { slug: 'gizmo', name: 'Gizmo', section: 'gadgets', release: null }], published: publishedSlugs, sections });
+  const { products, unguarded } = assembleCatalog({ local: LOCAL, remote: [...REMOTE, { slug: 'gizmo', name: 'Gizmo', section: 'gadgets', release: null }], published: publishedSlugs, sections });
   assert.ok(products.some((p) => p.slug === 'gizmo'));
   assert.deepEqual(unguarded, ['gizmo']);
 });

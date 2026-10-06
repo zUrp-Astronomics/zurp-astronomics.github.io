@@ -78,7 +78,7 @@ const DEDUCED = {
   repo: 'the « Source » link is the repository URL',
   release: 'the release comes from the GitHub releases',
   license: "the licence is the repository's LICENSE file, as GitHub detects it",
-  hardwareLicense: "the hardware licence is the repository's LICENSE-HARDWARE file",
+  hardwareLicense: "it is the first line of the repository's LICENSE-HARDWARE file",
   version: 'the version is the tag of the latest GitHub release',
   order: 'the order inside a section comes from the release dates, then the names',
 };

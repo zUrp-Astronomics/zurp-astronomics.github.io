@@ -994,7 +994,7 @@ test('GitHub: the software licence comes with the list of repositories — liste
   ]);
   assert.deepEqual(snapshot.products.map((p) => [p.slug, p.license]), [['basilisk', OTHER]]);
   assert.equal(calls.filter((c) => c.url.includes('/orgs/')).length, 2, 'the two pages of repositories, read once');
-  assert.ok(!calls.some((c) => /\/license\b/i.test(c.url)), 'no request to the licence endpoint');
+  assert.ok(!calls.some((c) => /\/license$/i.test(new URL(c.url).pathname)), 'no request to the licence endpoint');
   const contents = calls.filter((c) => c.url.includes('/contents/'));
   // Ticket #75: 9_Assets/, and LICENSE-HARDWARE of the one repository with a product — never LICENSE.
   const path = (c) => c.url.split('/contents/')[1];

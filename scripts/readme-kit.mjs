@@ -1,85 +1,55 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — README kit generator: GitHub organisation README, product README headers, user guide (readme-kit/), from src/data/products.ts
+// SOURCE: zurp-astronomics-site — README kit generator: GitHub organisation README, product README headers, user guide, from the catalog the site was built with
 // AUTHOR: engineer
-// DATE: 2026-10-03
+// DATE: 2026-10-03 (revised 2026-10-06, ticket #46: generated at each deployment, no longer committed)
 // STATUS: active
 //
-// Usage:
-//   npm run readme-kit          writes readme-kit/ (and removes any file there it did not write)
-//   npm run readme-kit:check    writes nothing; exit 1 if readme-kit/ differs from what would be
-//                               generated (CI: editing products.ts without regenerating turns red)
+// Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
+//   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
+//   node scripts/readme-kit.mjs [--catalog <remote.json>] [--out <dir>]
 //
-// WHY GENERATED. These files are published on GitHub outside the fleet:
-// readme-kit/profile/README.md is synchronised into the special repository zUrp-Astronomics/.github
-// by .github/workflows/org-readme.yml (GitHub Actions, on push to main touching readme-kit/profile/),
-// and the human copies readme-kit/repos/<slug>.md BY HAND at the top of each product repository's
-// README. Generating them from
-// the site's single catalog source keeps names, taglines, slogans, statuses, sections, "based on",
-// licences and links identical to the site. Never edit readme-kit/ by hand: edit products.ts (or
-// this script) and regenerate.
+// The output mirrors the repository zUrp-Astronomics/.github, where .github/workflows/deploy.yml
+// copies it after EACH deployment (dispatches from product repositories included):
+//   profile/README.md                  the organisation README (GitHub shows it on the org page)
+//   readme-kit/README.md               the user guide (French: the human is a French speaker)
+//   readme-kit/repos/<slug>.md         the header block of each product repository's README
 //
-// DETERMINISTIC ON PURPOSE. The output depends only on src/data/products.ts,
-// src/data/licenses.ts, the `site` of astro.config.mjs and this script: no date, no hash, no build
-// stamp. Otherwise the CI check could never be green.
+// WHY NOT COMMITTED ANY MORE. Part of the catalog is read on GitHub at build time (the product
+// repositories' sheets and releases): a file committed here could not be the truth of the org
+// README, it would silently drift from the deployed site. The kit is generated from the SAME
+// catalog the site was just built with (scripts/lib/catalog.mjs: products.ts + the build's
+// snapshot, assembled by the site's own function), so the org README always shows what the site
+// shows, in the same order. Nothing is committed in THIS repository by any workflow (it is
+// published by the fleet: a pushed commit would stop the next publication).
 //
-// READING products.ts. It is TypeScript and imports the poster files. The script bundles it with
-// esbuild — the bundler Astro uses, declared in package.json at the version Astro pulls (ticket
-// #43: it used to be only a transitive dependency), so it needs `npm ci` first — stubbing every image import (the kit links images by their stable URLs, it never
-// reads pixels). Nothing is parsed by regex: the kit sees exactly the objects the site sees.
+// DETERMINISTIC. The output depends only on the catalog, src/data/licenses.ts, the `site` of
+// astro.config.mjs and this script: no date, no hash, no build stamp — so the sync only commits in
+// .github when something really changed.
 //
 // URLS. The image URLs mirror the convention of src/lib/brand-images.ts (panel, series 2 posters,
 // social preview cards) — change both together, or never. scripts/check-dist.mjs fails the build
 // when one of those files is missing from dist/.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { build } from 'esbuild';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { loadBuiltCatalog, repoRoot } from './lib/catalog.mjs';
+import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const kitDir = join(repoRoot, 'readme-kit');
-const check = process.argv.includes('--check');
+const arg = (name) => {
+  const i = process.argv.indexOf(name);
+  return i > -1 ? process.argv[i + 1] : undefined;
+};
+const outDir = resolve(arg('--out') ?? join(repoRoot, SNAPSHOT_DIR, 'readme-kit'));
+const snapshotFile = arg('--catalog') && resolve(arg('--catalog'));
 
 // --- Sources ---------------------------------------------------------------------------------------
 
-async function loadCatalog() {
-  const result = await build({
-    stdin: {
-      contents:
-        "export { products, sections } from './src/data/products.ts';\n" +
-        "export { licenses } from './src/data/licenses.ts';\n",
-      resolveDir: repoRoot,
-      sourcefile: 'readme-kit-entry.ts',
-      loader: 'ts',
-    },
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-    logLevel: 'silent',
-    plugins: [
-      {
-        name: 'stub-images',
-        setup(b) {
-          b.onResolve({ filter: /\.(webp|png|jpe?g|avif|gif|svg)$/i }, (args) => ({
-            path: args.path,
-            namespace: 'stub-image',
-          }));
-          b.onLoad({ filter: /.*/, namespace: 'stub-image' }, () => ({ contents: 'export default null;', loader: 'js' }));
-        },
-      },
-    ],
-  });
-  const code = result.outputFiles[0].text;
-  return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
-}
-
-const { products, sections, licenses } = await loadCatalog();
+const { products, sections, licenses } = await loadBuiltCatalog({ snapshotFile });
 
 const astroConfig = readFileSync(join(repoRoot, 'astro.config.mjs'), 'utf8');
 const SITE = astroConfig.match(/\bsite:\s*['"`]([^'"`]+)['"`]/)?.[1]?.replace(/\/+$/, '');
 if (!SITE) throw new Error('readme-kit: no `site` found in astro.config.mjs');
-if (!products?.length || !sections?.length || !licenses) throw new Error('readme-kit: empty catalog — products.ts changed shape?');
+if (!products?.length || !sections?.length || !licenses) throw new Error('readme-kit: empty catalog — products.ts or the snapshot changed shape?');
 
 // --- URLs (mirror of src/lib/brand-images.ts) ---------------------------------------------------------
 
@@ -123,7 +93,7 @@ const licenceBadges = [
 ];
 
 const GENERATED =
-  'generated by scripts/readme-kit.mjs (zurp-astronomics-site) from src/data/products.ts — do not edit by hand: edit products.ts and regenerate';
+  'generated by scripts/readme-kit.mjs (zurp-astronomics-site) at each deployment of the site, from its catalog — do not edit by hand: it is overwritten at the next deployment';
 
 // --- 1. Organisation README (zUrp-Astronomics/.github → profile/README.md) ---------------------------
 
@@ -277,47 +247,50 @@ function guide() {
   return `# Kit README — mode d'emploi
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-03
-**Statut** : généré par \`scripts/readme-kit.mjs\` depuis \`src/data/products.ts\` — ne pas éditer à la main
-**Référencé par** : \`.gitea/workflows/ci.yml\` (étape « Kit README à jour »), \`.github/workflows/org-readme.yml\` (synchronisation de \`profile/README.md\`)
+**Dernière révision** : 2026-10-06
+**Statut** : généré par \`scripts/readme-kit.mjs\` (dépôt du site) à chaque déploiement — ne pas éditer à la main
+**Référencé par** : \`.github/workflows/deploy.yml\` du site (job « README de l'org »), \`readme-kit/README.md\` du site
 
-Ce répertoire contient ce qui est publié sur GitHub : le README de l'organisation s'y synchronise
-seul (section 1), le reste se recopie à la main (sections 2 à 4). Tout y est **généré** depuis
-\`src/data/products.ts\`, la source du catalogue du site : noms, accroches, slogans, statuts,
-sections, « based on », licences et liens sont ceux du site. Pour changer un texte, modifie
-\`products.ts\` (ou le script), régénère, commite : n'édite jamais ces fichiers directement.
+<!-- ${GENERATED} -->
+
+Ce dossier (\`readme-kit/\` du dépôt [zUrp-Astronomics/.github](${ORG_URL}/.github)) et le README de
+l'organisation (\`profile/README.md\`, même dépôt) sont **régénérés à chaque déploiement du site**
+(${SITE}), depuis le catalogue avec lequel le site vient d'être construit : noms, accroches,
+slogans, statuts, sections, ordre, « based on », licences et liens sont ceux du site en ligne.
+N'édite aucun de ces fichiers : ils sont écrasés au déploiement suivant. Pour changer un texte,
+change la fiche du produit (\`9_Assets/zurp.yml\` de son dépôt) ou, pour un produit pas encore
+migré, \`src/data/products.ts\` du site.
+
+Le travail est fait par le workflow GitHub Actions \`.github/workflows/deploy.yml\` du dépôt du
+site : construction, déploiement, puis copie du kit ici (job « README de l'org »). Il tourne à chaque
+push sur \`main\` du site, à chaque signal \`zurp-catalog\` envoyé par un dépôt produit (release
+publiée, \`9_Assets/\` modifié), ou à la main (onglet **Actions** du site → « Deploy to GitHub
+Pages » → **Run workflow**).
 
 ## 1. README de l'organisation
 
-[\`profile/README.md\`](profile/README.md) est **synchronisé automatiquement** dans le fichier
-\`profile/README.md\` du dépôt [zUrp-Astronomics/.github](${ORG_URL}/.github) par le workflow GitHub
-Actions \`.github/workflows/org-readme.yml\` : à chaque push sur \`main\` qui modifie \`readme-kit/profile/\`,
-ou à la main depuis l'onglet **Actions** du dépôt du site (« README de l'org » → **Run workflow**).
-Il ne commite dans \`.github\` que si le fichier a changé, et n'écrit jamais dans le dépôt du site.
+\`profile/README.md\` est le README affiché sur la page de l'organisation. **Ne le modifie pas à la
+main** : il est réécrit à chaque déploiement.
 
-**Ne le recopie plus à la main** : une modification faite directement dans \`.github\` serait écrasée à
-la synchronisation suivante. Pour changer ce README, modifie \`products.ts\` (ou le script) et régénère.
-
-Le workflow s'authentifie avec le secret d'Actions \`README_SYNC_TOKEN\` (jeton à accès fin, Contents en
-lecture-écriture sur le seul dépôt \`.github\`). Si la synchronisation échoue, c'est probablement le
-jeton : expiré, pas encore approuvé par l'organisation, ou branche protégée dans \`.github\`.
-
-L'en-tête affiche la plaque patinée Low-Tech & DIY depuis le site (${panelUrl}) : l'ancienne image
-\`profile/Low_tech_DIY.png\` du dépôt \`.github\` n'est plus utilisée par le README.
+Le job s'authentifie avec le secret d'Actions \`README_SYNC_TOKEN\` du dépôt du site (jeton à accès
+fin, Contents en lecture-écriture sur le seul dépôt \`.github\`). S'il échoue, c'est probablement le
+jeton : expiré, pas encore approuvé par l'organisation, ou branche protégée dans \`.github\`. Le
+site, lui, est déjà déployé à ce moment-là.
 
 **Où mènent les liens.** Dans la liste des projets, la miniature et le nom mènent tous deux à la page
 du produit sur le site (\`${SITE}/<produit>/\`). Le petit badge **GitHub** placé après l'accroche, et
 lui seul, mène au dépôt du produit. Un produit sans dépôt dédié (${products
     .filter((p) => !hasRepo(p))
     .map((p) => p.name)
-    .join(', ') || 'aucun aujourd’hui'}) n'a pas de badge.
+    .join(', ') || 'aucun aujourd’hui'}) n'a pas de badge. Dans une section, le produit dont la release
+est la plus récente vient en tête ; les produits sans release suivent, par ordre alphabétique.
 
 ## 2. En-tête de README de chaque produit
 
-Pour chaque produit, copie le bloc de \`repos/<produit>.md\` **en tête** du \`README.md\` de son dépôt.
-Le bloc va du commentaire \`<!-- ${BEGIN} … -->\` au commentaire \`<!-- ${END} -->\`, tous deux
-inclus. À la mise à jour suivante, remplace tout ce qui se trouve entre ces deux marqueurs (marqueurs
-compris) par le nouveau bloc : le reste du README du dépôt n'est pas touché.
+Pour chaque produit, copie le bloc de \`repos/<produit>.md\` (ce dossier) **en tête** du \`README.md\`
+de son dépôt. Le bloc va du commentaire \`<!-- ${BEGIN} … -->\` au commentaire \`<!-- ${END} -->\`,
+tous deux inclus. À la mise à jour suivante, remplace tout ce qui se trouve entre ces deux marqueurs
+(marqueurs compris) par le nouveau bloc : le reste du README du dépôt n'est pas touché.
 
 L'affiche et le nom du produit mènent à sa page sur le site. Pas de badge GitHub : on est déjà dans
 le dépôt.
@@ -339,77 +312,21 @@ L'avatar (le télescope steampunk, dessin complet, 480 × 480 px, PNG) est servi
 ${avatarUrl} : enregistre l'image, puis téléverse-la dans les **Settings** de l'organisation
 (${ORG_URL.replace('github.com/', 'github.com/organizations/')}/settings/profile), rubrique **Profile picture** (**Edit → Upload a photo…**). Il est produit
 par le build du site : en ligne une fois le site déployé.
-
-## 5. Régénérer
-
-Après \`npm ci\` (le script lit \`products.ts\` avec esbuild, fourni avec Astro) :
-
-- \`npm run readme-kit\` réécrit ce répertoire ; commite le résultat avec la modification de
-  \`products.ts\`.
-- \`npm run readme-kit:check\` ne réécrit rien et échoue si le répertoire n'est pas à jour. La CI
-  (\`.gitea/workflows/ci.yml\`, job \`build\`) le lance : modifier \`products.ts\` sans régénérer la fait
-  échouer.
-
-Les images (plaque, affiches, cartes, avatar) ne sont pas dans ce répertoire : le site les sert, et le
-contrôle \`scripts/check-dist.mjs\` fait échouer le build si l'une manque.
 `;
 }
 
-// --- Write or check ----------------------------------------------------------------------------------
+// --- Write ------------------------------------------------------------------------------------------
 
 const files = new Map([
-  ['README.md', guide()],
   ['profile/README.md', orgReadme()],
-  ...products.map((p) => [`repos/${p.slug}.md`, repoHeader(p)]),
+  ['readme-kit/README.md', guide()],
+  ...products.map((p) => [`readme-kit/repos/${p.slug}.md`, repoHeader(p)]),
 ]);
 
-function walk(dir) {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-    const p = join(dir, e.name);
-    return e.isDirectory() ? walk(p) : [relative(kitDir, p).split(sep).join('/')];
-  });
+rmSync(outDir, { recursive: true, force: true });
+for (const [path, content] of files) {
+  const abs = join(outDir, path);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, content);
 }
-
-const onDisk = walk(kitDir);
-
-if (check) {
-  const problems = [];
-  for (const [path, content] of files) {
-    const abs = join(kitDir, path);
-    if (!existsSync(abs)) {
-      problems.push(`missing: readme-kit/${path}`);
-      continue;
-    }
-    const current = readFileSync(abs, 'utf8');
-    if (current !== content) {
-      const a = current.split('\n');
-      const b = content.split('\n');
-      const i = a.findIndex((line, n) => line !== b[n]);
-      const at = i === -1 ? Math.min(a.length, b.length) : i;
-      problems.push(
-        `out of date: readme-kit/${path} (line ${at + 1})\n      committed: ${JSON.stringify(a[at] ?? '<end of file>')}\n      expected:  ${JSON.stringify(b[at] ?? '<end of file>')}`,
-      );
-    }
-  }
-  for (const path of onDisk) {
-    if (!files.has(path)) problems.push(`not generated (stale?): readme-kit/${path}`);
-  }
-  if (problems.length) {
-    console.error(`FAIL: readme-kit/ is not up to date with src/data/products.ts (${problems.length} problem(s))`);
-    for (const p of problems) console.error(`  - ${p}`);
-    console.error('Run `npm run readme-kit` and commit readme-kit/.');
-    process.exit(1);
-  }
-  console.log(`OK: readme-kit/ is up to date (${files.size} files, ${products.length} products).`);
-} else {
-  for (const path of onDisk) {
-    if (!files.has(path)) rmSync(join(kitDir, path));
-  }
-  for (const [path, content] of files) {
-    const abs = join(kitDir, path);
-    mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, content);
-  }
-  console.log(`readme-kit/ written: ${[...files.keys()].join(', ')}`);
-}
+console.log(`README kit written to ${outDir} (${files.size} files, ${products.length} products): ${[...files.keys()].join(', ')}`);

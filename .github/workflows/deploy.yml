@@ -1,8 +1,34 @@
+# SOURCE: zurp-astronomics-site — build the site from the organisation's product repositories, deploy it to GitHub Pages, then publish the README kit to zUrp-Astronomics/.github
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active
+#
+# THE CATALOG IS READ ON GITHUB, HERE (ZURP_CATALOG=github, src/lib/catalog/): the sheets
+# 9_Assets/zurp.yml and the releases of the public repositories of zUrp-Astronomics, with this job's
+# GITHUB_TOKEN (1000 requests per hour; every read goes through api.github.com). No fallback: if
+# GitHub cannot be read, or a sheet is invalid, or a published product is missing
+# (src/data/published-slugs.mjs), the build fails and Pages keeps serving the previous deployment.
+#
+# TRIGGERS: a push to main of this repository; a `repository_dispatch` of type `zurp-catalog`, sent
+# by each product repository when a release is published, unpublished or deleted, or when its
+# 9_Assets/ changes on main (that workflow lives in the product repositories, with an org secret); a
+# manual run (Actions → Run workflow).
+#
+# THE README KIT follows EVERY deployment (job `org-readme`): generated from the catalog this build
+# used (scripts/readme-kit.mjs reads the build's snapshot, never GitHub again), it replaces
+# profile/README.md (the organisation README) and readme-kit/ (product README headers, user guide)
+# in zUrp-Astronomics/.github. This job used to be .github/workflows/org-readme.yml, triggered by a
+# committed kit; nothing is committed in THIS repository any more (it is published by the fleet,
+# which requires its published branch to stay an ancestor of what it publishes: a commit pushed here
+# would stop the next publication). Token: README_SYNC_TOKEN, a fine-grained PAT of the org,
+# Contents read-write on the `.github` repository only.
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  repository_dispatch:
+    types: [zurp-catalog]
   workflow_dispatch:
 
 permissions:
@@ -32,13 +58,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build site
+      - name: Build site (catalog read on GitHub)
+        env:
+          ZURP_CATALOG: github
+          ZURP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build
+
+      # The guard the CI runs on the simulator build, here on the build that is deployed.
+      - name: Check dist
+        run: node scripts/check-dist.mjs
+
+      - name: README kit (from the catalog of this build)
+        run: npm run readme-kit
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
+
+      - name: Upload README kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: readme-kit
+          path: .zurp-catalog/readme-kit/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
   deploy:
     needs: build
@@ -50,3 +95,45 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  org-readme:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: org-readme
+      cancel-in-progress: false
+    steps:
+      - name: README kit (this deployment)
+        uses: actions/download-artifact@v4
+        with:
+          name: readme-kit
+          path: kit
+
+      - name: Organisation repository
+        uses: actions/checkout@v4
+        with:
+          repository: zUrp-Astronomics/.github
+          token: ${{ secrets.README_SYNC_TOKEN }}
+          path: org
+
+      - name: Copy the kit
+        run: |
+          test -s kit/profile/README.md
+          mkdir -p org/profile
+          cp kit/profile/README.md org/profile/README.md
+          rm -rf org/readme-kit
+          cp -R kit/readme-kit org/readme-kit
+
+      - name: Commit if changed
+        env:
+          SOURCE: ${{ github.repository }}@${{ github.sha }} (${{ github.event_name }})
+        working-directory: org
+        run: |
+          git add -A profile/README.md readme-kit
+          if git diff --cached --quiet; then echo "README kit already up to date"; exit 0; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "docs: README de l'org et kit README, depuis le déploiement ${SOURCE}"
+          git push -q

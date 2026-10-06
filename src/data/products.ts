@@ -1,7 +1,14 @@
-// SOURCE: zurp-astronomics-site — product catalog data (posters, alt texts, accents, catalog sections, poster slogans)
+// SOURCE: zurp-astronomics-site — the products not yet read from their repository (posters, alt texts, accents, sections, poster slogans), and the `Product` shape
 // AUTHOR: engineer
-// DATE: 2026-10-03
-// STATUS: active
+// DATE: 2026-10-03 (revised 2026-10-06, ticket #46)
+// STATUS: active — shrinking: a product leaves this file when its sheet is in its repository
+//
+// THE CATALOG IS NO LONGER THIS FILE ALONE (ticket #46). The site reads its catalog from the product
+// repositories of the zUrp-Astronomics organisation (9_Assets/zurp.yml + GitHub releases,
+// src/lib/catalog/), plus the products below, which have not moved yet. A product lives in ONE
+// place: a slug both here and in a repository fails the build. Basilisk was the first to move. The
+// full catalog, in display order, is src/data/catalog.ts; nothing should list products from here
+// directly.
 
 import type { ImageMetadata } from 'astro';
 
@@ -14,24 +21,12 @@ import krakenPoster from '../assets/posters/kraken.webp';
 import maelstromPoster from '../assets/posters/maelstrom.webp';
 import cyclopsPoster from '../assets/posters/cyclops.webp';
 import wraithPoster from '../assets/posters/wraith.webp';
-import basiliskPoster from '../assets/posters/basilisk.webp';
 
 export type ProductStatus = 'wip' | 'future' | 'released';
 
-/**
- * Catalog sections of the main site's home page, in display order. Taken from the README of the
- * zUrp-Astronomics GitHub organisation; the next ticket generates the READMEs back from here, so
- * this list (and each product's `section`) is the single source. Inside a section, products keep
- * their order in `products` below.
- */
-export const sections = [
-  { id: 'mounts', title: 'Mounts' },
-  { id: 'cameras', title: 'Cameras' },
-  { id: 'gadgets', title: 'Gadgets' },
-  { id: 'future', title: 'Future' },
-] as const;
+export { sections } from './sections.mjs';
 
-export type ProductSection = (typeof sections)[number]['id'];
+export type ProductSection = (typeof import('./sections.mjs').sections)[number]['id'];
 
 export interface Product {
   slug: string;
@@ -43,7 +38,7 @@ export interface Product {
    */
   slogan: string;
   category: string;
-  /** Catalog section on the main site's home page (see `sections`). */
+  /** Catalog section on the main site's home page (see `sections`, src/data/sections.mjs). */
   section: ProductSection;
   repo: string;
   status: ProductStatus;
@@ -188,25 +183,5 @@ export const products: Product[] = [
     posterAlt:
       'Wraith poster on a worn, chipped cream plate: a hooded mechanical spectre with glowing white eyes, a skeletal clawed arm and floating curved armour plates dissolves into swirling mist in front of the full moon, grey rays and blueprint sketches of its mask, above the slogan “Ghost in the sky”.',
     accent: '#85878a',
-  },
-  {
-    slug: 'basilisk',
-    name: 'Basilisk',
-    tagline:
-      'Sleek but deadly Sony E adapter for astro cameras, bending glass to your will without leaving the warm room.',
-    slogan: 'Bend the glass to your will',
-    category: 'Adapter',
-    section: 'gadgets',
-    repo: 'https://github.com/zUrp-Astronomics/basilisk',
-    status: 'wip',
-    basedOn: 'Pinefeat',
-    description: [
-      'Basilisk is a Sony E adapter for astro cameras: put a Sony E lens on your astro camera and drive it remotely. The glass bends to your will, and you never leave the warm room.',
-      'Based on the Pinefeat project, with the zUrp treatment. Open hardware like the rest of the catalog.',
-    ],
-    poster: basiliskPoster,
-    posterAlt:
-      'Basilisk poster on a worn, chipped cream plate: a mechanical serpent with segmented steel coils and green crystal spines, a glowing green eye and a forked tongue, rears with fangs bared in front of the full moon, green rays and blueprint sketches of its head, above the slogan “Bend the glass to your will”.',
-    accent: '#05b40e',
   },
 ];

@@ -1,6 +1,8 @@
 # build
 dist/
 .astro/
+# catalog read by the build (posters, snapshot, README kit) — src/lib/catalog/loader.mjs
+.zurp-catalog/
 
 # deps
 node_modules/

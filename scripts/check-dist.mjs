@@ -1,20 +1,23 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width, one page per product, stable brand image URLs, GitHub social preview cards, site icons and organisation avatar
+// SOURCE: zurp-astronomics-site — post-build guard on dist/: image weight ceiling, catalog tile width and order, one page per product, version stamps, stable brand image URLs, GitHub social preview cards, site icons and organisation avatar
 // AUTHOR: engineer
-// DATE: 2026-10-03
+// DATE: 2026-10-03 (revised 2026-10-06, ticket #46: the full catalog of the build)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
-// Runs after `npm run build` in CI. No dependencies: node built-ins only.
+// Runs after the build, in CI and in the deploy workflow. Needs `npm ci` (esbuild reads
+// products.ts) and the catalog snapshot the build wrote (.zurp-catalog/remote.json): the products
+// are THE CATALOG THE SITE WAS BUILT WITH — products.ts plus the products read from their
+// repositories — assembled by scripts/lib/catalog.mjs, never read from products.ts alone.
 //
 // Fails (exit 1) when:
 //   - an image file in dist/ (webp, jpg/jpeg, png, avif, gif, svg, ico) weighs more than 600 KB
 //     (614 400 bytes);
 //   - dist/ does not hold EXACTLY this set of pages, no more, no less:
 //       `index.html` + `<slug>/index.html` per product
-//     Slugs are read FROM products.ts (never a hard-coded list), so a new product is checked as
-//     soon as it is added. (The v1 archive under /alternate/ was deleted in ticket #35: a page left
-//     there is now an unexpected page.);
+//     Slugs are those of the built catalog (never a hard-coded list), so a new product is checked
+//     as soon as it appears. (The v1 archive under /alternate/ was deleted in ticket #35: a page
+//     left there is now an unexpected page.);
 //   - a catalog tile on the home page (`index.html`) is wider than 600 px, in its `srcset` (`…w`
 //     descriptor) or its `width` attribute. Catalog tiles never get a variant beyond 600 px (weight
 //     budget). A tile is an <img> carrying the `data-catalog-tile` attribute (set by
@@ -24,11 +27,15 @@
 //   - the home page does not hold exactly one tile per product: zero tiles means the marker or the
 //     parser drifted (fail loudly rather than pass an unchecked page), fewer means a tile lost
 //     its marker and escaped the width rule;
+//   - the tiles of the home page are not in the catalog's order (sections in their fixed order;
+//     inside one, the latest release first, then by name — src/lib/catalog/assemble.mjs);
+//   - a product page does not carry its version stamp (`badge-version`, the tag of its latest
+//     release) when it has a release, or carries one when it has none;
 //   - a stable-URL brand image linked by the GitHub READMEs is missing, is not a WebP, or is wider
 //     than its README size:
 //       `brand/low-tech-diy.webp`                    the Low-Tech & DIY panel   (≤ 800 px wide)
 //       `brand/posters/<slug>.webp` per product       its series 2 poster        (≤ 600 px wide)
-//     Slugs again come from products.ts. The convention is defined (and documented) in
+//     Slugs again come from the built catalog. The convention is defined (and documented) in
 //     src/lib/brand-images.ts; the paths below mirror it — change both together, or never;
 //   - a GitHub social preview card (uploaded by hand in each product repository, linked from
 //     readme-kit/README.md) is missing, is not a JPEG, or is not exactly 1280 × 640 px:
@@ -45,6 +52,8 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadBuiltCatalog } from './lib/catalog.mjs';
+import { unguardedWarning } from '../src/lib/catalog/assemble.mjs';
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
 const MAX_TILE_WIDTH = 600; // px — widest variant allowed for a catalog tile
@@ -68,7 +77,6 @@ const FAVICON_ICO = { path: 'favicon.ico', sizes: [16, 32] };
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = resolve(process.argv[2] ?? join(repoRoot, 'dist'));
-const productsFile = join(repoRoot, 'src', 'data', 'products.ts');
 
 const errors = [];
 const kb = (n) => `${(n / 1024).toFixed(1)} KB`;
@@ -114,14 +122,14 @@ for (const img of images.slice(0, 5)) {
 }
 
 // --- 2. Exactly one page per product + the home page -------------------------------------------
-const source = readFileSync(productsFile, 'utf8');
-const slugs = [...source.matchAll(/^\s*slug:\s*(['"`])([^'"`]+)\1\s*,?\s*$/gm)].map((m) => m[2]);
-
-if (slugs.length === 0) {
-  errors.push(`no product slug found in ${relative(repoRoot, productsFile)} — parser out of sync?`);
-}
-const dupes = slugs.filter((s, i) => slugs.indexOf(s) !== i);
-if (dupes.length) errors.push(`duplicate slug(s) in products.ts: ${[...new Set(dupes)].join(', ')}`);
+// The catalog the site was built with (assembly errors — a slug twice, a published product missing
+// — are thrown here as they were in the build).
+const catalog = await loadBuiltCatalog();
+const slugs = catalog.products.map((p) => p.slug);
+if (slugs.length === 0) errors.push('the built catalog holds no product');
+console.log(`Catalog source of the build: ${catalog.read}`);
+const unguarded = unguardedWarning(catalog.unguarded);
+if (unguarded) console.log(`${process.env.GITHUB_ACTIONS === 'true' ? '::warning::' : 'WARNING: '}${unguarded}`);
 
 const expected = new Set([HOME_PAGE, ...slugs.map((s) => `${s}/index.html`)]);
 const found = new Set(files.map((f) => f.rel).filter((rel) => rel.endsWith('index.html')));
@@ -130,16 +138,34 @@ for (const page of expected) {
   if (!found.has(page)) errors.push(`missing page: dist/${page}`);
 }
 for (const page of found) {
-  if (!expected.has(page)) errors.push(`unexpected page (no matching product in products.ts): dist/${page}`);
+  if (!expected.has(page)) errors.push(`unexpected page (no matching product in the catalog): dist/${page}`);
+}
+
+// Version stamp: the tag of the latest release on the product page, only when there is one.
+for (const p of catalog.products) {
+  const page = `${p.slug}/index.html`;
+  if (!found.has(page)) continue;
+  const html = readFileSync(join(distDir, page), 'utf8');
+  const stamps = [...html.matchAll(/<span\b[^>]*\bclass="[^"]*\bbadge-version\b[^"]*"[^>]*>([^<]*)<\/span>/g)].map((m) => decodeText(m[1]).trim());
+  if (p.release) {
+    if (stamps.length !== 1 || stamps[0] !== p.release.tag) {
+      errors.push(`dist/${page}: expected one version stamp ${JSON.stringify(p.release.tag)} (latest release), found ${JSON.stringify(stamps)}`);
+    }
+  } else if (stamps.length) {
+    errors.push(`dist/${page}: version stamp ${JSON.stringify(stamps)} on a product without a release`);
+  }
 }
 
 // --- 3. Catalog tiles: no variant wider than 600 px, one tile per product --------------------
 const catalogPages = [HOME_PAGE].filter((p) => found.has(p));
 let tileImages = 0;
 const otherImages = [];
+const tileOrder = [];
 for (const page of catalogPages) {
   const html = readFileSync(join(distDir, page), 'utf8');
   let onPage = 0;
+  // Order of the tiles: the link around each one (src/components/v2/PosterTile.astro).
+  for (const [, href] of html.matchAll(/<a\b[^>]*\bclass="(?:[^"]*\s)?tile(?:\s[^"]*)?"[^>]*\bhref="\/([^"/]+)\/"/gi)) tileOrder.push(href);
   for (const [tag] of html.matchAll(/<img\b[^>]*>/gi)) {
     const src = tag.match(/\ssrc="([^"]*)"/i)?.[1] ?? '';
     if (!TILE_MARKER.test(tag)) {
@@ -169,7 +195,11 @@ for (const page of catalogPages) {
   tileImages += onPage;
 }
 
-console.log(`Products in src/data/products.ts: ${slugs.length} (${slugs.join(', ')})`);
+if (catalogPages.length && tileOrder.join(',') !== slugs.join(',')) {
+  errors.push(`home page tiles out of the catalog's order: found ${tileOrder.join(', ') || 'none'}, expected ${slugs.join(', ')}`);
+}
+
+console.log(`Products in the built catalog: ${slugs.length}, in display order (${slugs.join(', ')})`);
 console.log(`Catalog tiles checked (≤ ${MAX_TILE_WIDTH} px): ${tileImages} on ${catalogPages.join(', ')}`);
 console.log(`Other images on those pages (not tiles, weight ceiling only): ${otherImages.length}`);
 for (const img of otherImages) console.log(`  ${img}`);
@@ -365,10 +395,21 @@ for (const page of [...found].sort()) {
 }
 console.log(`Icon links checked on ${found.size} page(s): ${declared}`);
 
+// --- Helpers ------------------------------------------------------------------------------------
+function decodeText(s) {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&amp;/g, '&');
+}
+
 // --- Verdict -----------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px, one page per product + home page, every stable brand image, social preview card, site icon and the organisation avatar in place.');
+console.log('\nOK: every image ≤ 600 KB, catalog tiles ≤ 600 px and in catalog order, one page per product + home page, version stamps, every stable brand image, social preview card, site icon and the organisation avatar in place.');

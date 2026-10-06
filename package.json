@@ -9,11 +9,12 @@
     "preview": "astro preview",
     "astro": "astro",
     "readme-kit": "node scripts/readme-kit.mjs",
-    "readme-kit:check": "node scripts/readme-kit.mjs --check"
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "astro": "^7.3.5",
     "esbuild": "^0.28.2",
+    "js-yaml": "^4.3.2",
     "sharp": "^0.35.5"
   },
   "engines": {

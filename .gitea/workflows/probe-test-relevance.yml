@@ -96,6 +96,14 @@ jobs:
       - name: Outils
         run: apk add --no-cache git >/dev/null 2>&1 || true
 
+      # Le Node de `ci.yml` (job `build`) et de `.github/workflows/deploy.yml` : Node 24 LTS, quel
+      # que soit celui de l'image. Sans lui, la suite (Astro 7, `engines` >= 24) jouerait ici sur
+      # le node de l'image et rendrait `inapplicable` sans rapport avec la livraison. `setup-node`
+      # préfixe le PATH des étapes suivantes ; `run_suite` transmet ce PATH à la suite.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Sonder
         # Une affectation par entrée, et c'est la SEULE place où une expression d'entrée apparaît :
         # le runner pose la valeur dans l'environnement, le shell la lit comme une donnée.

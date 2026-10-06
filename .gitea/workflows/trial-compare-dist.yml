@@ -1,0 +1,81 @@
+# SOURCE: zurp-astronomics-site — on-demand trial: build main and the branch, compare the two dist/ trees (scripts/compare-dist.mjs)
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — a trial, launched on demand (ci_trial), never a status of the PR
+#
+# For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
+# lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
+# it, and compares the two dist/ (pages, URLs, visible text, image sizes, build stamp). Red when they
+# differ; the report lists every difference.
+#
+# The name must not start with `CI`: it would become a required status of `main`.
+name: trial-compare-dist
+
+on: workflow_dispatch
+
+jobs:
+  compare:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    timeout-minutes: 30
+    env:
+      BASE_REF: main
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Base checkout
+        run: |
+          git fetch -q --no-tags --depth=1 origin "$BASE_REF"
+          git worktree add -q /tmp/base FETCH_HEAD
+          echo "base $(git -C /tmp/base rev-parse --short HEAD), head $(git rev-parse --short HEAD)"
+          # The base builds with the Node its own deploy workflow names.
+          v=$(sed -n 's/^ *node-version: *\([0-9][0-9.]*\).*/\1/p' /tmp/base/.github/workflows/deploy.yml | head -1)
+          echo "BASE_NODE=${v:-20}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.BASE_NODE }}
+
+      - name: Build base
+        working-directory: /tmp/base
+        run: |
+          node -v
+          npm ci --no-audit --no-fund >/dev/null
+          # Its stamp reads its own commit (GITHUB_SHA would be the head's).
+          env -u GITHUB_SHA npm run build > /tmp/base-build.log 2>&1 || { tail -60 /tmp/base-build.log; exit 1; }
+          tail -3 /tmp/base-build.log
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Build head (the CI commands)
+        run: |
+          node -v
+          npm ci --no-audit --no-fund
+          npm ls astro sharp esbuild vite
+          npm run build > /tmp/head-build.log 2>&1 || { tail -80 /tmp/head-build.log; exit 1; }
+          echo "--- build warnings / errors"
+          grep -n -i -E 'warn|error|deprecat|fail' /tmp/head-build.log | head -60 || true
+          tail -3 /tmp/head-build.log
+          node scripts/check-dist.mjs > /tmp/check-dist.log 2>&1 || { cat /tmp/check-dist.log; exit 1; }
+          tail -2 /tmp/check-dist.log
+          npm run readme-kit:check
+
+      # The trial returns only the end of the job's log, and the report is longer: it is printed in
+      # full, then once more as one gzip+base64 line (with the build logs and the built pages of both
+      # sides) between REPORT-B64 markers, the last thing in the log —
+      # decode with `base64 -d | tar xz`.
+      - name: Compare dist/
+        run: |
+          rc=0
+          node scripts/compare-dist.mjs /tmp/base/dist dist > /tmp/report.txt 2>&1 || rc=$?
+          cat /tmp/report.txt
+          mkdir -p /tmp/bundle/base /tmp/bundle/head
+          cp /tmp/report.txt /tmp/base-build.log /tmp/head-build.log /tmp/check-dist.log /tmp/bundle/
+          (cd /tmp/base/dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/base -xf -)
+          (cd dist && find . -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.txt' \) | tar -cf - -T - | tar -C /tmp/bundle/head -xf -)
+          echo "REPORT-B64-BEGIN"
+          tar -C /tmp/bundle -cf - . | gzip -9n | base64 -w0; echo
+          echo "REPORT-B64-END"
+          exit $rc

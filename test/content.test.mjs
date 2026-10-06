@@ -8,6 +8,8 @@
 //   licence badge any more
 // REVISED: 2026-10-06 (ticket #72) — full discovery: no list of products kept by hand — the
 //   « Source » link of a local product is its discovered repository, or the organisation
+// REVISED: 2026-10-06 (ticket #75) — the product header carries four elements: the poster, the status
+//   badge, the software and the hardware licence badges; content/licences.yml holds texts too
 //
 // Ticket #49. These tests check the MECHANISM, never the words: content/ is the human's to edit, and
 // no test here breaks when a text changes. That the output did not change when the texts moved is
@@ -26,7 +28,8 @@ import { readRepoProducts } from '../src/lib/catalog/read.mjs';
 import { simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { catalogContent, escapeHtml, fill, inlineMarkdown, markdownParagraphs, readMarkdown, readYaml, siteContent, siteView } from '../src/lib/content.mjs';
+import { catalogContent, escapeHtml, fill, inlineMarkdown, licenseContent, markdownParagraphs, readMarkdown, readYaml, siteContent, siteView } from '../src/lib/content.mjs';
+import { licenseBadgeSvg } from '../src/lib/license-badge.mjs';
 import { statusBadge, statusBadgeJson } from '../src/lib/status-badge.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
@@ -163,6 +166,7 @@ test('the code (src/, scripts/) holds none of the texts of content/ — they hav
   const texts = new Set([
     ...strings(readYaml('site.yml', ROOT)),
     ...strings(readYaml('readme-kit/kit.yml', ROOT)),
+    ...strings(readYaml('licences.yml', ROOT)),
     ...sections.map((s) => s.title),
     ...Object.values(statuses).map((s) => s.label),
     ...['home/pitch.md', 'home/manifesto.md', 'footer/legalese.md']
@@ -215,6 +219,7 @@ test('the shared texts (tagline, pitch, affiliation of the signature) are writte
 async function simulatorKit() {
   const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
   cpSync(join(ROOT, 'catalog-simulator'), join(root, 'catalog-simulator'), { recursive: true });
+  cpSync(CONTENT, join(root, 'content'), { recursive: true });
   const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds });
   const snap = join(root, 'snapshot.json');
   writeFileSync(snap, JSON.stringify(snapshot));
@@ -250,12 +255,13 @@ test('README kit: every marker filled, and the shared texts come from their one 
 // Ticket #53. The header is pasted ONCE in the product repository and never again: it holds only
 // URLs whose content is served elsewhere — the poster (to the product page), the status badge (the
 // site's JSON, through shields.io) — and its two markers. No text of the sheet: it would go stale.
-// Ticket #66: no licence badge any more (pasted once, it would say « not specified » for a repository
-// without a LICENSE, and never appear the day the LICENSE arrives; GitHub shows the licence in the
-// repository's « About » box) — for a product with a repository as for one without.
-test('README kit: a product header holds only the poster, the status badge and its markers — no licence badge', async () => {
+// Ticket #75 (the human: « je veux la licence hardware »): after the status badge, the two licence
+// badges the site draws, software then hardware — an empty SVG when the repository declares no such
+// licence, so the same four elements for every product, with a repository or without.
+test('README kit: a product header holds, in order, the poster, the status badge, the software and the hardware licence badges, and its markers — nothing else', async () => {
   const { out, products } = await simulatorKit();
   const org = site.org.url.replace(/\/+$/, '');
+  const texts = licenseContent(ROOT);
   let withRepo = 0;
   let withoutRepo = 0;
   for (const p of products) {
@@ -267,11 +273,21 @@ test('README kit: a product header holds only the poster, the status badge and i
       `${SITE}/${p.slug}/`,
       `${SITE}/brand/posters/${p.slug}.webp`,
       `https://img.shields.io/endpoint?url=${encodeURIComponent(`${SITE}/brand/status/${p.slug}.json`)}`,
+      `${SITE}/brand/badges/${p.slug}/software.svg`,
+      `${SITE}/brand/badges/${p.slug}/hardware.svg`,
     ];
     const urls = [...text.matchAll(/\b(?:src|href)="([^"]*)"|\]\(([^)\s]*)\)/g)].map((m) => m[1] ?? m[2]);
-    assert.deepEqual([...urls].sort(), [...expected].sort(), `${p.slug}: the URLs of the header`);
+    assert.deepEqual(urls, expected, `${p.slug}: the URLs of the header, in order — page and poster, status, software, hardware`);
+    // The images, in order: the poster, then the three badges, each with its alt text of kit.yml.
+    const images = [...text.matchAll(/<img\b[^>]*\balt="([^"]*)"|!\[([^\]]*)\]\(/g)].map((m) => m[1] ?? m[2]);
+    assert.deepEqual(images, [kitTexts.header.posterAlt, kitTexts.header.statusAlt, kitTexts.header.softwareAlt, kitTexts.header.hardwareAlt], p.slug);
     assert.ok(!text.includes('img.shields.io/github/license'), `${p.slug}: no GitHub licence badge`);
-    assert.doesNotMatch(text, /licen[cs]e/i, `${p.slug}: no licence at all in the header`);
+    // The licence itself is never written in the header: it is drawn in the SVG, at each build.
+    for (const kind of ['software', 'hardware']) {
+      const svg = licenseBadgeSvg(p, kind, texts);
+      const label = svg.match(/>([^<]+)<\/text><\/g>/)?.[1];
+      if (label) assert.ok(!text.includes(label), `${p.slug}: the ${kind} licence ${label} is in the SVG, not in the header`);
+    }
 
     // The markers that delimit the block (content/readme-kit/kit.yml), naming no product.
     assert.ok(text.startsWith(`<!-- ${kitTexts.header.begin} `), `${p.slug}: opens with the begin marker`);
@@ -290,6 +306,10 @@ test('README kit: a product header holds only the poster, the status badge and i
     assert.equal(rest.replace(/<[^>]*>|!\[\s*\]\(\s*\)|—|\s/g, ''), '', `${p.slug}: something else than the poster, the badges and the markers`);
   }
   assert.ok(withRepo > 0 && withoutRepo > 0, `products with (${withRepo}) and without (${withoutRepo}) a repository both checked`);
+  // The guide says it, and says that a block pasted before is pasted again, once.
+  const guide = readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8');
+  assert.ok(guide.includes(`${SITE}/brand/badges/<produit>/software.svg`) && guide.includes(`${SITE}/brand/badges/<produit>/hardware.svg`), 'the guide names the two badges');
+  assert.match(guide, /LICENSE-HARDWARE/);
 });
 
 // The status JSON (/brand/status/<slug>.json, src/lib/status-badge.mjs): shields' endpoint schema,

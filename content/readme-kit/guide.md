@@ -1,9 +1,9 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-06 (ticket #66 : plus de badge de licence dans l'en-tête produit)
+Dernière révision: 2026-10-06 (ticket #75 : les badges de licence logicielle et matérielle dans l'en-tête produit ; un bloc collé avant se recolle une fois)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
-Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug) ; products (name, slug, hasRepo, repo, repoPath, socialUrl) ; noRepo (name, last), noRepoOne / noRepoMany
+Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, hasRepo, repo, repoPath, socialUrl) ; noRepo (name, last), noRepoOne / noRepoMany
 ---
 
 # Kit README — mode d'emploi
@@ -53,19 +53,38 @@ ailleurs : **il se met à jour seul** quand le site se reconstruit (release publ
 `9_Assets/` modifié). Ne le recolle pas, ne le modifie pas. Le texte du README (titre, présentation,
 documentation) s'écrit à la main sous le bloc, comme dans tout dépôt.
 
+Dans l'ordre :
+
 - **L'affiche** du produit, servie par le site ; elle mène à sa page sur le site.
 - **Le badge de statut**, dessiné par shields.io depuis `{{{statusJsonUrl}}}`, que le site réécrit à
   chaque build : le statut du produit et, s'il en a une, le tag de sa dernière release.
+- **Le badge de licence logicielle**, `{{{softwareBadgeUrl}}}`, dessiné par le site à chaque build :
+  la licence du fichier `LICENSE` à la racine du dépôt, telle que GitHub la détecte (`MIT`,
+  `GPL-3.0`…).
+- **Le badge de licence matérielle**, `{{{hardwareBadgeUrl}}}`, dessiné de même : la licence du
+  fichier `LICENSE-HARDWARE` à la racine du dépôt, reconnue à sa première ligne, son titre officiel
+  (« Open Community License (OCL v1.1) » donne `OCL v1.1`).
+
+Un dépôt sans `LICENSE`, ou sans `LICENSE-HARDWARE`, n'affiche rien à la place du badge
+correspondant : l'image existe, vide. Le badge apparaît au build du site qui suit l'arrivée du
+fichier, sans toucher au README. La page du produit sur le site porte les mêmes licences, en deux
+tampons « Software · … » et « Hardware · … ».
 
 GitHub met en cache les images des README : après un build, un badge peut montrer l'ancienne valeur
 pendant quelques minutes.
 
-Un dépôt qui porte encore un ancien en-tête (nom, slogan, badges de licence, phrase de licence) :
-remplace-le une dernière fois, marqueurs compris, par ce bloc. Un dépôt où le bloc précédent est déjà
-collé (affiche, badge de statut et badge de licence) : retire la ligne du badge de licence
-(`![licence](https://img.shields.io/github/license/…)`), ou recolle le bloc, marqueurs compris. La
-licence d'un projet, c'est le fichier `LICENSE` à la racine de son dépôt : GitHub l'affiche dans
-l'encadré « About » du dépôt, et le site sur la page du produit.
+**Un bloc collé avant cette version** (affiche et badge de statut seulement, ou avec l'ancien badge
+de licence de GitHub, `![licence](https://img.shields.io/github/license/…)`) : **recolle-le une
+fois**, marqueurs compris, pour recevoir les deux badges de licence. Un dépôt qui porte encore un
+ancien en-tête (nom, slogan, badges de licence, phrase de licence) : remplace-le de même, une
+dernière fois, par ce bloc.
+
+**Les deux fichiers de licence.** `LICENSE` porte la licence **logicielle** (MIT, GPL…) : c'est
+celle que GitHub reconnaît et affiche dans l'encadré « About » du dépôt. `LICENSE-HARDWARE` porte la
+licence **matérielle** (OCL v1.1, CERN-OHL…), son titre officiel en première ligne. Le site ne
+déplace ni ne corrige aucune licence : il affiche ce que le dépôt déclare, à l'endroit où il le
+déclare — une licence matérielle posée dans `LICENSE` s'affiche comme la licence logicielle du
+produit.
 
 ## 3. Carte d'aperçu (Social preview) de chaque dépôt
 

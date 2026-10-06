@@ -1,6 +1,6 @@
 {
-  "key": "other",
-  "name": "Other",
-  "spdx_id": "NOASSERTION",
-  "url": null
+  "key": "mit",
+  "name": "MIT License",
+  "spdx_id": "MIT",
+  "url": "https://api.github.com/licenses/mit"
 }

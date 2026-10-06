@@ -12,6 +12,9 @@
 #   sides (scripts/compare-dist.mjs --admitted), each one required to be observed; the lists of #66
 # REVISED: 2026-10-06 (ticket #72) — the lists of #66 (in main since) replaced by those of #72: three
 #   licence stamps added, nothing else; KIT_MAY_DIFFER emptied
+# REVISED: 2026-10-06 (ticket #75) — the lists of #72 (in main since) replaced by those of #75: the
+#   licence badges (new SVG files), the « Software · » / « Hardware · » stamps, the product headers
+#   and the guide of the kit; the end of the log carries the licence badges check-dist found
 #
 # For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
 # lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
@@ -41,25 +44,43 @@ jobs:
     timeout-minutes: 30
     env:
       BASE_REF: main
-      # ADMITTED DIFFERENCES — ticket #72: full discovery. The simulator imitates the organisation's
-      # real repositories that have no sheet yet (catalog-simulator/repos/kaiju, kraken, berserker,
-      # with their licence); the repository of a product of content/products/ is discovered there.
-      #   DIST_ADMITTED_NEW  files new in dist/ (space-separated): none.
+      # ADMITTED DIFFERENCES — ticket #75: two licences per product, software (LICENSE, as GitHub detects
+      # it) and hardware (LICENSE-HARDWARE, its first line). The simulator imitates basilisk after the
+      # inversion of its files (catalog-simulator/licenses/basilisk.json: MIT;
+      # catalog-simulator/repos/basilisk/LICENSE-HARDWARE: the OCL v1.1); the other imitated
+      # repositories are unchanged.
+      #   DIST_ADMITTED_NEW  files new in dist/ (space-separated): the two licence badges of each of
+      #                      the 8 products of the simulator's catalog, /brand/badges/<slug>/<kind>.svg
+      #                      (empty for a licence the repository does not declare).
       #   DIST_ADMITTED      differences inside the pages, one per line, `<kind> <pages> <value>`
       #                      (scripts/compare-dist.mjs, `--admitted`), each required to be observed on
       #                      every page its pattern matches:
-      #     - added: the stamp of the licence GitHub detects in their repository — GPL-3.0 on /kaiju/
-      #       and /kraken/, CERN-OHL-S-2.0 on /berserker/. Their « Source » link does not change (the
-      #       imitated repositories are in lower case, like the folders); Cyclops and Wraith have no
-      #       repository: no stamp, the organisation as their link, as before.
-      #   KIT_MAY_DIFFER     README kit files that may differ (shell patterns): none — the kit carries
-      #                      no licence, and its links do not change.
+      #     - the software stamp takes its prefix: « GPL-3.0 » becomes « Software · GPL-3.0 » (kaiju,
+      #       kraken, maelstrom, unicorn), « CERN-OHL-S-2.0 » becomes « Software · CERN-OHL-S-2.0 »
+      #       (berserker: its LICENSE holds a hardware licence, shown where the repository declares it);
+      #     - basilisk: « Other licence » (its LICENSE was the OCL, NOASSERTION) becomes
+      #       « Software · MIT » and « Hardware · OCL v1.1 ». Cyclops and Wraith: no stamp, as before.
+      #     No URL and no CSS rule changes (the stamps keep the `.badge-license` style, told apart by
+      #     an attribute).
+      #   KIT_MAY_DIFFER     README kit files that may differ (shell patterns): the product headers
+      #                      (two licence badges after the status badge) and the guide (which says so).
+      #                      profile/README.md is identical: the org README carries no licence.
       # Each list empty = nothing admitted.
-      DIST_ADMITTED_NEW: ''
+      DIST_ADMITTED_NEW: >-
+        brand/badges/basilisk/software.svg brand/badges/basilisk/hardware.svg
+        brand/badges/berserker/software.svg brand/badges/berserker/hardware.svg
+        brand/badges/cyclops/software.svg brand/badges/cyclops/hardware.svg
+        brand/badges/kaiju/software.svg brand/badges/kaiju/hardware.svg
+        brand/badges/kraken/software.svg brand/badges/kraken/hardware.svg
+        brand/badges/maelstrom/software.svg brand/badges/maelstrom/hardware.svg
+        brand/badges/unicorn/software.svg brand/badges/unicorn/hardware.svg
+        brand/badges/wraith/software.svg brand/badges/wraith/hardware.svg
       DIST_ADMITTED: |
-        text-added {kaiju,kraken}/index.html GPL-3.0
-        text-added berserker/index.html CERN-OHL-S-2.0
-      KIT_MAY_DIFFER: ''
+        text-added {berserker,kaiju,kraken,maelstrom,unicorn}/index.html Software ·
+        text-removed basilisk/index.html Other licence
+        text-added basilisk/index.html Software · MIT
+        text-added basilisk/index.html Hardware · OCL v1.1
+      KIT_MAY_DIFFER: 'readme-kit/repos/*.md readme-kit/README.md'
     steps:
       - uses: actions/checkout@v4
 
@@ -174,6 +195,8 @@ jobs:
           cat .zurp-catalog/readme-kit/readme-kit/repos/basilisk.md
           echo "--- the licence stamps of the head's pages (scripts/check-dist.mjs)"
           sed -n '/^Licence stamps/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
+          echo "--- the licence badges of the head (scripts/check-dist.mjs)"
+          sed -n '/^Licence badges/,/^[^ ]/p' /tmp/check-dist.log | sed '$d'
           tail -1 /tmp/check-dist.log
           echo "--- dist/ (scripts/compare-dist.mjs), last: the trial's end of log carries it whole"
           sed -n '/^FILES/p;/^IMAGE /p' /tmp/report.txt | sort | uniq -c

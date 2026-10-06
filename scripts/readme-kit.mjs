@@ -8,6 +8,9 @@
 // REVISED: 2026-10-06 (ticket #66) — no licence anywhere in the kit: the org README's licence badges
 //   and sentence and the product header's GitHub licence badge are gone (a project's licence is its
 //   repository's LICENSE, which GitHub shows in the repository's « About » box)
+// REVISED: 2026-10-06 (ticket #75) — the product header carries the two licence badges the site draws
+//   (software, hardware: /brand/badges/<slug>/<kind>.svg, empty when the repository declares none),
+//   after the status badge; the org README still carries no licence
 //
 // Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
 //   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
@@ -51,6 +54,7 @@ import { loadBuiltCatalog, repoRoot } from './lib/catalog.mjs';
 import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
 import { escapeHtml, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
 import { shieldsEndpoint, statusBadgePath } from '../src/lib/status-badge.mjs';
+import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 
 const arg = (name) => {
   const i = process.argv.indexOf(name);
@@ -82,6 +86,8 @@ const avatarUrl = `${SITE}/brand/avatar.png`;
 const pageUrl = (p) => `${SITE}/${p.slug}/`;
 // Status JSON of a product (src/lib/status-badge.mjs, published by src/pages/brand/status/[slug].json.ts).
 const statusJsonUrl = (p) => `${SITE}/${statusBadgePath(p.slug)}`;
+// Licence badges of a product (src/lib/license-badge.mjs, published by src/pages/brand/badges/[slug]/[kind].svg.ts).
+const licenseBadgeUrl = (p, kind) => `${SITE}/${licenseBadgePath(p.slug, kind)}`;
 const siteHost = SITE.replace(/^https?:\/\//, '');
 
 /** A product with no dedicated repository yet has the organisation itself as its `repo`. */
@@ -164,10 +170,13 @@ function orgReadme() {
 // slogan, tagline, « based on », posterAlt): it is never pasted again, such a text would go stale:
 //   - the poster, /brand/posters/<slug>.webp, linking to the product page;
 //   - the status badge: shields.io renders /brand/status/<slug>.json, which the site rewrites at each
-//     build (src/lib/status-badge.mjs).
-// No licence badge (ticket #66): pasted once, it would show « not specified » for a repository
-// without a LICENSE, and could not appear the day the LICENSE arrives; GitHub already shows the
-// licence in the repository's « About » box.
+//     build (src/lib/status-badge.mjs);
+//   - the software licence badge, then the hardware one (ticket #75: « je veux la licence hardware »):
+//     SVG files the site draws at each build, /brand/badges/<slug>/software.svg and hardware.svg
+//     (src/lib/license-badge.mjs) — the licence the repository declares (LICENSE, LICENSE-HARDWARE),
+//     or an empty SVG GitHub shows as nothing. So the block pasted today shows a licence the day its
+//     file arrives in the repository, and never « not specified » (why #66 had dropped the GitHub
+//     licence badge).
 // Its alt texts and the comments around it come from content/readme-kit/kit.yml (`header`).
 
 function repoHeader(p) {
@@ -176,6 +185,8 @@ function repoHeader(p) {
     pageUrl: pageUrl(p),
     posterUrl: posterUrl(p),
     statusBadgeUrl: shieldsEndpoint(statusJsonUrl(p)),
+    softwareBadgeUrl: licenseBadgeUrl(p, 'software'),
+    hardwareBadgeUrl: licenseBadgeUrl(p, 'hardware'),
   });
 }
 
@@ -188,6 +199,8 @@ function guide() {
     begin: kit.header.begin,
     end: kit.header.end,
     statusJsonUrl: `${SITE}/${statusBadgePath('<produit>')}`,
+    softwareBadgeUrl: `${SITE}/${licenseBadgePath('<produit>', 'software')}`,
+    hardwareBadgeUrl: `${SITE}/${licenseBadgePath('<produit>', 'hardware')}`,
     avatarUrl,
     orgSettingsUrl: `${ORG_URL.replace('github.com/', 'github.com/organizations/')}/settings/profile`,
     products: products.map((p) => ({

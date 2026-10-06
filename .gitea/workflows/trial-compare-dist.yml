@@ -2,10 +2,12 @@
 # AUTHOR: engineer
 # DATE: 2026-10-06
 # STATUS: active — a trial, launched on demand (ci_trial), never a status of the PR
+# REVISED: 2026-10-06 (ticket #46) — the branch builds with its catalog read on the simulator
 #
 # For a change that must not alter the rendered site: builds `main` as it is deployed today (its own
 # lockfile, the Node of .github/workflows/deploy.yml at that ref), then the tested commit as CI builds
-# it, and compares the two dist/ (pages, URLs, visible text, image sizes, build stamp). Red when they
+# it (catalog read on the simulator, ZURP_CATALOG=simulator: the source is always named), and
+# compares the two dist/ (pages, URLs, visible text, image sizes, build stamp). Red when they
 # differ; the report lists every difference.
 #
 # The name must not start with `CI`: it would become a required status of `main`.
@@ -49,18 +51,20 @@ jobs:
         with:
           node-version: 24
 
+      # The base keeps its build as it is: main had no notion of a catalog source before #46.
       - name: Build head (the CI commands)
         run: |
           node -v
           npm ci --no-audit --no-fund
-          npm ls astro sharp esbuild vite
-          npm run build > /tmp/head-build.log 2>&1 || { tail -80 /tmp/head-build.log; exit 1; }
+          npm ls astro sharp esbuild vite js-yaml
+          ZURP_CATALOG=simulator npm run build > /tmp/head-build.log 2>&1 || { tail -80 /tmp/head-build.log; exit 1; }
           echo "--- build warnings / errors"
           grep -n -i -E 'warn|error|deprecat|fail' /tmp/head-build.log | head -60 || true
           tail -3 /tmp/head-build.log
           node scripts/check-dist.mjs > /tmp/check-dist.log 2>&1 || { cat /tmp/check-dist.log; exit 1; }
           tail -2 /tmp/check-dist.log
-          npm run readme-kit:check
+          npm run readme-kit
+          npm test
 
       # The trial returns only the end of the job's log, and the report is longer: it is printed in
       # full, then once more as one gzip+base64 line (with the build logs and the built pages of both

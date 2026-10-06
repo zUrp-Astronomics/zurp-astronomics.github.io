@@ -4,10 +4,11 @@
 // DATE: 2026-10-03
 // STATUS: active
 //
-// Content: tagline, category, badges (status, hardware + software licences, based on), About,
-// Source + repo link, footer. Copy from products.ts, word for word (it began as the v1 page's,
-// deleted with the v1 archive in ticket #35). The licence badges and sentence come from
-// src/data/licenses.ts / src/components/LicenseText.astro.
+// Content: tagline, category, badges (status, version of the latest release when there is one,
+// hardware + software licences, based on), About, Source + repo link, footer. Copy from the catalog
+// (src/data/catalog.ts: products.ts or the product's own sheet, 9_Assets/zurp.yml), word for word
+// (it began as the v1 page's, deleted with the v1 archive in ticket #35). The licence badges and
+// sentence come from src/data/licenses.ts / src/components/LicenseText.astro.
 //
 // Ticket #27: no breadcrumb any more. The site's common header (src/components/v2/SiteHeader.astro,
 // drawn by V2Layout, compact and sticky on this page) carries the zUrp plate, a link to `/`, and
@@ -15,13 +16,13 @@
 // (visually hidden); the header's plate is not a heading here.
 import { Image, getImage } from 'astro:assets';
 import V2Layout from '../../layouts/V2Layout.astro';
-import { products } from '../../data/products';
+import { getCatalog } from '../../data/catalog';
 import { accessibleFill, onAccent } from '../../lib/color';
 import { licenses } from '../../data/licenses';
 import LicenseText from '../../components/LicenseText.astro';
 
-export function getStaticPaths() {
-  return products.map((p) => ({
+export async function getStaticPaths() {
+  return (await getCatalog()).map((p) => ({
     params: { slug: p.slug },
     props: { product: p },
   }));
@@ -86,6 +87,7 @@ const tint = [
 
         <div class="badges">
           <span class={`badge badge-${product.status}`}>{statusLabel[product.status]}</span>
+          {product.release && <span class="badge badge-version">{product.release.tag}</span>}
           <span class="badge badge-license" title={licenses.hardware.name}>{licenses.hardware.badge}</span>
           <span class="badge badge-license" title={licenses.software.name}>{licenses.software.badge}</span>
           {product.basedOn && <span class="badge badge-based">based on {product.basedOn}</span>}
@@ -247,6 +249,18 @@ const tint = [
     background: #2f9e44;
     color: var(--z2-cream-light);
     border-color: var(--z2-soot-deep);
+  }
+
+  /* The version (ticket #46): the tag of the latest GitHub release, as is, only when there is one.
+     Inked on soot like the licence stamps, with a dashed rim in the product's accent; the tag keeps
+     its own case. */
+  .badge-version {
+    background: var(--z2-soot-deep);
+    color: var(--z2-cream);
+    border-color: var(--z2-accent);
+    border-style: dashed;
+    letter-spacing: 0.04em;
+    text-transform: none;
   }
 
   .badge-license,

@@ -3,6 +3,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — run by .gitea/workflows/trial-compare-dist.yml (an on-demand trial, not part of CI)
+// REVISED: 2026-10-06 (ticket #46) — the CSS mask of scoping hashes is a valid identifier again
 //
 // Usage: node scripts/compare-dist.mjs <baseDist> <headDist>
 // Node built-ins only (image sizes are read from the file headers), plus lightningcss when it is
@@ -443,7 +444,10 @@ try {
   // reported below
 }
 const CSS_TARGETS = { chrome: 111 << 16, edge: 111 << 16, firefox: 114 << 16, safari: (16 << 16) | (4 << 8) };
-const maskCid = (css) => css.replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-#').replace(/\bastro-[a-z0-9]{8}\b/g, 'astro-#');
+// The mask must stay a valid CSS identifier: `[data-astro-cid-#]` is an invalid selector, and
+// lightningcss (errorRecovery) silently dropped every scoped rule with it — the comparison only saw
+// the global rules and reported every page « same » (found in ticket #46).
+const maskCid = (css) => css.replace(/data-astro-cid-[a-z0-9]+/g, 'data-astro-cid-masked').replace(/\bastro-[a-z0-9]{8}\b/g, 'astro-masked');
 // lightningcss leaves some values as it finds them (a value holding `var()`, `clip: rect(…)`): one
 // minifier writes `a, b`, the other `a,b`. Whitespace next to a comma, after `(` or before `)` is
 // never significant in CSS; it is dropped here, outside quoted strings.

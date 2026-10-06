@@ -81,18 +81,26 @@ jobs:
         with:
           node-version: 24
       # La vraie preuve de ce dépôt : le site s'installe depuis le lockfile et Astro le compile
-      # (pages, optimisation des affiches via astro:assets/sharp). Même commande que le build de
-      # `.github/workflows/deploy.yml`.
-      - name: Build du site
-        run: npm ci && npm run build
+      # (pages, optimisation des affiches via astro:assets/sharp). Le catalogue est lu sur le
+      # SIMULATEUR (catalog-simulator/) : la source est toujours nommée (ZURP_CATALOG, aucun défaut),
+      # et cette CI n'a ni réseau GitHub fiable ni jeton. Le build déployé, lui, lit GitHub
+      # (`.github/workflows/deploy.yml`, ZURP_CATALOG=github).
+      - name: Build du site (catalogue lu sur le simulateur)
+        run: npm ci && ZURP_CATALOG=simulator npm run build
       # Contrôle du build livré : aucune image de dist/ > 600 Ko, et exactement une page
-      # `<slug>/index.html` par produit de src/data/products.ts (+ index.html racine).
+      # `<slug>/index.html` par produit du catalogue construit (products.ts + dépôts produit, lu dans
+      # l'instantané du build, .zurp-catalog/remote.json), tuiles de l'accueil dans l'ordre du
+      # catalogue, tampon de version sur les pages des produits à release (+ index.html racine).
       # Aussi : les images à URL stable des README (brand/) et une carte d'aperçu GitHub par produit
       # (brand/social/<slug>.jpg, JPEG 1280 × 640).
       - name: Contrôle de dist (poids des images, pages produit)
         run: node scripts/check-dist.mjs
-      # Le kit README (readme-kit/, recopié à la main sur GitHub) est généré depuis products.ts :
-      # on le régénère en mémoire et on échoue s'il diffère de ce qui est commité. Modifier
-      # products.ts sans `npm run readme-kit` fait rougir la CI.
-      - name: Kit README à jour
-        run: npm run readme-kit:check
+      # Le kit README n'est plus commité (ticket #46) : il est généré au déploiement depuis le
+      # catalogue construit. Ici, on prouve qu'il se génère depuis le catalogue du simulateur
+      # (.zurp-catalog/readme-kit/, ignoré par git).
+      - name: Kit README (généré depuis le catalogue construit)
+        run: npm run readme-kit
+      # Les tests du code de lecture du catalogue (test/*.test.mjs) : source explicite, simulateur,
+      # GitHub simulé, validation des fiches, releases, ordre, slug en double, produit publié disparu.
+      - name: Tests du code de lecture du catalogue
+        run: npm test

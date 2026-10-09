@@ -104,9 +104,9 @@ test('2. an invalid repository sheet or an unreadable poster skips that product,
 
   const root = tempRoot();
   const sheet = join(root, 'content', 'products', 'cyclops', 'zurp.yml');
-  writeFileSync(sheet, readFileSync(sheet, 'utf8').replace(/^tagline:.*$/m, ''));
-  await assert.rejects(readLocalProducts({ root, sectionIds, repositories: [] }), /content\/products\/cyclops\/zurp\.yml: field `tagline`: missing/);
-  await assert.rejects(built(root), /field `tagline`: missing/);
+  writeFileSync(sheet, readFileSync(sheet, 'utf8').replace(/^name:.*\n/m, ''));
+  await assert.rejects(readLocalProducts({ root, sectionIds, repositories: [] }), /content\/products\/cyclops\/zurp\.yml: field `name`: missing/);
+  await assert.rejects(built(root), /field `name`: missing/);
 });
 
 // 3 -------------------------------------------------------------------------------------------------

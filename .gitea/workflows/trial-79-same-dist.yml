@@ -1,0 +1,31 @@
+# SOURCE: zurp-astronomics-site — throwaway trial of ticket #79: the site built from main and from this branch are identical; the suite passes
+# AUTHOR: engineer
+# DATE: 2026-10-10
+# STATUS: throwaway — removed before delivery
+name: trial-79-same-dist
+
+on: workflow_dispatch
+
+jobs:
+  same-dist:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Suite (## Test of CLAUDE.md)
+        run: npm ci && ZURP_CATALOG=simulator npm run build && node scripts/check-dist.mjs && npm run readme-kit && npm test
+      - name: Build main
+        run: |
+          git worktree add ../base origin/main
+          cd ../base && npm ci >/dev/null && ZURP_CATALOG=simulator npm run build >/dev/null && npm run readme-kit >/dev/null
+      - name: Compare dist/ and README kits
+        run: |
+          echo "files: main $(find ../base/dist -type f | wc -l), branch $(find dist -type f | wc -l)"
+          diff -rq ../base/dist dist && echo "DIST IDENTICAL"
+          diff -r ../base/.zurp-catalog/readme-kit .zurp-catalog/readme-kit && echo "KIT IDENTICAL"

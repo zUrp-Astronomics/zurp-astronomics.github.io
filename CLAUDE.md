@@ -1,7 +1,7 @@
 # CLAUDE.md — zurp-astronomics-site
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-06 (ticket #49 : `content/`)
+**Dernière révision** : 2026-10-10 (ticket #79 : la suite allégée, `## Harness`)
 **Statut** : actif — conventions du dépôt, lues par les agents et par la sonde de pertinence
 **Référencé par** : `.gitea/workflows/ci.yml`, `.gitea/workflows/probe-test-relevance.yml`
 
@@ -49,5 +49,5 @@ npm ci && ZURP_CATALOG=simulator npm run build && node scripts/check-dist.mjs &&
 ## Harness
 
 ```
-scripts/check-dist.mjs test/catalog.test.mjs test/content.test.mjs
+scripts/check-dist.mjs test/catalog.test.mjs
 ```

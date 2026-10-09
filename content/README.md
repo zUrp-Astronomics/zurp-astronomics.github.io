@@ -1,7 +1,7 @@
 # content/ — les textes et les ressources du site
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-06 (ticket #75 : `licences.yml`, le vocabulaire des deux licences d'un produit, logicielle et matérielle)
+**Dernière révision** : 2026-10-10 (ticket #79 : kaiju, berserker et kraken ont quitté `products/`, leur dépôt porte leur fiche)
 **Statut** : actif — tout texte destiné au lecteur vit ici ; le code (`src/`, `scripts/`) ne fait que le placer
 **Référencé par** : `src/lib/content.mjs`, `src/lib/catalog/local.mjs`, `src/lib/status-badge.mjs`, `src/lib/license-stamp.mjs`, `src/lib/license-badge.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
 
@@ -74,7 +74,7 @@ main : le site publie ce qu'il découvre, dans les dépôts de l'organisation et
 invalide **ici** fait échouer le build.
 
 Le lien « Source » d'un produit d'ici est **découvert** : le dépôt de l'organisation qui porte son
-nom (casse ignorée — `Kaiju` pour `kaiju`), à son URL telle que GitHub la donne, et ses licences
+nom (casse ignorée — `Cyclops` pour `cyclops`), à son URL telle que GitHub la donne, et ses licences
 sont celles de ce dépôt (`LICENSE`, `LICENSE-HARDWARE`). S'il n'a pas de dépôt (Cyclops, Wraith), le lien mène à
 l'organisation elle-même, sans licence ; le jour où le dépôt est créé, le build suivant le trouve.
 Une fiche ne porte jamais de champ `repo` : il est déduit.

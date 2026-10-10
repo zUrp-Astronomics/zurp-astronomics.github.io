@@ -1,7 +1,7 @@
 # Simulateur du catalogue
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-10 (ticket #79 : réduit à ce qu'il est ; kaiju, berserker et kraken ont leur fiche ici)
+**Dernière révision** : 2026-10-10 (ticket #92 : cyclops et wraith ont leur fiche ici ; il imite les huit dépôts produit de l'organisation, seule source hors ligne du catalogue)
 **Statut** : actif — source `ZURP_CATALOG=simulator` du build (tests, CI Gitea)
 **Référencé par** : `src/lib/catalog/source.mjs`, `src/lib/catalog/loader.mjs`, `CLAUDE.md` (`## Test`)
 

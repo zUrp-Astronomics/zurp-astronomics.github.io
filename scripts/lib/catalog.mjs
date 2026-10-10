@@ -2,17 +2,13 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active
-// REVISED: 2026-10-06 (ticket #49) — the local products are read from content/products/ (src/data/products.ts and its esbuild bundling are gone)
-// REVISED: 2026-10-06 (ticket #66) — the local products take their licence from the repositories of the
-//   snapshot, like the site (src/data/catalog.ts)
 // REVISED: 2026-10-06 (ticket #72) — no published list any more: the catalog is what was discovered;
-//   it also gives what was left out (skipped, ignored releases, folders overridden by a repository)
+//   it also gives what was left out (skipped, ignored releases)
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog is the
+//   snapshot's products
 //
 // The same catalog the site was built with, assembled by the same function
 // (src/lib/catalog/assemble.mjs) from the same inputs:
-//   - the products not migrated yet, content/products/<slug>/, read and validated by the site's own
-//     function (src/lib/catalog/local.mjs), their repository (link and licence) discovered in the
-//     repositories the snapshot lists (the same lookup as the site's);
 //   - the snapshot the build's loader wrote, .zurp-catalog/remote.json (src/lib/catalog/loader.mjs):
 //     the products read from their repositories, from the source the build named. These scripts
 //     never read GitHub (or the simulator) themselves: what they check and publish is what was
@@ -25,7 +21,6 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assembleCatalog } from '../../src/lib/catalog/assemble.mjs';
 import { SNAPSHOT_FILE, readSnapshot as readSnapshotFile } from '../../src/lib/catalog/loader.mjs';
-import { readLocalProducts } from '../../src/lib/catalog/local.mjs';
 import { catalogContent } from '../../src/lib/content.mjs';
 
 export const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -42,17 +37,12 @@ export function readSnapshot(file = join(repoRoot, SNAPSHOT_FILE)) {
 export async function loadBuiltCatalog({ snapshotFile, root = repoRoot } = {}) {
   const { sections } = catalogContent(root);
   const snapshot = readSnapshot(snapshotFile);
-  const local = (await readLocalProducts({ root, sectionIds: sections.map((s) => s.id), repositories: snapshot.repositories })).map(
-    ({ posterBytes, ...p }) => p,
-  );
-  const { products, overridden } = assembleCatalog({ local, remote: snapshot.products, sections });
   return {
-    products,
+    products: assembleCatalog({ products: snapshot.products, sections }),
     sections,
     source: snapshot.source,
     read: snapshot.read,
     skipped: snapshot.skipped,
     ignoredReleases: snapshot.ignoredReleases,
-    overridden,
   };
 }

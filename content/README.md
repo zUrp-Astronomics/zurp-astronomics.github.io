@@ -1,9 +1,9 @@
 # content/ — les textes et les ressources du site
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-10 (ticket #79 : kaiju, berserker et kraken ont quitté `products/`, leur dépôt porte leur fiche)
+**Dernière révision** : 2026-10-10 (ticket #92 : `products/` n'existe plus, chaque produit a son dépôt dans l'organisation)
 **Statut** : actif — tout texte destiné au lecteur vit ici ; le code (`src/`, `scripts/`) ne fait que le placer
-**Référencé par** : `src/lib/content.mjs`, `src/lib/catalog/local.mjs`, `src/lib/status-badge.mjs`, `src/lib/license-stamp.mjs`, `src/lib/license-badge.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
+**Référencé par** : `src/lib/content.mjs`, `src/lib/status-badge.mjs`, `src/lib/license-stamp.mjs`, `src/lib/license-badge.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
 
 Une structure fixe d'un côté (`src/`, `scripts/`), les ressources de l'autre : ce dossier. Pour
 changer un mot du site ou du README de l'organisation, on édite un fichier d'ici, jamais du code. Le
@@ -24,7 +24,6 @@ changement part au déploiement suivant (push sur `main`).
 | `readme-kit/product-header.md` | le gabarit de l'en-tête de README d'un produit, collé une fois : que des URL (affiche, badge de statut, badges de licence logicielle et matérielle), aucun texte de la fiche | `…/.github` → `readme-kit/repos/<slug>.md` |
 | `readme-kit/guide.md` | le gabarit du mode d'emploi du kit (en français) | `…/.github` → `readme-kit/README.md` |
 | `readme-kit/kit.yml` | les textes courts partagés par ces gabarits (dont `header` : marqueurs, commentaire et textes alternatifs de l'en-tête produit) | idem |
-| `products/<slug>/` | un produit pas encore migré vers son dépôt : sa fiche `zurp.yml` et son affiche | une page `/<slug>/`, sa tuile, ses images `/brand/…`, ses lignes du README |
 
 **Les licences des produits ne sont pas ici**, seulement leur vocabulaire (`licences.yml`). Un
 produit a deux licences, chacune déclarée par un fichier à la racine de son dépôt :
@@ -59,22 +58,10 @@ titre officiel à `hardware.titles`.
   `{{#badge}}libellé|message|couleur{{/badge}}` écrit un badge shields.io. Ce que chaque gabarit
   reçoit est listé dans son en-tête (`Marqueurs`).
 
-## Les produits pas encore migrés : `products/<slug>/`
+## Les produits : dans leur dépôt, pas ici
 
-Un dossier par produit, nommé par son slug (en minuscules : `/<slug>/` sur le site). Il contient
-`zurp.yml`, **au format exact** de `9_Assets/zurp.yml` d'un dépôt produit, et l'affiche nommée
-d'après le slug. Le site le lit et le valide avec le même code que les fiches des dépôts
-(`src/lib/catalog/read.mjs`).
-
-**Migrer un produit vers son dépôt = déplacer ce dossier** dans le `9_Assets/` du dépôt, sans rien
-réécrire, puis le retirer d'ici. Tant qu'il est aux deux endroits, la fiche du dépôt gagne et ce
-dossier est ignoré, avec un avertissement dans le rapport du build ; si la fiche du dépôt est
-invalide, le dépôt est sauté et ce dossier reste publié. Aucune liste de produits n'est tenue à la
-main : le site publie ce qu'il découvre, dans les dépôts de l'organisation et ici. Une fiche
-invalide **ici** fait échouer le build.
-
-Le lien « Source » d'un produit d'ici est **découvert** : le dépôt de l'organisation qui porte son
-nom (casse ignorée — `Cyclops` pour `cyclops`), à son URL telle que GitHub la donne, et ses licences
-sont celles de ce dépôt (`LICENSE`, `LICENSE-HARDWARE`). S'il n'a pas de dépôt (Cyclops, Wraith), le lien mène à
-l'organisation elle-même, sans licence ; le jour où le dépôt est créé, le build suivant le trouve.
-Une fiche ne porte jamais de champ `repo` : il est déduit.
+Aucun produit n'est décrit dans ce dossier. Chaque produit a son dépôt dans l'organisation, qui porte
+sa fiche `9_Assets/zurp.yml` et son affiche : le site les lit au build, avec ses releases et ses
+licences (`src/lib/catalog/`), et publie ce qu'il y découvre — aucune liste de produits n'est tenue à
+la main. Le lien « Source » d'un produit est son dépôt. Pour changer le texte d'un produit, on change
+sa fiche, dans son dépôt.

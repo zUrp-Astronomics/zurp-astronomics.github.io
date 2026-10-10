@@ -1,7 +1,7 @@
 # SOURCE: zurp-astronomics-site — fiche vitrine de Unicorn, lue par le site zurp-astronomics.github.io
 # AUTHOR: engineer (fiche du site), architect (migration et affiche 2.7)
 # DATE: 2026-10-06
-# STATUS: active — fiche du site (content/products/unicorn/, main 47d9bb2), affiche remplacée par la
+# STATUS: active — fiche du site (son ancien dossier produit dans content/, main 47d9bb2), affiche remplacée par la
 #   série 2.7 (ready-room/2.7_unicorn.png) : posterAlt et accent mis à jour, le reste mot pour mot
 #
 # Vit dans 9_Assets/zurp.yml du dépôt Unicorn. Le site zurp-astronomics.github.io la lit au build,

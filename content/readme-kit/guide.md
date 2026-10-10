@@ -1,9 +1,9 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-10 (ticket #83 : l'affiche de l'en-tête produit en chemin relatif ; la norme du README produit)
+Dernière révision: 2026-10-10 (ticket #92 : tout produit a son dépôt, la notion de produit sans dépôt disparaît)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
-Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, hasRepo, repo, repoPath, socialUrl) ; noRepo (name, last), noRepoOne / noRepoMany
+Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl)
 ---
 
 # Kit README — mode d'emploi
@@ -20,8 +20,7 @@ l'organisation (`profile/README.md`, même dépôt) sont **régénérés à chaq
 ({{{siteUrl}}}), depuis le catalogue avec lequel le site vient d'être construit : noms, accroches,
 slogans, statuts, sections, ordre, « based on » et liens sont ceux du site en ligne.
 N'édite aucun de ces fichiers : ils sont écrasés au déploiement suivant. Pour changer un texte,
-change la fiche du produit (`9_Assets/zurp.yml` de son dépôt) ou, pour un produit pas encore
-migré, `content/products/<slug>/` du site.
+change la fiche du produit (`9_Assets/zurp.yml` de son dépôt).
 
 Le travail est fait par le workflow GitHub Actions `.github/workflows/deploy.yml` du dépôt du
 site : construction, déploiement, puis copie du kit ici (job « README de l'org »). Il tourne à chaque
@@ -41,7 +40,7 @@ site, lui, est déjà déployé à ce moment-là.
 
 **Où mènent les liens.** Dans la liste des projets, la miniature et le nom mènent tous deux à la page
 du produit sur le site (`{{{siteUrl}}}/<produit>/`). Le petit badge **GitHub** placé après l'accroche, et
-lui seul, mène au dépôt du produit. Un produit sans dépôt dédié ({{#noRepo}}{{{name}}}{{^last}}, {{/last}}{{/noRepo}}{{^noRepo}}aucun aujourd’hui{{/noRepo}}) n'a pas de badge. Dans une section, le produit dont la release
+lui seul, mène au dépôt du produit. Dans une section, le produit dont la release
 est la plus récente vient en tête ; les produits sans release suivent, par ordre alphabétique.
 
 ## 2. En-tête de README de chaque produit
@@ -107,17 +106,9 @@ site déployé.
 | Produit | En-tête à coller | Dépôt GitHub | Carte d'aperçu à téléverser |
 |---|---|---|---|
 {{#products}}
-| {{{name}}} | [`repos/{{{slug}}}.md`](repos/{{{slug}}}.md) | {{#hasRepo}}[{{{repoPath}}}]({{{repo}}}){{/hasRepo}}{{^hasRepo}}*pas encore de dépôt*{{/hasRepo}} | {{{socialUrl}}} |
+| {{{name}}} | [`repos/{{{slug}}}.md`](repos/{{{slug}}}.md) | [{{{repoPath}}}]({{{repo}}}) | {{{socialUrl}}} |
 {{/products}}
 
-{{#noRepoMany}}
-{{#noRepo}}{{{name}}}{{^last}}, {{/last}}{{/noRepo}} n'ont pas encore de dépôt : leurs en-têtes et leurs cartes sont prêts pour le jour où ils seront créés.
-
-{{/noRepoMany}}
-{{#noRepoOne}}
-{{#noRepo}}{{{name}}}{{/noRepo}} n'a pas encore de dépôt : son en-tête et sa carte sont prêts pour le jour où il sera créé.
-
-{{/noRepoOne}}
 ## 4. Avatar de l'organisation
 
 L'avatar (le télescope steampunk, dessin complet, 480 × 480 px, PNG) est servi par le site à

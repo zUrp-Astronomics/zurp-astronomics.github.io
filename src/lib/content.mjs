@@ -4,8 +4,8 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #66) — content/licences/ is gone: a product's licence is its repository's
 //   LICENSE, as GitHub detects it (src/lib/license-stamp.mjs); the site holds no licence rule of its own
-// REVISED: 2026-10-06 (ticket #72) — content/catalog.yml lists no products any more: the repository
-//   of a local product is discovered (src/lib/catalog/local.mjs)
+// REVISED: 2026-10-06 (ticket #72) — content/catalog.yml lists no products any more: the site
+//   publishes the products it discovers in the organisation's repositories (src/lib/catalog/)
 // REVISED: 2026-10-06 (ticket #75) — content/licences.yml (licenseContent): the vocabulary of the two
 //   licences of a product, software and hardware — stamps, badges, the titles of the hardware
 //   licences. Still no licence of a product here: each one is its repository's file

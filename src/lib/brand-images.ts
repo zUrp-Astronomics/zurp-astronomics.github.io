@@ -40,7 +40,7 @@
 // follow the next poster change on their own (nothing is copied by hand):
 //   src/pages/brand/low-tech-diy.webp.ts        ← src/assets/header/low-tech-diy-poster.webp
 //   src/pages/brand/posters/[slug].webp.ts      ← each catalog product's `poster` (src/data/catalog.ts:
-//                                                 content/products/, or the product repository's sheet)
+//                                                 the product repository's sheet)
 //   src/pages/brand/social/[slug].jpg.ts        ← each product's `poster`, `name`, `slogan`
 //                                                 (composition: src/lib/social-card.ts)
 // The README kit (scripts/readme-kit.mjs → readme-kit/) links these URLs; it mirrors the paths

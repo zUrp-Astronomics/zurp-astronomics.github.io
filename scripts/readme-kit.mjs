@@ -14,6 +14,8 @@
 // REVISED: 2026-10-10 (ticket #83) — the product header shows the poster by a RELATIVE path,
 //   9_Assets/<slug>.webp of the product repository itself (the human's decision: a README points at
 //   the folder beside it, so an offline clone shows it); the org README keeps the absolute poster URLs
+// REVISED: 2026-10-10 (ticket #92) — every product has its repository: no « product without a
+//   repository » any more (`hasRepo`, `noRepo` gone, the templates show the repository of each)
 //
 // Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
 //   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
@@ -30,8 +32,8 @@
 // WHY NOT COMMITTED ANY MORE. Part of the catalog is read on GitHub at build time (the product
 // repositories' sheets and releases): a file committed here could not be the truth of the org
 // README, it would silently drift from the deployed site. The kit is generated from the SAME
-// catalog the site was just built with (scripts/lib/catalog.mjs: content/products/ + the build's
-// snapshot, assembled by the site's own function), so the org README always shows what the site
+// catalog the site was just built with (scripts/lib/catalog.mjs: the build's snapshot, assembled
+// by the site's own function), so the org README always shows what the site
 // shows, in the same order. Nothing is committed in THIS repository by any workflow (it is
 // published by the fleet: a pushed commit would stop the next publication).
 //
@@ -39,7 +41,7 @@
 // content/readme-kit/ — org-readme.md (+ projects-table.md), product-header.md, guide.md — and
 // content/ (site.yml, catalog.yml, home/pitch.md): logic-less Mustache templates, which the human
 // edits without touching this script. This script computes their values (URLs, the grouping of the
-// projects, which product has a repository) and provides one helper, `{{#badge}}label|message|colour{{/badge}}`: a shields.io static badge.
+// projects) and provides one helper, `{{#badge}}label|message|colour{{/badge}}`: a shields.io static badge.
 // `{{x}}` is HTML-escaped (for HTML tags), `{{{x}}}` is inserted as is (for Markdown).
 //
 // DETERMINISTIC. The output depends only on the catalog, content/, the `site` of astro.config.mjs
@@ -96,8 +98,6 @@ const statusJsonUrl = (p) => `${SITE}/${statusBadgePath(p.slug)}`;
 const licenseBadgeUrl = (p, kind) => `${SITE}/${licenseBadgePath(p.slug, kind)}`;
 const siteHost = SITE.replace(/^https?:\/\//, '');
 
-/** A product with no dedicated repository yet has the organisation itself as its `repo`. */
-const hasRepo = (p) => p.repo.replace(/\/+$/, '') !== ORG_URL;
 /** `zUrp-Astronomics/Basilisk` for https://github.com/zUrp-Astronomics/Basilisk. */
 const repoPath = (p) => p.repo.replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
 
@@ -129,7 +129,6 @@ const projectView = (p) => ({
   tagline: p.tagline,
   basedOn: p.basedOn,
   repo: p.repo,
-  hasRepo: hasRepo(p),
   pageUrl: pageUrl(p),
   posterUrl: posterUrl(p),
 });
@@ -200,7 +199,6 @@ function repoHeader(p) {
 // --- 3. User guide (French: the human is a French speaker) -------------------------------------------
 
 function guide() {
-  const noRepo = products.filter((p) => !hasRepo(p));
   return render('guide', {
     ...common,
     begin: kit.header.begin,
@@ -213,14 +211,10 @@ function guide() {
     products: products.map((p) => ({
       name: p.name,
       slug: p.slug,
-      hasRepo: hasRepo(p),
       repo: p.repo,
       repoPath: repoPath(p),
       socialUrl: socialUrl(p),
     })),
-    noRepo: noRepo.map((p, i) => ({ name: p.name, last: i === noRepo.length - 1 })),
-    noRepoOne: noRepo.length === 1,
-    noRepoMany: noRepo.length > 1,
   });
 }
 

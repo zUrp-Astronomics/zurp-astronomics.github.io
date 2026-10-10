@@ -3,11 +3,10 @@
 # DATE: 2026-10-06
 # STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
 #
-# Sa place est 9_Assets/zurp.yml dans le dépôt du produit. Tant que le dépôt ne la porte pas, le
-# site la lit ici, dans content/products/maelstrom/, au même format et avec le même code de validation
-# (src/lib/catalog/read.mjs). Migrer le produit = déplacer ce dossier, tel quel, dans 9_Assets/.
+# Vit dans 9_Assets/zurp.yml du dépôt Maelstrom. Le site zurp-astronomics.github.io la lit au build, avec
+# l'affiche à côté, et la valide (src/lib/catalog/read.mjs).
 #
-# Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /maelstrom/), le
+# Déduit, donc absent d'ici : le slug (nom du dépôt, en minuscules → /maelstrom/), le
 # lien vers le dépôt (https://github.com/zUrp-Astronomics/maelstrom), le statut « released » et la
 # version (tag de la dernière release GitHub), le rang dans sa section.
 

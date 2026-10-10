@@ -11,6 +11,9 @@
 // REVISED: 2026-10-06 (ticket #75) — the product header carries the two licence badges the site draws
 //   (software, hardware: /brand/badges/<slug>/<kind>.svg, empty when the repository declares none),
 //   after the status badge; the org README still carries no licence
+// REVISED: 2026-10-10 (ticket #83) — the product header shows the poster by a RELATIVE path,
+//   9_Assets/<slug>.webp of the product repository itself (the human's decision: a README points at
+//   the folder beside it, so an offline clone shows it); the org README keeps the absolute poster URLs
 //
 // Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
 //   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
@@ -80,6 +83,9 @@ if (!products?.length || !sections?.length) throw new Error('readme-kit: empty c
 const ORG_URL = site.org.url.replace(/\/+$/, '');
 const panelUrl = `${SITE}/brand/low-tech-diy.webp`;
 const posterUrl = (p) => `${SITE}/brand/posters/${p.slug}.webp`;
+// The poster as the product repository itself holds it (ticket #83), relative to its README: the
+// product header only. Generated, never checked: the campaign #81 aligns the repositories on it.
+const posterPath = (p) => `9_Assets/${p.slug}.webp`;
 const socialUrl = (p) => `${SITE}/brand/social/${p.slug}.jpg`;
 // Organisation avatar: mirror of src/lib/site-icons.ts (checked in dist/ by scripts/check-dist.mjs).
 const avatarUrl = `${SITE}/brand/avatar.png`;
@@ -168,7 +174,8 @@ function orgReadme() {
 // so a header that copied the sheet went stale at the first change or release. The block holds only
 // URLs whose content is served, and kept up to date, elsewhere — and no text of the sheet (name,
 // slogan, tagline, « based on », posterAlt): it is never pasted again, such a text would go stale:
-//   - the poster, /brand/posters/<slug>.webp, linking to the product page;
+//   - the poster, 9_Assets/<slug>.webp of the repository itself, a relative path (ticket #83: an
+//     offline clone shows it too), linking to the product page;
 //   - the status badge: shields.io renders /brand/status/<slug>.json, which the site rewrites at each
 //     build (src/lib/status-badge.mjs);
 //   - the software licence badge, then the hardware one (ticket #75: « je veux la licence hardware »):
@@ -183,7 +190,7 @@ function repoHeader(p) {
   return render('product-header', {
     header: kit.header,
     pageUrl: pageUrl(p),
-    posterUrl: posterUrl(p),
+    posterPath: posterPath(p),
     statusBadgeUrl: shieldsEndpoint(statusJsonUrl(p)),
     softwareBadgeUrl: licenseBadgeUrl(p, 'software'),
     hardwareBadgeUrl: licenseBadgeUrl(p, 'hardware'),

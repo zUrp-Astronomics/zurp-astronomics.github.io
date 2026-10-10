@@ -14,7 +14,9 @@
 # (tag de la dernière release GitHub), le rang dans sa section.
 
 name: Wraith
-tagline: All-in-One mount controller with a Compute Module 5.
+tagline: >-
+  An all-in-one mount controller on a Compute Module 5: mount control, imaging, plate solving and a
+  web UI in one box.
 slogan: Ghost in the sky
 category: Controller
 section: future           # mounts | cameras | gadgets | future

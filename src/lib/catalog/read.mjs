@@ -11,8 +11,9 @@
 //   decoded (sharp); a release with an unreadable `published_at` is ignored, reported
 // REVISED: 2026-10-06 (ticket #75) — the hardware licence: LICENSE-HARDWARE at the root of a product's
 //   repository, its first non-empty line (`hardwareLicense`), the one file read outside 9_Assets/
-// REVISED: 2026-10-10 (ticket #92) — content/products/ and its backend are gone: every backend is a
-//   set of repositories, and every product's hardware licence is read from its repository
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ and its backend are gone:
+//   every backend is a set of repositories, and every product's hardware licence is read from its
+//   repository
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases, plus ONE file
@@ -55,7 +56,7 @@
 //     backend itself (GitHub answering badly, source.mjs) is never caught here, it fails the build.
 //
 // The backends are the two of source.mjs, the simulator and GitHub (ticket #92: the third one, for
-// the products of content/products/, is gone with that folder).
+// the products folder of content/, is gone with that folder).
 
 import yaml from 'js-yaml';
 import sharp from 'sharp';

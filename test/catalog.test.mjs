@@ -5,8 +5,10 @@
 //   site is a showcase the human looks at on every deployment; only what breaks invisibly is tested.
 // REVISED: 2026-10-10 (ticket #83) — the product header's poster is the relative 9_Assets/<slug>.webp,
 //   its block checked byte for byte; the org README keeps the absolute poster URLs
-// REVISED: 2026-10-10 (ticket #92) — content/products/ is gone, and with it its rules (an invalid
-//   local sheet fails the build, the repository wins over the folder, the org as « Source » link)
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone, and with it its rules
+//   (an invalid local sheet fails the build, the repository wins over the folder, the org as
+//   « Source » link); test 8: the offline build publishes the eight products, Cyclops and Wraith
+//   included
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -25,7 +27,7 @@ import sharp from 'sharp';
 import { catalogSource, githubBackend, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readRepoProducts } from '../src/lib/catalog/read.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { catalogContent, licenseContent } from '../src/lib/content.mjs';
+import { catalogContent, licenseContent, siteContent } from '../src/lib/content.mjs';
 import { licenseStamps } from '../src/lib/license-stamp.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
@@ -247,4 +249,16 @@ test('7. the README kit is generated from the built catalog: one header per prod
   for (const p of products) assert.ok(org.includes(`<a href="${p.repo}"><img src="https://img.shields.io/badge/-GitHub-`), `${p.slug}: GitHub badge in the organisation README`);
   // The org README lives in another repository: its posters keep their absolute URLs (ticket #83).
   for (const p of products) assert.ok(org.includes(`/brand/posters/${p.slug}.webp`), `${p.slug}: poster URL in the organisation README`);
+});
+
+// 8 -------------------------------------------------------------------------------------------------
+test('8. the offline build publishes every product of the simulator — the eight of the organisation, Cyclops and Wraith included — each with its repository as « Source » link', async () => {
+  const orgUrl = siteContent(ROOT).org.url.replace(/\/+$/, '');
+  const { products, skipped } = await built(tempRoot());
+  assert.deepEqual(skipped, [], 'no sheet of the simulator is skipped');
+  const repos = readdirSync(join(SIM, 'repos'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+  assert.deepEqual(products.map((p) => p.slug).sort(), repos.map((r) => r.toLowerCase()).sort(), 'one product per repository of the simulator');
+  assert.equal(products.length, 8, 'the eight products of the organisation');
+  for (const slug of ['cyclops', 'wraith']) assert.ok(products.some((p) => p.slug === slug), `${slug} is published`);
+  for (const p of products) assert.equal(p.repo, `${orgUrl}/${p.slug}`, `${p.slug}: its « Source » link is its repository`);
 });

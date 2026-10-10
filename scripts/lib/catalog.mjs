@@ -4,7 +4,8 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #72) — no published list any more: the catalog is what was discovered;
 //   it also gives what was left out (skipped, ignored releases)
-// REVISED: 2026-10-10 (ticket #92) — content/products/ is gone: the catalog is the snapshot's products
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog is the
+//   snapshot's products
 //
 // The same catalog the site was built with, assembled by the same function
 // (src/lib/catalog/assemble.mjs) from the same inputs:

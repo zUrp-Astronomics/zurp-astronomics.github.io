@@ -7,8 +7,8 @@
 //   repository, from the build's snapshot
 // REVISED: 2026-10-06 (ticket #75) — and `hardwareLicense`, the first line of its repository's
 //   LICENSE-HARDWARE
-// REVISED: 2026-10-10 (ticket #92) — content/products/ is gone: the catalog comes only from the
-//   organisation's repositories (the collection `repoProducts`)
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog comes
+//   only from the organisation's repositories (the collection `repoProducts`)
 //
 // THE LICENCE AND THE « SOURCE » LINK (tickets #66, #72). A product gets them through the collection
 // (the loader stores them with the sheet; src/content.config.ts declares them, or zod would drop

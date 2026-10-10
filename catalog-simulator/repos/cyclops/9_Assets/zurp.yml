@@ -3,7 +3,7 @@
 # DATE: 2026-10-06
 # STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
 # REVISED: 2026-10-06 (ticket #72) — le dépôt est découvert dans l'organisation, aucune liste à tenir
-# REVISED: 2026-10-10 (ticket #92) — content/products/cyclops/ du site déménage ici, tel quel : le dépôt
+# REVISED: 2026-10-10 (ticket #92) — son dossier produit dans content/ du site déménage ici, tel quel : le dépôt
 #   Cyclops de l'organisation porte sa fiche, le simulateur l'imite (catalog-simulator/README.md)
 #
 # Sa place est 9_Assets/zurp.yml dans le dépôt du produit ; le site la lit là, avec le code de

@@ -5,9 +5,9 @@
 // REVISED: 2026-10-06 (ticket #72) — full discovery: a repository whose product is invalid is
 //   skipped, not fatal (`skipped`), a release with an unreadable date ignored (`ignoredReleases`),
 //   both kept in the snapshot for the catalog report
-// REVISED: 2026-10-10 (ticket #92) — content/products/ is gone: the snapshot no longer lists the
-//   organisation's repositories (`repositories` served only to discover the repository of a product
-//   of content/products/); each product carries its licences and its URL itself
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the snapshot no
+//   longer lists the organisation's repositories (`repositories` served only to discover the
+//   repository of a product of that folder); each product carries its licences and its URL itself
 //
 // Declared in src/content.config.ts. At each build (and `astro dev`/`astro sync`) it:
 //   1. reads the source named by ZURP_CATALOG (source.mjs) — the build fails without it;

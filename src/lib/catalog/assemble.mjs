@@ -4,8 +4,8 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #72) — full discovery: no list of published products (a product nobody
 //   holds is not in the catalog, without an error)
-// REVISED: 2026-10-10 (ticket #92) — content/products/ is gone: the catalog comes only from the
-//   organisation's repositories, there is nothing left to merge
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog comes
+//   only from the organisation's repositories, there is nothing left to merge
 //
 // Used, with the same inputs, by the site (src/data/catalog.ts) and by the scripts that run after
 // the build (scripts/lib/catalog.mjs → check-dist, readme-kit, the catalog report): they all see the

@@ -2,7 +2,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — ticket #72
-// REVISED: 2026-10-10 (ticket #92) — content/products/ is gone: no folder ignored to report any more
+// REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: no folder ignored to
+//   report any more
 //
 // WHY (ticket #72). The site publishes what it discovers: a repository whose sheet or poster is
 // invalid is skipped, not fatal. Nothing fails any more, so it must be SEEN: each build writes, at

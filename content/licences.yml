@@ -1,0 +1,59 @@
+# SOURCE: zurp-astronomics-site — the licences' vocabulary: the stamps of the product pages, the licence badges of the product READMEs, the titles of the hardware licences
+# AUTHOR: engineer
+# DATE: 2026-10-06
+# STATUS: active — read by src/lib/content.mjs (licenseContent), for src/lib/license-stamp.mjs and src/lib/license-badge.mjs — ticket #75
+#
+# A product has two licences, each declared by its repository, in its own file (the human's rule,
+# ticket #75):
+#   - software: `LICENSE` at the root of the repository, as GitHub detects it (its SPDX id: `MIT`,
+#     `GPL-3.0`…), or « not recognised » when GitHub says NOASSERTION (« Other »);
+#   - hardware: `LICENSE-HARDWARE` at the root of the repository, identified by its first non-empty
+#     line, looked up in `hardware.titles` below.
+# No file, no licence: nothing is shown for it — no stamp, an empty badge. The site never invents a
+# licence nor moves one from one kind to the other: it shows what the repository declares, where it
+# declares it.
+#
+# `stamp` is the text of the stamp on the product page: `{{licence}}` is the short label of the licence
+# (the SPDX id, the `label` of a known hardware title, or `unrecognised`). `badge` is the licence badge
+# of the product README header (/brand/badges/<slug>/<kind>.svg, drawn by the site in the style of the
+# shields.io « flat » badges): `label` its left part, the short label of the licence its right part,
+# on `color`; `labelColor` is the colour of the left part of both. Colours are #rrggbb.
+
+software:
+  stamp: 'Software · {{licence}}'
+  # A LICENSE GitHub does not recognise (spdx_id NOASSERTION): no name is invented.
+  unrecognised: Other licence
+  badge:
+    label: software
+    color: '#007ec6'
+
+hardware:
+  stamp: 'Hardware · {{licence}}'
+  # A LICENSE-HARDWARE whose first line is none of the titles below.
+  unrecognised: Other licence
+  badge:
+    label: hardware
+    color: '#8b5a2b'
+  # The hardware licences the site names. `title` is the first line of the licence text, as its
+  # official text writes it (compared without regard to case and spaces); `label` the short label of
+  # the stamp and of the badge; `name` the full name (the stamp's tooltip). A vocabulary, not a list of
+  # products: a licence missing here is still shown, with `unrecognised`.
+  titles:
+    # First line of LICENSE in zUrp-Astronomics/basilisk, read by the architect on 2026-10-06.
+    - title: Open Community License (OCL v1.1)
+      label: OCL v1.1
+      name: Open Community License v1.1
+    # First lines of the official texts (SPDX license-list-data, text/CERN-OHL-*-2.0.txt, read on
+    # 2026-10-06).
+    - title: CERN Open Hardware Licence Version 2 - Strongly Reciprocal
+      label: CERN-OHL-S-2.0
+      name: CERN Open Hardware Licence Version 2 - Strongly Reciprocal
+    - title: CERN Open Hardware Licence Version 2 - Weakly Reciprocal
+      label: CERN-OHL-W-2.0
+      name: CERN Open Hardware Licence Version 2 - Weakly Reciprocal
+    - title: CERN Open Hardware Licence Version 2 - Permissive
+      label: CERN-OHL-P-2.0
+      name: CERN Open Hardware Licence Version 2 - Permissive
+
+badge:
+  labelColor: '#555555'

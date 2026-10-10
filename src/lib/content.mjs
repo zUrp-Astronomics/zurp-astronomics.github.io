@@ -4,8 +4,11 @@
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #66) — content/licences/ is gone: a product's licence is its repository's
 //   LICENSE, as GitHub detects it (src/lib/license-stamp.mjs); the site holds no licence rule of its own
-// REVISED: 2026-10-06 (ticket #72) — content/catalog.yml lists no products any more: the repository
-//   of a local product is discovered (src/lib/catalog/local.mjs)
+// REVISED: 2026-10-06 (ticket #72) — content/catalog.yml lists no products any more: the site
+//   publishes the products it discovers in the organisation's repositories (src/lib/catalog/)
+// REVISED: 2026-10-06 (ticket #75) — content/licences.yml (licenseContent): the vocabulary of the two
+//   licences of a product, software and hardware — stamps, badges, the titles of the hardware
+//   licences. Still no licence of a product here: each one is its repository's file
 //
 // THE RULE (the human's, ticket #49): a fixed structure on one side (src/, scripts/), the resources
 // on the other — content/, at the repository root. Every text meant for a reader (prose, titles, link
@@ -138,3 +141,53 @@ export function catalogContent(root) {
   if (problems.length) throw new Error(`content: ${CONTENT_DIR}/catalog.yml: ${problems.join('; ')}`);
   return { sections: c.sections, statuses: c.statuses, statusBadge: c.statusBadge };
 }
+
+/** The two kinds of licence of a product (ticket #75), in the order they are shown. */
+export const LICENSE_KINDS = /** @type {const} */ (['software', 'hardware']);
+
+/**
+ * content/licences.yml: the stamps of the product pages, the licence badges of the README headers,
+ * the titles of the hardware licences (src/lib/license-stamp.mjs, src/lib/license-badge.mjs).
+ * Validated here: a missing text or colour, or two hardware titles that read the same (case and
+ * spaces aside), fails with the key named.
+ */
+export function licenseContent(root) {
+  const c = readYaml('licences.yml', root);
+  const problems = [];
+  const text = (v) => typeof v === 'string' && v.trim() !== '';
+  const colour = (v) => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
+  for (const kind of LICENSE_KINDS) {
+    const k = c?.[kind];
+    if (!text(k?.stamp) || !k.stamp.includes('{{licence}}')) problems.push(`\`${kind}.stamp\` missing, or without its {{licence}} marker`);
+    if (!text(k?.unrecognised)) problems.push(`\`${kind}.unrecognised\` missing`);
+    if (!text(k?.badge?.label)) problems.push(`\`${kind}.badge.label\` missing`);
+    if (!colour(k?.badge?.color)) problems.push(`\`${kind}.badge.color\` is not a #rrggbb colour`);
+  }
+  if (!colour(c?.badge?.labelColor)) problems.push('`badge.labelColor` is not a #rrggbb colour');
+  const titles = c?.hardware?.titles;
+  if (!Array.isArray(titles)) problems.push('`hardware.titles` must be a list of { title, label, name }');
+  else {
+    const seen = new Map();
+    titles.forEach((t, i) => {
+      for (const key of ['title', 'label', 'name']) if (!text(t?.[key])) problems.push(`\`hardware.titles[${i}].${key}\` missing`);
+      if (!text(t?.title)) return;
+      const key = licenseTitleKey(t.title);
+      if (seen.has(key)) problems.push(`\`hardware.titles[${i}].title\` reads like \`hardware.titles[${seen.get(key)}].title\` (case and spaces aside)`);
+      else seen.set(key, i);
+    });
+  }
+  if (problems.length) throw new Error(`content: ${CONTENT_DIR}/licences.yml: ${problems.join('; ')}`);
+  const trim = (s) => s.trim();
+  const kindTexts = (k) => ({ stamp: trim(k.stamp), unrecognised: trim(k.unrecognised), badge: { label: trim(k.badge.label), color: k.badge.color } });
+  return {
+    software: kindTexts(c.software),
+    hardware: { ...kindTexts(c.hardware), titles: titles.map((t) => ({ title: trim(t.title), label: trim(t.label), name: trim(t.name) })) },
+    badge: { labelColor: c.badge.labelColor },
+  };
+}
+
+/**
+ * How a licence title is compared (ticket #75: « la correspondance tolère la casse et les espaces »):
+ * case folded, every white space removed.
+ */
+export const licenseTitleKey = (title) => String(title).normalize('NFC').toLowerCase().replace(/\s+/g, '');

@@ -6,19 +6,24 @@
 // REVISED: 2026-10-06 (ticket #49) — the page's own texts (title, status labels, titles, « based on ») come from content/
 // REVISED: 2026-10-06 (ticket #66) — one licence stamp, the licence GitHub detects in the product's
 //   repository, only when there is one; the site's licence rule (two stamps, a sentence) is gone
+// REVISED: 2026-10-06 (ticket #75) — two stamps, each only when its licence exists: « Software · … »
+//   (LICENSE, as GitHub detects it) and « Hardware · … » (LICENSE-HARDWARE, its first line)
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
-// licence when there is one, based on), About, Source + repo link, footer. Copy from the catalog
-// (src/data/catalog.ts: the product's sheet, content/products/<slug>/zurp.yml or 9_Assets/zurp.yml
-// of its repository), word for word (it began as the v1 page's, deleted with the v1 archive in
+// software and hardware licences, each when there is one, based on), About, Source + repo link,
+// footer. Copy from the catalog
+// (src/data/catalog.ts: the product's sheet, 9_Assets/zurp.yml of its repository), word for word (it began as the v1 page's, deleted with the v1 archive in
 // ticket #35); the page's own words from content/site.yml and content/catalog.yml.
 //
-// The licence (ticket #66, the human's rule: the licence is the repository's LICENSE file, as GitHub
-// detects it) is the catalog's `license`, stamped by src/lib/license-stamp.mjs: its SPDX id, or the
-// generic stamp of content/site.yml (`product.licenseOther`) for a LICENSE GitHub does not recognise,
-// or nothing at all. A <span>, not a link: the repository is linked in the Source section, and a link
-// would take the underline of the global link style. scripts/check-dist.mjs checks the stamp against
-// the catalog of the build.
+// The licences (tickets #66, #75, the human's rules: two files of the repository, two licences) are
+// the catalog's `license` (software: LICENSE, as GitHub detects it) and `hardwareLicense` (hardware:
+// the first line of LICENSE-HARDWARE), stamped by src/lib/license-stamp.mjs with the texts of
+// content/licences.yml: « Software · <label> », « Hardware · <label> », each only when its licence
+// exists. Both keep exactly the `.badge-license` style (the « => GitHub » stamp of the home page
+// copies it): they differ by an attribute, `data-licence`, which scripts/check-dist.mjs reads — no CSS
+// rule of their own. A <span>, not a link: the repository is linked in the Source section, and a link
+// would take the underline of the global link style. scripts/check-dist.mjs checks both stamps
+// against the catalog of the build.
 //
 // Ticket #27: no breadcrumb any more. The site's common header (src/components/v2/SiteHeader.astro,
 // drawn by V2Layout, compact and sticky on this page) carries the zUrp plate, a link to `/`, and
@@ -28,8 +33,8 @@ import { Image, getImage } from 'astro:assets';
 import V2Layout from '../../layouts/V2Layout.astro';
 import { getCatalog } from '../../data/catalog';
 import { accessibleFill, onAccent } from '../../lib/color';
-import { catalogContent, fill, siteContent } from '../../lib/content.mjs';
-import { licenseStamp } from '../../lib/license-stamp.mjs';
+import { catalogContent, fill, licenseContent, siteContent } from '../../lib/content.mjs';
+import { licenseStamps } from '../../lib/license-stamp.mjs';
 
 export async function getStaticPaths() {
   return (await getCatalog()).map((p) => ({
@@ -42,7 +47,7 @@ const { product } = Astro.props;
 
 const site = siteContent();
 const { statuses } = catalogContent();
-const license = licenseStamp(product.license, site.product);
+const licenses = licenseStamps(product, licenseContent());
 
 // Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than a flat
 // drawing at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.
@@ -96,7 +101,8 @@ const tint = [
         <div class="badges">
           <span class={`badge badge-${product.status}`}>{statuses[product.status].label}</span>
           {product.release && <span class="badge badge-version">{product.release.tag}</span>}
-          {license && <span class="badge badge-license" title={license.title ?? undefined}>{license.label}</span>}
+          {licenses.software && <span class="badge badge-license" data-licence="software" title={licenses.software.title ?? undefined}>{licenses.software.text}</span>}
+          {licenses.hardware && <span class="badge badge-license" data-licence="hardware" title={licenses.hardware.title ?? undefined}>{licenses.hardware.text}</span>}
           {product.basedOn && <span class="badge badge-based">{fill(site.product.basedOn, { basedOn: product.basedOn })}</span>}
         </div>
       </div>

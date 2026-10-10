@@ -3,8 +3,8 @@
 # DATE: 2026-10-06
 # STATUS: active — read by src/lib/content.mjs (site, product sheet validation, README kit, status badge JSON)
 # REVISED: 2026-10-06 (ticket #53) — `statusBadge`: the texts of the status JSON (/brand/status/<slug>.json)
-# REVISED: 2026-10-06 (ticket #72) — no list of products here any more: the repository of a product of
-#   content/products/ is discovered in the organisation (src/lib/catalog/local.mjs)
+# REVISED: 2026-10-06 (ticket #72) — no list of products here any more: the site publishes the
+#   products it discovers in the organisation's repositories (src/lib/catalog/)
 
 # Catalog sections, in display order (home page shelves, org README). `id` is what a product sheet
 # names in its `section:` field — change an id only together with every sheet using it; `title` is

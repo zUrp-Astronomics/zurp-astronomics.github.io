@@ -3,6 +3,8 @@
 # DATE: 2026-10-06
 # STATUS: active — read by src/lib/content.mjs (site pages, layout, components, social cards) and by scripts/readme-kit.mjs
 # REVISED: 2026-10-06 (ticket #66) — `product.licenseOther`, the stamp of a licence GitHub does not recognise
+# REVISED: 2026-10-06 (ticket #75) — `product.licenseOther` moved to licences.yml (`software.unrecognised`),
+#   with the other texts of the two licences
 #
 # Edit the texts freely: the code only places them. `{{product}}` / `{{basedOn}}` are markers the code
 # fills (the product's name, its upstream project). Prose (several sentences) is in the .md files of
@@ -44,13 +46,10 @@ home:
   catalogTitle: Catalog
   manifestoTitle: Manifesto
 
-# Product pages. `licenseOther` is the licence stamp of a product whose repository has a LICENSE file
-# GitHub does not recognise (GitHub says « Other »): a recognised licence is stamped with its SPDX id,
-# as GitHub detects it, and no licence at all shows no stamp (src/lib/license-stamp.mjs).
+# Product pages. The licence stamps are in licences.yml (ticket #75).
 product:
   title: '{{product}} — zUrp Astronomics'
   basedOn: 'based on {{basedOn}}'
-  licenseOther: Other licence
   aboutTitle: About
   sourceTitle: Source
   sourceArrow: ⟶

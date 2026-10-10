@@ -9,10 +9,9 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   `scripts/` : structure et logique), les ressources de l'autre : **`content/`**, à la racine, porte
   tout texte destiné au lecteur (YAML pour les données courtes, Markdown pour la prose et les
   gabarits, marqueurs Mustache). `content/README.md` dit ce qui est où ; `src/lib/content.mjs` le lit.
-- Le catalogue est lu au build dans les dépôts produit de l'organisation (`9_Assets/zurp.yml` +
-  releases GitHub, `src/lib/catalog/`), plus les produits pas encore migrés,
-  `content/products/<slug>/` (une fiche `zurp.yml` au format des dépôts et son affiche, validées par
-  le même code ; migrer = déplacer le dossier). Une page par produit.
+- Le catalogue est lu au build dans les dépôts produit de l'organisation, et seulement là
+  (`9_Assets/zurp.yml`, son affiche + releases GitHub, `src/lib/catalog/`). Une page par produit ;
+  le lien « Source » d'un produit est son dépôt.
 - La source du catalogue est toujours nommée par `ZURP_CATALOG` : `github` (déploiement) ou
   `simulator` (`catalog-simulator/`, hors ligne — voir son `README.md`).
 - Le kit README de l'organisation est généré au déploiement depuis ce même catalogue, par les
@@ -37,8 +36,9 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   pour le voir. Aucun texte destiné au lecteur dans le code.
 - Le site publie le kit README de l'organisation et la norme des dépôts produit (arborescence,
   nommage des fichiers de carte : § 5 de `content/readme-kit/guide.md`) ; il ne commite pas le kit.
-- Les produits pas encore migrés vivent dans `content/products/<slug>/` ; aucune liste de produits
-  n'est tenue à la main (le site publie ce qu'il découvre). Règles de migration : `content/README.md`.
+- Aucune liste de produits n'est tenue à la main (le site publie ce qu'il découvre). Un produit de
+  plus = un dépôt de plus dans l'organisation (et dans `catalog-simulator/repos/` pour le build hors
+  ligne).
 
 ## Gotchas
 
@@ -46,9 +46,8 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   GitHub Actions. En local et en CI Gitea, toujours `ZURP_CATALOG=simulator`.
 - `npm run readme-kit` et `scripts/check-dist.mjs` lisent le catalogue construit
   (`.zurp-catalog/`, ignoré par git) : lance un build avant.
-- Un slug présent à la fois dans un dépôt produit et dans `content/products/` : la fiche du dépôt
-  gagne, le dossier local est ignoré. Une fiche invalide dans `content/products/` fait échouer le
-  build.
+- Une fiche invalide dans un dépôt produit ne fait pas échouer le build : le produit est sauté, et
+  seul le rapport du catalogue en fin de build le dit.
 
 ## Test
 

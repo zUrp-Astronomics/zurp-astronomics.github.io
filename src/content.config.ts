@@ -12,7 +12,7 @@
 // github, no default) and validates every sheet with messages naming the repository and the field
 // (src/lib/catalog/read.mjs). This schema only shapes what it stores, and turns the poster into an
 // image import with image(). The site never reads this collection directly: it reads the full
-// catalog (src/data/catalog.ts), this collection plus the products still in content/products/.
+// catalog (src/data/catalog.ts), this collection in display order (ticket #92: the only one).
 import { defineCollection } from 'astro:content';
 import { z } from 'astro/zod';
 import { repoProductsLoader } from './lib/catalog/loader.mjs';

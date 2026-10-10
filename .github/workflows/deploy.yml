@@ -9,8 +9,7 @@
 # GITHUB_TOKEN (1000 requests per hour; every read goes through api.github.com). The site publishes
 # what it discovers (ticket #72): a repository whose sheet or poster is invalid is skipped, with a
 # warning, and the rest is published; no list of products is kept by hand. If GitHub cannot be read,
-# or a sheet of content/products/ (this repository) is invalid, the build fails and Pages keeps
-# serving the previous deployment. The catalog found — each product, its origin, its « Source »
+# the build fails and Pages keeps serving the previous deployment. The catalog found — each product, its origin, its « Source »
 # link — and what was skipped, with the reason, are in the build log and in the job summary of
 # `build` (src/lib/catalog/report.mjs, through GITHUB_STEP_SUMMARY).
 #

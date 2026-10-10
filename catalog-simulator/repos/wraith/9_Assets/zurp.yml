@@ -3,15 +3,15 @@
 # DATE: 2026-10-06
 # STATUS: active — transcrite mot pour mot de src/data/products.ts (site @ main 008e19e, ticket #49)
 # REVISED: 2026-10-06 (ticket #72) — le dépôt est découvert dans l'organisation, aucune liste à tenir
+# REVISED: 2026-10-10 (ticket #92) — content/products/wraith/ du site déménage ici, tel quel : le dépôt
+#   Wraith de l'organisation porte sa fiche, le simulateur l'imite (catalog-simulator/README.md)
 #
-# Sa place est 9_Assets/zurp.yml dans le dépôt du produit. Tant que le dépôt ne la porte pas, le
-# site la lit ici, dans content/products/wraith/, au même format et avec le même code de validation
-# (src/lib/catalog/read.mjs). Migrer le produit = déplacer ce dossier, tel quel, dans 9_Assets/.
+# Sa place est 9_Assets/zurp.yml dans le dépôt du produit ; le site la lit là, avec le code de
+# validation de src/lib/catalog/read.mjs.
 #
-# Déduit, donc absent d'ici : le slug (nom du dossier, ou du dépôt, en minuscules → /wraith/), le
-# lien vers le dépôt (découvert dans l'organisation par son nom, casse ignorée ; tant que ce
-# produit n'a pas de dépôt, son lien « Source » mène à l'organisation), la version
-# (tag de la dernière release GitHub), le rang dans sa section.
+# Déduit, donc absent d'ici : le slug (nom du dépôt, en minuscules → /wraith/), le lien vers le dépôt
+# (son URL, le lien « Source »), la version (tag de la dernière release GitHub), le rang dans sa
+# section.
 
 name: Wraith
 tagline: >-

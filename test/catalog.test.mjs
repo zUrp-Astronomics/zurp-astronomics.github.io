@@ -5,6 +5,8 @@
 //   site is a showcase the human looks at on every deployment; only what breaks invisibly is tested.
 // REVISED: 2026-10-10 (ticket #83) — the product header's poster is the relative 9_Assets/<slug>.webp,
 //   its block checked byte for byte; the org README keeps the absolute poster URLs
+// REVISED: 2026-10-10 (ticket #92) — content/products/ is gone, and with it its rules (an invalid
+//   local sheet fails the build, the repository wins over the folder, the org as « Source » link)
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -22,9 +24,8 @@ import sharp from 'sharp';
 
 import { catalogSource, githubBackend, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readRepoProducts } from '../src/lib/catalog/read.mjs';
-import { readLocalProducts } from '../src/lib/catalog/local.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { catalogContent, licenseContent, siteContent } from '../src/lib/content.mjs';
+import { catalogContent, licenseContent } from '../src/lib/content.mjs';
 import { licenseStamps } from '../src/lib/license-stamp.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 
@@ -92,7 +93,7 @@ test('1. the build fails without a named catalog source; `simulator` is refused 
 });
 
 // 2 -------------------------------------------------------------------------------------------------
-test('2. an invalid repository sheet or an unreadable poster skips that product, the others are read; an invalid sheet of content/products/ fails the build', async () => {
+test('2. an invalid repository sheet or an unreadable poster skips that product, the others are read', async () => {
   const sim = makeSim({
     alpha: gizmo(VALID_SHEET.replace('name: Gizmo\n', '')),
     bravo: { ...gizmo(), '9_Assets/poster.png': 'not an image' },
@@ -103,12 +104,6 @@ test('2. an invalid repository sheet or an unreadable poster skips that product,
   assert.deepEqual(skipped.map((s) => s.repo), ['alpha', 'bravo']);
   assert.match(skipped[0].problems.join('\n'), /repository alpha .*field `name`: missing/);
   assert.match(skipped[1].problems.join('\n'), /repository bravo .*field `poster`/);
-
-  const root = tempRoot();
-  const sheet = join(root, 'content', 'products', 'cyclops', 'zurp.yml');
-  writeFileSync(sheet, readFileSync(sheet, 'utf8').replace(/^name:.*\n/m, ''));
-  await assert.rejects(readLocalProducts({ root, sectionIds, repositories: [] }), /content\/products\/cyclops\/zurp\.yml: field `name`: missing/);
-  await assert.rejects(built(root), /field `name`: missing/);
 });
 
 // 3 -------------------------------------------------------------------------------------------------
@@ -120,23 +115,7 @@ test('3. a repository without 9_Assets/zurp.yml is not in the catalog, without a
 });
 
 // 4 -------------------------------------------------------------------------------------------------
-test('4. a slug both in a repository and in content/products/: the repository wins', async () => {
-  const root = tempRoot((sim) => {
-    for (const [path, content] of Object.entries(gizmo())) {
-      mkdirSync(dirname(join(sim, 'repos', 'cyclops', path)), { recursive: true });
-      writeFileSync(join(sim, 'repos', 'cyclops', path), content);
-    }
-  });
-  const { products, overridden } = await built(root);
-  const cyclops = products.filter((p) => p.slug === 'cyclops');
-  assert.equal(cyclops.length, 1);
-  assert.equal(cyclops[0].name, 'Gizmo', "the repository's sheet");
-  assert.equal(cyclops[0].repo, 'https://github.com/zUrp-Astronomics/cyclops');
-  assert.deepEqual(overridden.map((o) => o.slug), ['cyclops']);
-});
-
-// 5 -------------------------------------------------------------------------------------------------
-test('5. the status is the sheet’s, the version is the tag of the latest release; an unknown status skips the product', async () => {
+test('4. the status is the sheet’s, the version is the tag of the latest release; an unknown status skips the product', async () => {
   const sheet = (status) => VALID_SHEET.replace('status: wip', `status: ${status}`);
   const rel = (tag, at, more = {}) => ({ tag_name: tag, published_at: at, draft: false, prerelease: false, ...more });
   const sim = makeSim(
@@ -157,8 +136,8 @@ test('5. the status is the sheet’s, the version is the tag of the latest relea
   assert.match(skipped[0].problems.join('\n'), /field `status`: "beta" is not one of/);
 });
 
-// 6 -------------------------------------------------------------------------------------------------
-test('6. licences: a recognised spdx_id gives its stamp, NOASSERTION the generic one, null none; the hardware licence is the first line of LICENSE-HARDWARE, none without the file', async () => {
+// 5 -------------------------------------------------------------------------------------------------
+test('5. licences: a recognised spdx_id gives its stamp, NOASSERTION the generic one, null none; the hardware licence is the first line of LICENSE-HARDWARE, none without the file', async () => {
   const texts = licenseContent(ROOT);
   const sim = makeSim(
     {
@@ -186,19 +165,7 @@ test('6. licences: a recognised spdx_id gives its stamp, NOASSERTION the generic
   assert.equal(stamps.bravo.hardware, null);
 });
 
-// 7 -------------------------------------------------------------------------------------------------
-test('7. a local product without a repository (Cyclops, Wraith): its « Source » link is the organisation', async () => {
-  const orgUrl = siteContent(ROOT).org.url.replace(/\/+$/, '');
-  const repositories = await simulatorBackend(SIM).listRepos();
-  const products = await readLocalProducts({ root: ROOT, sectionIds, repositories });
-  assert.deepEqual(products.map((p) => p.slug), ['cyclops', 'wraith']);
-  for (const p of products) {
-    assert.equal(p.repo, orgUrl, p.slug);
-    assert.equal(p.license, null, p.slug);
-  }
-});
-
-// 8 -------------------------------------------------------------------------------------------------
+// 6 -------------------------------------------------------------------------------------------------
 /** A fetch answering like api.github.com for `repos` and `files` ({ 'Repo/path': bytes }); 404 elsewhere; `fail` answers `status` to URLs holding `match`. */
 function mockGitHub({ repos, files, fail }) {
   return async (url) => {
@@ -214,7 +181,7 @@ function mockGitHub({ repos, files, fail }) {
   };
 }
 
-test('8. GitHub: a failed request fails the build, except the 404 of a sheet, a poster or LICENSE-HARDWARE', async () => {
+test('6. GitHub: a failed request fails the build, except the 404 of a sheet, a poster or LICENSE-HARDWARE', async () => {
   const repos = ['Alpha', 'Bravo', 'Charlie'];
   const files = { 'Bravo/9_Assets/zurp.yml': VALID_SHEET, 'Charlie/9_Assets/zurp.yml': VALID_SHEET, 'Charlie/9_Assets/poster.png': PNG };
   const read = (fail) => readRepoProducts(githubBackend({ fetchImpl: mockGitHub({ repos, files, fail }) }), { sectionIds });
@@ -251,8 +218,8 @@ const KRAKEN_HEADER = `<!-- zurp-readme-header:begin — paste this block once, 
 
 <!-- zurp-readme-header:end -->`;
 
-// 9 -------------------------------------------------------------------------------------------------
-test('9. the README kit is generated from the built catalog: one header per product, no Mustache marker left empty', async () => {
+// 7 -------------------------------------------------------------------------------------------------
+test('7. the README kit is generated from the built catalog: one header per product, no Mustache marker left empty', async () => {
   const root = tempRoot();
   const { snapshotFile, products } = await built(root);
   const out = join(root, 'kit');
@@ -276,6 +243,8 @@ test('9. the README kit is generated from the built catalog: one header per prod
   }
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');
   for (const p of products) assert.ok(org.includes(`>${p.name}</a>`), `${p.name} in the organisation README`);
+  // Every product has its repository (ticket #92): its GitHub badge links it, none is left without.
+  for (const p of products) assert.ok(org.includes(`<a href="${p.repo}"><img src="https://img.shields.io/badge/-GitHub-`), `${p.slug}: GitHub badge in the organisation README`);
   // The org README lives in another repository: its posters keep their absolute URLs (ticket #83).
   for (const p of products) assert.ok(org.includes(`/brand/posters/${p.slug}.webp`), `${p.slug}: poster URL in the organisation README`);
 });

@@ -7,10 +7,12 @@
 // REVISED: 2026-10-06 (ticket #66) — each product carries `license`, its repository's licence as the
 //   backend lists it (GitHub's detection of the LICENSE file; null when there is none)
 // REVISED: 2026-10-06 (ticket #72) — full discovery: an invalid product is SKIPPED (reported, never
-//   thrown: the caller decides — content/products/ fails, a repository does not); the poster is
+//   thrown: a repository's product is left out, the others are published); the poster is
 //   decoded (sharp); a release with an unreadable `published_at` is ignored, reported
 // REVISED: 2026-10-06 (ticket #75) — the hardware licence: LICENSE-HARDWARE at the root of a product's
 //   repository, its first non-empty line (`hardwareLicense`), the one file read outside 9_Assets/
+// REVISED: 2026-10-10 (ticket #92) — content/products/ and its backend are gone: every backend is a
+//   set of repositories, and every product's hardware licence is read from its repository
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases, plus ONE file
@@ -45,18 +47,15 @@
 //     forbidden field, unknown section or status, unreadable YAML, poster absent, of a refused
 //     extension, or whose bytes do not decode as an image) is SKIPPED: it is returned in `skipped`,
 //     with every problem naming the repository and the field, and the others are read (ticket #72,
-//     the human: « le site publie ce qu'il découvre »). The caller decides what a skipped product
-//     means: a repository's is left out of the catalog with a warning (loader.mjs); one of
-//     content/products/, the site's own repository, fails the build (local.mjs);
+//     the human: « le site publie ce qu'il découvre »): the loader leaves it out of the catalog
+//     with a warning (loader.mjs);
 //   - a release whose `published_at` cannot be read is IGNORED (`ignoredReleases`), the product is
 //     read with its other releases;
 //   - only what was READ and is wrong, or is absent (a 404), skips a product: an error of the
 //     backend itself (GitHub answering badly, source.mjs) is never caught here, it fails the build.
 //
-// The products not migrated yet (content/products/<slug>/, ticket #49) are read by THIS code too,
-// through a third backend that sees each folder as a repository's 9_Assets/ (local.mjs): same
-// sheet, same validation. A backend may name its places itself (`where`, `origin`, `filePath`)
-// for the messages.
+// The backends are the two of source.mjs, the simulator and GitHub (ticket #92: the third one, for
+// the products of content/products/, is gone with that folder).
 
 import yaml from 'js-yaml';
 import sharp from 'sharp';
@@ -202,26 +201,20 @@ export async function posterImageProblem(bytes) {
  * order, with the products skipped and the releases ignored — never throws for a product: an
  * invalid one is in `skipped`, with every problem prefixed by its place. An error of the backend
  * (a failed request) is not caught: it throws.
- * Each product also carries `posterPath`, the poster's path inside 9_Assets/ as the sheet names it.
- * Its hardware licence is read (LICENSE-HARDWARE) once the product is valid — unless the entry of
- * the repository already carries `hardwareLicense` (the backend of content/products/, which knows the
- * one of the repository it discovered, src/lib/catalog/local.mjs).
- * `repos`: the backend's repositories when the caller has already listed them (the loader keeps the
- * list for the snapshot: the organisation is listed once per build).
- * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string, where?(repo: string): string, origin?(repo: string): string, filePath?(repo: string, path: string): string }} backend
- * @param {{ sectionIds: readonly string[], repos?: Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}> }} options
+ * Its hardware licence is read (LICENSE-HARDWARE) once the product is valid.
+ * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, describe?: string }} backend
+ * @param {{ sectionIds: readonly string[] }} options
  * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }> }>}
  */
-export async function readRepoProducts(backend, { sectionIds, repos }) {
+export async function readRepoProducts(backend, { sectionIds }) {
   const products = [];
   const skipped = [];
   const ignoredReleases = [];
-  for (const entry of repos ?? (await backend.listRepos())) {
-    const { name: repoName, url, license } = entry;
+  for (const { name: repoName, url, license } of await backend.listRepos()) {
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
-    const where = backend.where?.(repoName) ?? `repository ${repoName} (${SHEET_PATH})`;
-    const origin = backend.origin?.(repoName) ?? `repository ${repoName}`;
+    const where = `repository ${repoName} (${SHEET_PATH})`;
+    const origin = `repository ${repoName}`;
     const skip = (problems) => skipped.push({ repo: repoName, origin, problems: problems.map((p) => `${where}: ${p}`) });
     let sheet;
     try {
@@ -238,13 +231,12 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
     let posterBytes = null;
     if (!own.some((p) => p.startsWith('field `poster`'))) {
       const path = `${ASSETS_DIR}/${sheet.poster}`;
-      const shown = backend.filePath?.(repoName, path);
       posterBytes = await backend.readFile(repoName, path);
       if (posterBytes === null) {
-        own.push(`field \`poster\`: ${shown ?? path} does not exist${shown ? '' : ' in the repository'}`);
+        own.push(`field \`poster\`: ${path} does not exist in the repository`);
       } else {
         const bad = await posterImageProblem(posterBytes);
-        if (bad) own.push(`field \`poster\`: ${shown ?? path} ${bad}`);
+        if (bad) own.push(`field \`poster\`: ${path} ${bad}`);
       }
     }
     if (own.length) {
@@ -254,7 +246,7 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
     const ignored = [];
     const release = latestRelease(await backend.listReleases(repoName), ignored);
     for (const message of ignored) ignoredReleases.push({ repo: repoName, origin, message: `${origin}: ${message}` });
-    const hardwareLicense = 'hardwareLicense' in entry ? entry.hardwareLicense ?? null : await readHardwareLicense(backend, repoName);
+    const hardwareLicense = await readHardwareLicense(backend, repoName);
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({
       slug,
@@ -276,7 +268,6 @@ export async function readRepoProducts(backend, { sectionIds, repos }) {
       // Named after the slug, not after the sheet's file: Astro names the optimised variants after
       // the source file (_astro/<name>.<hash>.webp).
       posterFile: `${slug}${ext}`,
-      posterPath: sheet.poster,
       posterBytes,
     });
   }

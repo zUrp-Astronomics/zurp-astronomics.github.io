@@ -124,3 +124,70 @@ L'avatar (le télescope steampunk, dessin complet, 480 × 480 px, PNG) est servi
 {{{avatarUrl}}} : enregistre l'image, puis téléverse-la dans les **Settings** de l'organisation
 ({{{orgSettingsUrl}}}), rubrique **Profile picture** (**Edit → Upload a photo…**). Il est produit
 par le build du site : en ligne une fois le site déployé.
+
+## 5. Arborescence et nommage des dépôts produit
+
+Chaque dépôt produit suit la même arborescence. Un dossier sans objet est absent ; chaque dossier
+présent porte un `README.md` d'une phrase (colonne de droite, adaptée au produit). Git refuse un
+fichier de plus de 100 Mo.
+
+| dossier | contenu | phrase du `README.md` du dossier |
+|---|---|---|
+| `0_Datasheets/` | datasheets des composants | Les datasheets des composants utilisés (PDF du fabricant, nom d'origine). |
+| `1_Board/` | fabrication de la carte électronique | Les fichiers de fabrication de la carte, tels que les sort l'outil de CAO. |
+| `2_Hardware/` | mécanique hors carte : boîtier, pièces, sources de conception (STEP, F3D), nomenclature mécanique | La mécanique hors carte. |
+| `3_3D-Models/` | fichiers prêts à imprimer (3MF, STL) | Les fichiers prêts à imprimer, tirés de `2_Hardware/`. |
+| `4_Firmware/` | firmware : sources, build, tests | Le firmware de la carte. |
+| `5_App/` | applications PC / téléphone, outils de configuration | Les applications qui parlent au produit. |
+| `6_Driver/` | drivers (INDI, ASCOM…) | Les drivers. |
+| `7_Docs/` | documentation du projet : protocole, notes de conception | La documentation du projet ; le README racine reste la porte d'entrée. |
+| `8_References/` | documents de référence externes (normes, projets amont) | Ce que le projet consulte, pas ce qu'il produit. |
+| `9_Assets/` | images des README et de la doc ; vitrine du site (`zurp.yml` + affiche) | Les ressources pour l'extérieur, et la vitrine lue par le site. |
+
+### Fichiers de carte (`1_Board/`)
+
+`<Produit>-v<version>_<n>-<Nature>.<ext>`, où `n` dit la nature du fichier :
+
+| n | fichier | exemple |
+|---|---|---|
+| 0 | fiche de la carte, texte | `Basilisk-v1.0b_0-README.txt` |
+| 1 | schéma, PDF et PNG | `…_1-Schematics.pdf`, `…_1-Schematics.png` |
+| 2 | vues : 3D (PNG + STEP), dessus, dessous | `…_2-view_3D.png`, `…_2-view_3D.step`, `…_2-view_top.png`, `…_2-view_bot.png` |
+| 3 | Gerber RS-274X + perçages Excellon, zippés | `…_3-Gerber.zip` |
+| 4 | nomenclature (références LCSC) | `…_4-BoM.xlsx` |
+| 5 | placement, coordonnées en mm | `…_5-PnP.xlsx` |
+
+**Plusieurs cartes** : un sous-dossier par carte, `1_Board/<Carte>/` (ex. `1_Board/Main-board/`,
+`1_Board/SHC/`). Le nom de la carte entre dans le préfixe :
+`<Produit>-<Carte>-v<version>_<n>-<Nature>.<ext>`. Une carte unique reste à plat dans `1_Board/`.
+
+Modèle de la fiche `_0-README.txt` :
+
+```
+<Produit> - <Carte> v<X.Y>
+zUrp Astronomics - lordzurp.dev@gmail.com
+Projet : <lien EasyEDA/OSHWLab>   Repo : <lien GitHub>
+
+FICHIERS
+  1-Schematics.pdf   schéma
+  2-Views            vues dessus / dessous / 3D
+  3-Gerber.zip       Gerbers RS-274X + perçages Excellon
+  4-BoM.xlsx         nomenclature, références LCSC
+  5-PnP.xlsx         placement, coordonnées en mm
+
+PCB
+  Couches      : <n>
+  Dimensions   : <L> x <l> mm
+  Épaisseur    : <mm>
+  Cuivre       : <oz>
+  Vernis       : <couleur>      Sérigraphie : <couleur>
+  Finition     : <HASL ROHS / ENIG>
+
+ASSEMBLAGE
+  Face         : <dessus uniquement / deux faces>
+  Composants   : <n> lignes BoM, <n> placements
+  Non montés   : <n>
+
+POINTS D'ATTENTION
+  - <à remplir>
+```

@@ -3,6 +3,8 @@
 // DATE: 2026-10-06
 // REVISED: 2026-10-10 (ticket #79) — one test per rule of the list the human kept, nothing else: the
 //   site is a showcase the human looks at on every deployment; only what breaks invisibly is tested.
+// REVISED: 2026-10-10 (ticket #83) — the product header's poster is the relative 9_Assets/<slug>.webp,
+//   its block checked byte for byte; the org README keeps the absolute poster URLs
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -235,6 +237,20 @@ test('8. GitHub: a failed request fails the build, except the 404 of a sheet, a 
   await assert.rejects(readRepoProducts(githubBackend({ fetchImpl: offline }), { sectionIds }), /fetch failed/);
 });
 
+// The product header of Kraken, exactly as campaign #81 fixed it (ticket #83); the others differ by the slug only.
+const KRAKEN_HEADER = `<!-- zurp-readme-header:begin — paste this block once, never again: the poster and the badges update themselves at each build of the site — do not edit it -->
+<div align="center">
+
+<a href="https://zurp-astronomics.github.io/kraken/"><img src="9_Assets/kraken.webp" alt="zUrp Astronomics product poster" width="420"></a>
+
+![status](https://img.shields.io/endpoint?url=https%3A%2F%2Fzurp-astronomics.github.io%2Fbrand%2Fstatus%2Fkraken.json)
+![software licence](https://zurp-astronomics.github.io/brand/badges/kraken/software.svg)
+![hardware licence](https://zurp-astronomics.github.io/brand/badges/kraken/hardware.svg)
+
+</div>
+
+<!-- zurp-readme-header:end -->`;
+
 // 9 -------------------------------------------------------------------------------------------------
 test('9. the README kit is generated from the built catalog: one header per product, no Mustache marker left empty', async () => {
   const root = tempRoot();
@@ -249,10 +265,17 @@ test('9. the README kit is generated from the built catalog: one header per prod
     assert.doesNotMatch(text, /\{\{|\}\}/, `${f}: a marker left as is`);
     assert.doesNotMatch(text, /="\s*"|\]\(\s*\)|!\[\s*\]|<a href="[^"]+">\s*<\/a>|<!--\s*—/, `${f}: a marker filled with nothing`);
   }
+  assert.ok(products.some((p) => p.slug === 'kraken'), 'Kraken is in the built catalog (its header is checked as written)');
   for (const p of products) {
     const header = readFileSync(join(out, 'readme-kit', 'repos', `${p.slug}.md`), 'utf8');
-    assert.ok(header.includes(`/brand/posters/${p.slug}.webp`) && header.includes(`/brand/badges/${p.slug}/hardware.svg`), p.slug);
+    // Ticket #83: the poster by its relative path in the product repository; the badges stay absolute.
+    assert.ok(header.includes(`<img src="9_Assets/${p.slug}.webp"`) && header.includes(`/brand/badges/${p.slug}/hardware.svg`), p.slug);
+    assert.ok(!header.includes('/brand/posters/'), `${p.slug}: no poster URL in the product header`);
+    // Byte for byte, the block of the human's decision (campaign #81): the product READMEs carry it verbatim.
+    assert.equal(header.trim(), KRAKEN_HEADER.replaceAll('kraken', p.slug), p.slug);
   }
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');
   for (const p of products) assert.ok(org.includes(`>${p.name}</a>`), `${p.name} in the organisation README`);
+  // The org README lives in another repository: its posters keep their absolute URLs (ticket #83).
+  for (const p of products) assert.ok(org.includes(`/brand/posters/${p.slug}.webp`), `${p.slug}: poster URL in the organisation README`);
 });

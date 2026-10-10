@@ -1,6 +1,6 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-06 (ticket #75 : les badges de licence logicielle et matérielle dans l'en-tête produit ; un bloc collé avant se recolle une fois)
+Dernière révision: 2026-10-10 (ticket #83 : l'affiche de l'en-tête produit en chemin relatif ; la norme du README produit)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
 Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, hasRepo, repo, repoPath, socialUrl) ; noRepo (name, last), noRepoOne / noRepoMany
@@ -9,7 +9,7 @@ Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, hea
 # Kit README — mode d'emploi
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-06
+**Dernière révision** : 2026-10-10
 **Statut** : généré par `scripts/readme-kit.mjs` (dépôt du site) à chaque déploiement — ne pas éditer à la main
 **Référencé par** : `.github/workflows/deploy.yml` du site (job « README de l'org »), `readme-kit/README.md` du site
 
@@ -55,7 +55,7 @@ documentation) s'écrit à la main sous le bloc, comme dans tout dépôt.
 
 Dans l'ordre :
 
-- **L'affiche** du produit, servie par le site ; elle mène à sa page sur le site.
+- **L'affiche** du produit, `9_Assets/<produit>.webp` du dépôt lui-même, en chemin relatif : elle s'affiche aussi dans un clone hors ligne. Elle mène à la page du produit sur le site.
 - **Le badge de statut**, dessiné par shields.io depuis `{{{statusJsonUrl}}}`, que le site réécrit à
   chaque build : le statut du produit et, s'il en a une, le tag de sa dernière release.
 - **Le badge de licence logicielle**, `{{{softwareBadgeUrl}}}`, dessiné par le site à chaque build :
@@ -78,6 +78,17 @@ de licence de GitHub, `![licence](https://img.shields.io/github/license/…)`) :
 fois**, marqueurs compris, pour recevoir les deux badges de licence. Un dépôt qui porte encore un
 ancien en-tête (nom, slogan, badges de licence, phrase de licence) : remplace-le de même, une
 dernière fois, par ce bloc.
+
+**La norme du README produit** (décision de l'humain, 2026-10-10). En anglais. Dans l'ordre : le
+bloc d'en-tête ; le nom en titre centré, le slogan dessous, une barre de liens (site, documentation
+si `7_Docs/` existe, releases, organisation) ; la bannière de statut (`wip` : « Work in progress — do
+not build yet » ; `future` : « Design phase ») ; `## Why <Nom>?`, le paragraphe qui promet de
+ridiculiser l'équivalent du commerce, bâti uniquement sur des faits du dépôt ; `## At a glance`, les
+caractéristiques ; puis, quand le dépôt a de quoi les remplir, `## Hardware`, `## Software`,
+`## Build`, `## Documentation`, `## Status & roadmap`, `## Credits` ; enfin `## Repository layout`,
+`## License` et la signature. Toute image est un chemin relatif vers `9_Assets/`, en WebP à la taille
+d'affichage ; l'original reste là où il est produit. Le détail technique vit dans `7_Docs/`, au
+projet. L'org rédige le README et `9_Assets/` ; le projet tient tout le reste.
 
 **Les deux fichiers de licence.** `LICENSE` porte la licence **logicielle** (MIT, GPL…) : c'est
 celle que GitHub reconnaît et affiche dans l'encadré « About » du dépôt. `LICENSE-HARDWARE` porte la

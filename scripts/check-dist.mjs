@@ -5,6 +5,8 @@
 // REVISED: 2026-10-10 (ticket #79) — cut down to the external contracts: what the human cannot see by
 //   looking at the deployed site. Image dimensions and decoding, version and licence stamps, tile
 //   order and width, icon declarations on each page are gone: they are visible on the site.
+// REVISED: 2026-10-12 (ticket #96) — the firmware TOML of each chip, at its stable URL, and every part
+//   it cites, in dist/ at the size the catalog gives
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -23,11 +25,20 @@
 //       brand/status/<slug>.json                                          per product
 //       brand/badges/<slug>/software.svg, brand/badges/<slug>/hardware.svg per product
 //       favicon.ico, favicon-16.png, favicon-32.png, icon-192.png, apple-touch-icon.png
+//   - for a product whose built catalog holds a firmware (ticket #96, src/lib/firmware.mjs): the TOML
+//     of a chip is missing at its stable URL <slug>/firmware/<chip>.toml (the URL of the contract
+//     with the products: their READMEs link it through ESP Launchpad), does not parse as TOML (with
+//     smol-toml, the parser of Launchpad itself), or does not cite, in order, one URL of this site
+//     and one address per part of the catalog; or a part it cites is missing from dist/ or not of the
+//     size the catalog gives.
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadBuiltCatalog } from './lib/catalog.mjs';
+import { readFileSync } from 'node:fs';
+import { parse as parseToml } from 'smol-toml';
+import { loadBuiltCatalog, siteUrl } from './lib/catalog.mjs';
+import { firmwareTomlPath } from '../src/lib/firmware.mjs';
 import { LICENSE_KINDS } from '../src/lib/content.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 import { statusBadgePath } from '../src/lib/status-badge.mjs';
@@ -101,10 +112,55 @@ for (const path of stable) {
 }
 console.log(`Stable README URLs: ${stable.length} expected`);
 
+// --- 4. The firmware TOML of each chip and the parts it cites -------------------------------------
+const SITE = siteUrl();
+let tomls = 0;
+for (const p of catalog.products.filter((p) => p.firmware)) {
+  for (const { chip, parts } of p.firmware.chips) {
+    const path = firmwareTomlPath(p.slug, chip);
+    const where = `dist/${path}`;
+    const abs = join(distDir, path);
+    if (!existsSync(abs) || !statSync(abs).isFile()) {
+      errors.push(`missing firmware TOML at its stable URL: ${where}`);
+      continue;
+    }
+    tomls++;
+    let config;
+    try {
+      config = parseToml(readFileSync(abs, 'utf8'));
+    } catch (e) {
+      errors.push(`${where}: not valid TOML — ${String(e?.message ?? e).split('\n')[0]}`);
+      continue;
+    }
+    const app = config.supported_apps?.[0];
+    const image = config[app]?.image?.[chip];
+    if (config.multipart !== true || config.chip !== chip || !Array.isArray(image?.parts) || !Array.isArray(image?.addresses)) {
+      errors.push(`${where}: not a Launchpad TOML of ${chip} (multipart, chip, supported_apps, [app] image.${chip}.parts / addresses)`);
+      continue;
+    }
+    if (image.parts.length !== parts.length || image.addresses.some((a, i) => a !== parts[i]?.offset)) {
+      errors.push(`${where}: cites ${image.parts.length} part(s) at ${JSON.stringify(image.addresses)}, the catalog has ${JSON.stringify(parts.map((x) => x.offset))}`);
+    }
+    image.parts.forEach((url, i) => {
+      if (typeof url !== 'string' || !url.startsWith(`${SITE}/`)) {
+        errors.push(`${where}: part ${JSON.stringify(url)} is not an absolute URL of ${SITE}`);
+        return;
+      }
+      const rel = decodeURIComponent(new URL(url).pathname.replace(/^\/+/, ''));
+      const file = join(distDir, rel);
+      if (!existsSync(file) || !statSync(file).isFile()) errors.push(`${where}: part ${url} is missing: dist/${rel}`);
+      else if (parts[i] && statSync(file).size !== parts[i].size) {
+        errors.push(`${where}: part dist/${rel} is ${statSync(file).size} bytes, the catalog gives ${parts[i].size}`);
+      }
+    });
+  }
+}
+console.log(`Firmware TOML: ${tomls} (${catalog.products.filter((p) => p.firmware).map((p) => p.slug).join(', ') || 'no product with a firmware'})`);
+
 // --- Verdict ---------------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place.');
+console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every firmware TOML and its parts in place.');

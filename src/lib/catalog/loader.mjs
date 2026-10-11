@@ -8,6 +8,8 @@
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the snapshot no
 //   longer lists the organisation's repositories (`repositories` served only to discover the
 //   repository of a product of that folder); each product carries its licences and its URL itself
+// REVISED: 2026-10-12 (ticket #96) — the firmware: its files written under firmware/, each product's
+//   `firmware` and the manifests rejected (`firmwareRejected`) kept in the snapshot
 //
 // Declared in src/content.config.ts. At each build (and `astro dev`/`astro sync`) it:
 //   1. reads the source named by ZURP_CATALOG (source.mjs) — the build fails without it;
@@ -19,6 +21,9 @@
 //        posters/<slug>.<ext>   each poster, named after the SLUG (Astro names the optimised
 //                               variants after the source file: _astro/<slug>.<hash>.webp, the
 //                               names the posters of src/assets/posters/ had before ticket #49);
+//        firmware/<sha256>      each file of a product's firmware (ticket #96), named after the
+//                               SHA-256 of its bytes; published by src/pages/[slug]/firmware/
+//                               (src/lib/firmware.mjs) — their bytes never go in the snapshot;
 //        remote.json            the snapshot of what was read (no image bytes): the scripts that run
 //                               after the build (scripts/check-dist.mjs, scripts/readme-kit.mjs)
 //                               read THIS, so they see the catalog that was built — the source is
@@ -26,8 +31,9 @@
 //                               failed read: there is no fallback copy. Besides the products (each
 //                               with its URL and its two licences, so the page and the README kit
 //                               see the same ones), it keeps what was left out: `skipped` (the
-//                               repositories whose product is invalid, with the problems) and
-//                               `ignoredReleases` (src/lib/catalog/report.mjs prints them);
+//                               repositories whose product is invalid, with the problems),
+//                               `ignoredReleases` and `firmwareRejected` (the firmware manifests
+//                               rejected, with the problems): src/lib/catalog/report.mjs prints them;
 //   4. stores one entry per product, its `poster` given to the schema's image() as a local file:
 //      Astro imports it like a poster of src/assets/ (same `fsPath`, same variants, no original
 //      copied to dist/ as long as only `fsPath` is read outside <Image>/getImage).
@@ -41,6 +47,8 @@ import { readRepoProducts } from './read.mjs';
 export const SNAPSHOT_DIR = '.zurp-catalog';
 export const SNAPSHOT_FILE = `${SNAPSHOT_DIR}/remote.json`;
 export const SIMULATOR_DIR = 'catalog-simulator';
+/** Where the build keeps the bytes of a firmware's file, named after its SHA-256. */
+export const firmwareFile = (root, sha256) => join(root, SNAPSHOT_DIR, 'firmware', sha256);
 
 /**
  * Reads the named source and writes .zurp-catalog/ under `root`. Returns the snapshot.
@@ -55,15 +63,20 @@ export async function readAndSnapshot({ root, env = process.env, sectionIds, bac
   const be =
     backend ??
     (source === 'github' ? githubBackend({ token: env[TOKEN_VAR] || undefined }) : simulatorBackend(join(root, SIMULATOR_DIR)));
-  const { products, skipped, ignoredReleases } = await readRepoProducts(be, { sectionIds });
+  const { products, skipped, ignoredReleases, firmwareRejected } = await readRepoProducts(be, { sectionIds });
   mkdirSync(join(outDir, 'posters'), { recursive: true });
-  for (const p of products) writeFileSync(join(outDir, 'posters', p.posterFile), p.posterBytes);
+  mkdirSync(join(outDir, 'firmware'), { recursive: true });
+  for (const p of products) {
+    writeFileSync(join(outDir, 'posters', p.posterFile), p.posterBytes);
+    for (const [sha256, bytes] of p.firmwareFiles) writeFileSync(firmwareFile(root, sha256), bytes);
+  }
   const snapshot = {
     source,
     read: be.describe ?? source,
-    products: products.map(({ posterBytes, ...rest }) => rest),
+    products: products.map(({ posterBytes, firmwareFiles, ...rest }) => rest),
     skipped,
     ignoredReleases,
+    firmwareRejected,
   };
   writeFileSync(join(root, SNAPSHOT_FILE), JSON.stringify(snapshot, null, 2) + '\n');
   return { snapshot, requests: be.requests };
@@ -79,7 +92,7 @@ export function readSnapshot(file) {
     throw new Error(`no catalog snapshot at ${file} — run the build first (ZURP_CATALOG=simulator|github npm run build)`);
   }
   const snapshot = JSON.parse(readFileSync(file, 'utf8'));
-  const lists = ['products', 'skipped', 'ignoredReleases'];
+  const lists = ['products', 'skipped', 'ignoredReleases', 'firmwareRejected'];
   if (!snapshot || !lists.every((k) => Array.isArray(snapshot[k]))) {
     throw new Error(`${file}: not a catalog snapshot (${lists.join(', ')}) — rebuild`);
   }
@@ -108,12 +121,14 @@ export function repoProductsLoader({ sectionIds }) {
       }
       for (const s of snapshot.skipped) logger.warn(`product SKIPPED — ${s.problems.join('; ')}`);
       for (const r of snapshot.ignoredReleases) logger.warn(r.message);
+      for (const r of snapshot.firmwareRejected) logger.warn(`firmware NOT PUBLISHED — ${r.problems.join('; ')}`);
       logger.info(
         `catalog source: ${snapshot.read} — ${snapshot.products.length} product(s) with a sheet` +
           (snapshot.skipped.length ? `, ${snapshot.skipped.length} skipped` : '') +
           (snapshot.products.length ? ` (${snapshot.products.map((p) => p.slug + (p.release ? ` ${p.release.tag}` : '')).join(', ')})` : '') +
           `; licences detected by GitHub: ${snapshot.products.filter((p) => p.license).map((p) => `${p.slug} ${p.license.spdx_id ?? p.license.name}`).join(', ') || 'none'}` +
           `; LICENSE-HARDWARE: ${snapshot.products.filter((p) => p.hardwareLicense).map((p) => `${p.slug} « ${p.hardwareLicense.title} »`).join(', ') || 'none'}` +
+          `; firmware: ${snapshot.products.filter((p) => p.firmware).map((p) => `${p.slug} ${p.firmware.tag} (${p.firmware.chips.map((c) => c.chip).join(', ')})`).join(', ') || 'none'}` +
           (requests !== undefined ? `, ${requests} API request(s)` : ''),
       );
     },

@@ -10,8 +10,11 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   tout texte destiné au lecteur (YAML pour les données courtes, Markdown pour la prose et les
   gabarits, marqueurs Mustache). `content/README.md` dit ce qui est où ; `src/lib/content.mjs` le lit.
 - Le catalogue est lu au build dans les dépôts produit de l'organisation, et seulement là
-  (`9_Assets/zurp.yml`, son affiche + releases GitHub, `src/lib/catalog/`). Une page par produit ;
-  le lien « Source » d'un produit est son dépôt.
+  (`9_Assets/zurp.yml`, son affiche + releases GitHub, `src/lib/catalog/`). Des fichiers attachés aux
+  releases, seuls le manifeste firmware `zurp-firmware.json` d'UNE release et les fichiers qu'il
+  nomme sont lus : le site les sert pour ESP Launchpad (`<slug>/firmware/<puce>.toml`, norme au § 6
+  de `content/readme-kit/guide.md`). Une page par produit ; le lien « Source » d'un produit est son
+  dépôt.
 - La source du catalogue est toujours nommée par `ZURP_CATALOG` : `github` (déploiement) ou
   `simulator` (`catalog-simulator/`, hors ligne — voir son `README.md`).
 - Le kit README de l'organisation est généré au déploiement depuis ce même catalogue, par les
@@ -58,5 +61,5 @@ npm ci && ZURP_CATALOG=simulator npm run build && node scripts/check-dist.mjs &&
 ## Harness
 
 ```
-scripts/check-dist.mjs test/catalog.test.mjs
+scripts/check-dist.mjs test/catalog.test.mjs test/firmware.test.mjs
 ```

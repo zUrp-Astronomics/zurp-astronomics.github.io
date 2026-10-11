@@ -3,6 +3,8 @@
 // DATE: 2026-10-06
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #66) — listRepos() also gives each repository's licence, as GitHub detects it
+// REVISED: 2026-10-12 (ticket #96) — downloadAsset(): a file attached to a release (the firmware
+//   manifest and the files it names, src/lib/catalog/firmware.mjs); the releases carry their `assets`
 //
 // THE SOURCE IS ALWAYS NAMED. The environment variable ZURP_CATALOG says where the build reads the
 // product repositories: `github` (the organisation on GitHub, what is deployed) or `simulator`
@@ -21,7 +23,11 @@
 //                               `license` is the licence GitHub detects in the repository's LICENSE
 //                               (repoLicense below), null when there is none
 //   readFile(repo, path)      → Buffer | null    a file of the default branch, null when absent
-//   listReleases(repo)        → [{ tag_name, published_at, draft, prerelease }]  (GitHub's objects)
+//   listReleases(repo)        → [{ tag_name, published_at, draft, prerelease, assets }]  (GitHub's
+//                               objects; `assets`: the files attached, [{ id, name, size }])
+//   downloadAsset(repo, release, asset)
+//                             → Buffer           the bytes of `asset`, one of `release.assets`; a
+//                               failure (an asset listed and not served included) throws
 // so the simulator exercises exactly the code that reads GitHub.
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -81,7 +87,10 @@ export function repoLicense(raw, where = 'repository') {
 /**
  * Imitation repositories on disk:
  *   <dir>/repos/<name>/…           the tree of repository <name> (default branch)
- *   <dir>/releases/<name>.json     its releases, as GitHub's API lists them (absent: none)
+ *   <dir>/releases/<name>.json     its releases, as GitHub's API lists them (absent: none), WITHOUT
+ *                                  `assets`: those are the files of the folder below
+ *   <dir>/releases/<name>/<tag>/…  the files attached to its release <tag> (absent: none); listed as
+ *                                  GitHub does, { id, name, size }, by name
  *   <dir>/licenses/<name>.json     its `license`, as GitHub's API lists it in the repositories of the
  *                                  organisation (absent, or `null`: no LICENSE detected)
  * @param {string} dir
@@ -95,6 +104,13 @@ export function simulatorBackend(dir, { org = ORG } = {}) {
   const repoDir = (repo) => {
     const p = resolve(reposDir, repo);
     if (!p.startsWith(reposDir + sep)) throw new Error(`catalog (simulator): bad repository name ${JSON.stringify(repo)}`);
+    return p;
+  };
+  const releasesDir = join(root, 'releases');
+  const assetDir = (repo, tag) => {
+    repoDir(repo);
+    const p = resolve(releasesDir, repo, String(tag));
+    if (!p.startsWith(join(releasesDir, repo) + sep)) throw new Error(`catalog (simulator): bad release tag ${JSON.stringify(tag)} of ${repo}`);
     return p;
   };
   return {
@@ -122,7 +138,20 @@ export function simulatorBackend(dir, { org = ORG } = {}) {
       if (!existsSync(p)) return [];
       const list = JSON.parse(readFileSync(p, 'utf8'));
       if (!Array.isArray(list)) throw new Error(`catalog (simulator): ${p} is not a JSON array`);
-      return list;
+      return list.map((r) => {
+        if ('assets' in r) throw new Error(`catalog (simulator): ${p}: release ${JSON.stringify(r.tag_name)} lists \`assets\` — its files are those of ${join(root, 'releases', repo, String(r.tag_name))}/`);
+        const dir = assetDir(repo, r.tag_name);
+        const names = existsSync(dir) && statSync(dir).isDirectory() ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name).sort() : [];
+        return { ...r, assets: names.map((name, i) => ({ id: i + 1, name, size: statSync(join(dir, name)).size })) };
+      });
+    },
+    async downloadAsset(repo, release, asset) {
+      const dir = assetDir(repo, release.tag_name);
+      const p = resolve(dir, asset.name);
+      if (!p.startsWith(dir + sep) || !existsSync(p)) {
+        throw new Error(`catalog (simulator): release ${JSON.stringify(release.tag_name)} of ${repo} has no file ${JSON.stringify(asset.name)}`);
+      }
+      return readFileSync(p);
     },
   };
 }
@@ -142,8 +171,9 @@ function nextLink(link) {
 /**
  * The organisation's public repositories through the REST API (api.github.com only: files are read
  * through the contents endpoint, with the token, never from raw.githubusercontent.com, which is
- * rate-limited per IP). Any failure throws: no retry, no fallback (the build fails, Pages keeps the
- * previous deployment).
+ * rate-limited per IP); a file attached to a release through the release-asset endpoint, with the
+ * token, never from the github.com download URL (ticket #96). Any failure throws: no retry, no
+ * fallback (the build fails, Pages keeps the previous deployment).
  * @param {{ token?: string, org?: string, fetchImpl?: typeof fetch, api?: string }} options
  */
 export function githubBackend({ token, org = ORG, fetchImpl = globalThis.fetch, api = 'https://api.github.com' } = {}) {
@@ -201,6 +231,13 @@ export function githubBackend({ token, org = ORG, fetchImpl = globalThis.fetch, 
     },
     async listReleases(repo) {
       return getAll(`${repoPath(repo)}/releases?per_page=100`);
+    },
+    // GitHub answers either a 302 to a storage host or the bytes themselves (200): its REST docs ask
+    // to handle both. fetch follows the redirect, and drops `Authorization` when the redirect changes
+    // origin (Node's fetch, as the Fetch standard says): the token never goes to the storage host.
+    async downloadAsset(repo, release, asset) {
+      const res = await get(`${repoPath(repo)}/releases/assets/${encodeURIComponent(asset.id)}`, { accept: 'application/octet-stream' });
+      return Buffer.from(await res.arrayBuffer());
     },
   };
 }

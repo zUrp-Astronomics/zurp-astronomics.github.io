@@ -6,6 +6,8 @@
 //   it also gives what was left out (skipped, ignored releases)
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog is the
 //   snapshot's products
+// REVISED: 2026-10-12 (ticket #96) — the firmware manifests rejected (`firmwareRejected`); `siteUrl()`,
+//   the `site` of astro.config.mjs, for the absolute URLs (README kit, firmware TOML checks)
 //
 // The same catalog the site was built with, assembled by the same function
 // (src/lib/catalog/assemble.mjs) from the same inputs:
@@ -17,6 +19,7 @@
 //     (src/lib/catalog/report.mjs);
 //   - the sections (content/catalog.yml).
 
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assembleCatalog } from '../../src/lib/catalog/assemble.mjs';
@@ -44,5 +47,14 @@ export async function loadBuiltCatalog({ snapshotFile, root = repoRoot } = {}) {
     read: snapshot.read,
     skipped: snapshot.skipped,
     ignoredReleases: snapshot.ignoredReleases,
+    firmwareRejected: snapshot.firmwareRejected,
   };
+}
+
+/** The site's absolute URL, without a trailing slash: the `site` of astro.config.mjs. */
+export function siteUrl(root = repoRoot) {
+  const config = readFileSync(join(root, 'astro.config.mjs'), 'utf8');
+  const site = config.match(/\bsite:\s*['"`]([^'"`]+)['"`]/)?.[1]?.replace(/\/+$/, '');
+  if (!site) throw new Error('no `site` found in astro.config.mjs');
+  return site;
 }

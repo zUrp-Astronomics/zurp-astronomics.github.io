@@ -9,6 +9,8 @@
 //   (an invalid local sheet fails the build, the repository wins over the folder, the org as
 //   « Source » link); test 8: the offline build publishes the eight products, Cyclops and Wraith
 //   included
+// REVISED: 2026-10-12 (ticket #96) — test 7: the guide's workflow extract keeps its GitHub
+//   expressions `${{ … }}` (not Mustache markers); the firmware has its own file, test/firmware.test.mjs
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -230,8 +232,9 @@ test('7. the README kit is generated from the built catalog: one header per prod
   assert.deepEqual(headers, products.map((p) => `${p.slug}.md`).sort(), 'one header per product of the built catalog');
   const files = ['profile/README.md', 'readme-kit/README.md', ...headers.map((h) => `readme-kit/repos/${h}`)];
   for (const f of files) {
-    const text = readFileSync(join(out, f), 'utf8');
-    assert.doesNotMatch(text, /\{\{|\}\}/, `${f}: a marker left as is`);
+    // A GitHub Actions expression `${{ … }}` of a workflow extract is text, not a marker (guide, § 6).
+    const text = readFileSync(join(out, f), 'utf8').replace(/\$\{\{ [^{}]+ \}\}/g, '');
+    assert.doesNotMatch(text, /\{\{|\}\}|<%|%>/, `${f}: a marker left as is`);
     assert.doesNotMatch(text, /="\s*"|\]\(\s*\)|!\[\s*\]|<a href="[^"]+">\s*<\/a>|<!--\s*—/, `${f}: a marker filled with nothing`);
   }
   assert.ok(products.some((p) => p.slug === 'kraken'), 'Kraken is in the built catalog (its header is checked as written)');
@@ -243,6 +246,11 @@ test('7. the README kit is generated from the built catalog: one header per prod
     // Byte for byte, the block of the human's decision (campaign #81): the product READMEs carry it verbatim.
     assert.equal(header.trim(), KRAKEN_HEADER.replaceAll('kraken', p.slug), p.slug);
   }
+  // The guide's § 6 (ticket #96): the workflow extract keeps its expression, the dispatch names the site's repository.
+  const guide = readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8');
+  assert.ok(guide.includes('GH_TOKEN: ${{ secrets.<SECRET> }}'), 'the GitHub expression of the workflow extract, as written');
+  assert.ok(guide.includes('gh api repos/zUrp-Astronomics/zurp-astronomics.github.io/dispatches -f event_type=zurp-catalog'));
+  assert.ok(guide.includes('?flashConfigURL=https://zurp-astronomics.github.io/<produit>/firmware/esp32s3.toml'));
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');
   for (const p of products) assert.ok(org.includes(`>${p.name}</a>`), `${p.name} in the organisation README`);
   // Every product has its repository (ticket #92): its GitHub badge links it, none is left without.

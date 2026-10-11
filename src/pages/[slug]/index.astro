@@ -8,6 +8,9 @@
 //   repository, only when there is one; the site's licence rule (two stamps, a sentence) is gone
 // REVISED: 2026-10-06 (ticket #75) — two stamps, each only when its licence exists: « Software · … »
 //   (LICENSE, as GitHub detects it) and « Hardware · … » (LICENSE-HARDWARE, its first line)
+// REVISED: 2026-10-12 (ticket #96) — the « Flash » block, only when the product's repository
+//   publishes a firmware: one ESP Launchpad link per chip, named by its chip, the version flashed,
+//   the whole flash erased (texts: content/site.yml, `product.flash`)
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
 // software and hardware licences, each when there is one, based on), About, Source + repo link,
@@ -35,6 +38,7 @@ import { getCatalog } from '../../data/catalog';
 import { accessibleFill, onAccent } from '../../lib/color';
 import { catalogContent, fill, licenseContent, siteContent } from '../../lib/content.mjs';
 import { licenseStamps } from '../../lib/license-stamp.mjs';
+import { chipLabel, firmwareTomlPath, launchpadLink } from '../../lib/firmware.mjs';
 
 export async function getStaticPaths() {
   return (await getCatalog()).map((p) => ({
@@ -48,6 +52,18 @@ const { product } = Astro.props;
 const site = siteContent();
 const { statuses } = catalogContent();
 const licenses = licenseStamps(product, licenseContent());
+
+// The « Flash » block (ticket #96): one Launchpad link per chip, to the stable URL of its TOML
+// (src/pages/[slug]/firmware/[chip].toml.ts). Launchpad flashes whatever board it finds: each link
+// names its chip.
+const flash = product.firmware && {
+  intro: fill(site.product.flash.intro, { tag: product.firmware.tag }),
+  links: product.firmware.chips.map(({ chip }) => ({
+    chip,
+    href: launchpadLink(new URL(firmwareTomlPath(product.slug, chip), Astro.site).href),
+    text: fill(site.product.flash.link, { chip: chipLabel(chip) }),
+  })),
+};
 
 // Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than a flat
 // drawing at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.
@@ -118,6 +134,24 @@ const tint = [
           <h2 class="z2-band">{site.product.aboutTitle}</h2>
           {product.description.map((paragraph) => <p>{paragraph}</p>)}
         </section>
+
+        {flash && (
+          <section class="flash">
+            <h2 class="z2-band">{site.product.flash.title}</h2>
+            <p>{flash.intro}</p>
+            <ul class="flash-links">
+              {flash.links.map((l) => (
+                <li>
+                  <a class="repo-link flash-link" href={l.href} data-chip={l.chip}>
+                    <span class="repo-icon" aria-hidden="true">{site.product.sourceArrow}</span>
+                    <span class="repo-url">{l.text}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p class="flash-erase">{site.product.flash.erase}</p>
+          </section>
+        )}
 
         <section class="repo">
           <h2 class="z2-band">{site.product.sourceTitle}</h2>
@@ -332,6 +366,26 @@ const tint = [
     line-height: 1.7;
     margin-bottom: 1.2rem;
     max-width: 680px;
+  }
+
+  .flash p {
+    color: var(--z2-ink);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    max-width: 680px;
+  }
+
+  .flash-links {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 1.4rem 0;
+    padding: 0;
+  }
+
+  .flash .flash-erase {
+    font-weight: 700;
   }
 
   .repo-link {

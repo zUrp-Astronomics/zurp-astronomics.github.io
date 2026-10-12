@@ -14,6 +14,8 @@
 // REVISED: 2026-10-12 (ticket #101) — test 7: the guide's § 6 gives the README sentence of the
 //   contract word for word, and no ESP Launchpad link any more; what installs has its own file,
 //   test/install.test.mjs
+// REVISED: 2026-10-13 (ticket #101, review of PR #103) — test 4: the draft carries the latest
+//   `published_at`, so the `draft` flag alone is what leaves it out
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -129,7 +131,7 @@ test('4. the status is the sheet’s, the version is the tag of the latest relea
     { alpha: gizmo(sheet('released')), bravo: gizmo(sheet('wip')), charlie: gizmo(sheet('future')), delta: gizmo(sheet('beta')) },
     {
       releases: {
-        bravo: [rel('v1.0', '2026-09-01T00:00:00Z'), rel('v2.0-rc1', '2026-10-01T00:00:00Z', { prerelease: true }), rel('v3', null, { draft: true })],
+        bravo: [rel('v1.0', '2026-09-01T00:00:00Z'), rel('v2.0-rc1', '2026-10-01T00:00:00Z', { prerelease: true }), rel('v3', '2026-10-05T00:00:00Z', { draft: true })],
         delta: [rel('v1.0', '2026-09-01T00:00:00Z')],
       },
     },

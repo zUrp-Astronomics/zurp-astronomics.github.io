@@ -5,6 +5,8 @@
 //   firmware/ folder, as scripts/check-dist.mjs checks them on every build
 // REVISED: 2026-10-12 (ticket #101) — renamed from test/firmware.test.mjs and rewritten: ESP Launchpad
 //   and zurp-firmware.json are gone; ESP Web Tools manifest.json, .hex, .img.xz (src/lib/catalog/install.mjs)
+// REVISED: 2026-10-13 (ticket #101, review of PR #103) — test 1: the draft carries a `published_at`
+//   (the `draft` flag alone must leave it out); test 3b: the catalog report's three cases
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). The contract with the products (src/lib/catalog/install.mjs)
@@ -127,7 +129,9 @@ test('1. the install is the latest published release carrying an installable fil
         }),
         // Published after, its files still being attached: nothing installable yet — the install stays v2-rc1's.
         rel('v3', '2026-10-01T00:00:00Z', { files: { 'gizmo_1.3.0_esp32s3.bin': 'new', 'notes.txt': 'x' } }),
-        rel('v4', null, { draft: true, files: { [ESP_MANIFEST]: manifest(ESP), ...FILES } }),
+        // A draft is left out by its `draft` flag alone: this one has the latest `published_at`, and
+        // an installable release (review of #103, criterion 2(d)).
+        rel('v4', '2026-10-05T00:00:00Z', { draft: true, files: { [ESP_MANIFEST]: manifest(ESP), ...FILES, 'gizmo_1.4.0_stm32f411.hex': 'draft' } }),
       ],
       // A newer release with only a .hex is the install: the older ESP is not mixed in.
       bravo: [
@@ -240,6 +244,37 @@ test('3. an invalid manifest, or a file it names that is not attached: the ESP i
   assert.match(report.markdown, /### ESP manifests rejected \(ESP install not published\)/);
   assert.match(report.lines.find((l) => l.includes('repository alpha')), /ESP manifest REJECTED, not published$/);
   assert.match(report.lines.find((l) => l.includes('repository delta')), /install v2: download gizmo_2\.0\.0_stm32f411\.hex; ESP manifest REJECTED, not published$/);
+});
+
+// 3b ------------------------------------------------------------------------------------------------
+test('3b. the catalog report says, per product, what it publishes (version, ESP chip families, files to download), « nothing to install », or that its ESP manifest was rejected', () => {
+  const product = (slug, install) => ({ slug, name: slug, origin: `repository ${slug}`, repo: `https://github.com/zUrp-Astronomics/${slug}`, install });
+  const products = [
+    // Three builds, two of one chip by serialType: each family named once, in the manifest's order.
+    product('esp', { tag: 'v1.0.0', esp: { builds: [{ chipFamily: 'ESP32-S3', serialType: 'uart' }, { chipFamily: 'ESP32-S3', serialType: 'cdc' }, { chipFamily: 'ESP32-C3', serialType: null }] }, downloads: [] }),
+    product('files', { tag: 'v2.0.0', esp: null, downloads: [{ kind: 'hex', name: 'files_2.0.0_stm32f411.hex' }, { kind: 'img', name: 'files_2.0.0_rpi4.img.xz' }] }),
+    product('both', { tag: 'v3.0.0', esp: { builds: [{ chipFamily: 'ESP32', serialType: null }] }, downloads: [{ kind: 'hex', name: 'both_3.0.0_stm32f103.hex' }] }),
+    product('none', null),
+    product('refused', null),
+  ];
+  const installRejected = [{ repo: 'refused', origin: 'repository refused', problems: ['repository refused, release "v1" (manifest.json): field `builds`: missing'] }];
+  const report = catalogReport({ read: 'test', products, skipped: [], ignoredReleases: [], installRejected });
+  const line = (slug) => report.lines.find((l) => l.startsWith(`  ${slug} `));
+
+  assert.match(line('esp'), /  install v1\.0\.0: ESP ESP32-S3, ESP32-C3$/, 'the version and the chip families of the ESP published');
+  assert.match(line('files'), /  install v2\.0\.0: download files_2\.0\.0_stm32f411\.hex, files_2\.0\.0_rpi4\.img\.xz$/, 'the files to download');
+  assert.match(line('both'), /  install v3\.0\.0: ESP ESP32; download both_3\.0\.0_stm32f103\.hex$/);
+  assert.match(line('none'), /  nothing to install$/, 'a product without anything installable');
+  assert.match(line('refused'), /  ESP manifest REJECTED, not published$/, 'a product whose manifest was rejected');
+  assert.match(report.lines[0], /5 product\(s\) published, .* 3 with something to install, 1 ESP manifest\(s\) rejected$/);
+  assert.deepEqual(report.warnings, ['ESP manifest rejected — repository refused, release "v1" (manifest.json): field `builds`: missing'], 'only the rejected manifest warns');
+
+  // The same in the job summary (GITHUB_STEP_SUMMARY): one row per product, its « Install » cell.
+  assert.match(report.markdown, /\| Product \| Slug \| Origin \| Source link \| Install \|/);
+  assert.match(report.markdown, /\| `esp` \| .* \| install v1\.0\.0: ESP ESP32-S3, ESP32-C3 \|/);
+  assert.match(report.markdown, /\| `none` \| .* \| nothing to install \|/);
+  assert.match(report.markdown, /\| `refused` \| .* \| ESP manifest REJECTED, not published \|/);
+  assert.match(report.markdown, /### ESP manifests rejected \(ESP install not published\)\n\n- repository refused, release "v1" \(manifest\.json\): field `builds`: missing/);
 });
 
 // 4 -------------------------------------------------------------------------------------------------

@@ -4,6 +4,7 @@
 # STATUS: active
 # REVISED: 2026-10-06 (ticket #72) — full discovery: invalid repositories skipped, the catalog report in the job summary
 # REVISED: 2026-10-12 (ticket #96) — the firmware of the products: served from Pages for ESP Launchpad
+# REVISED: 2026-10-12 (ticket #101) — ESP Launchpad gone: ESP Web Tools manifest, .hex and .img.xz
 #
 # THE CATALOG IS READ ON GITHUB, HERE (ZURP_CATALOG=github, src/lib/catalog/): the sheets
 # 9_Assets/zurp.yml and the releases of the public repositories of zUrp-Astronomics, with this job's
@@ -17,14 +18,14 @@
 # TRIGGERS: a push to main of this repository; a `repository_dispatch` of type `zurp-catalog`, sent
 # by each product repository when a release is published, unpublished or deleted, or when its
 # 9_Assets/ changes on main (that workflow lives in the product repositories, with an org secret) —
-# and once more by a product after it has attached its firmware and zurp-firmware.json to a release
-# (ticket #96: the build of `release: published` runs before the files are attached); a manual run
-# (Actions → Run workflow).
+# and once more by a product's release workflow once its release carries its files (the build of
+# `release: published` may run before they are attached); a manual run (Actions → Run workflow).
 #
-# THE FIRMWARE (ticket #96, src/lib/catalog/firmware.mjs): the manifest zurp-firmware.json of the
-# latest release that carries one, and the files it names, downloaded through the API with the same
-# token; published as <slug>/firmware/<chip>.toml (the stable URL ESP Launchpad reads) and the
-# binaries beside it. An invalid manifest leaves the product without firmware, in the job summary.
+# WHAT A PRODUCT INSTALLS (ticket #101, src/lib/catalog/install.mjs): the latest release carrying an
+# installable file. Its ESP Web Tools manifest.json and the files it names are downloaded through the
+# API with the same token and published as <slug>/firmware/<id>/ for the product page's install
+# button; its .hex and .img.xz are only linked where GitHub serves them. An invalid manifest leaves
+# the product without its ESP install, in the job summary.
 #
 # THE README KIT follows EVERY deployment (job `org-readme`): generated from the catalog this build
 # used (scripts/readme-kit.mjs reads the build's snapshot, never GitHub again), it replaces

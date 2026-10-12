@@ -11,6 +11,11 @@
 //   included
 // REVISED: 2026-10-12 (ticket #96) — test 7: the guide's workflow extract keeps its GitHub
 //   expressions `${{ … }}` (not Mustache markers); the firmware has its own file, test/firmware.test.mjs
+// REVISED: 2026-10-12 (ticket #101) — test 7: the guide's § 6 gives the README sentence of the
+//   contract word for word, and no ESP Launchpad link any more; what installs has its own file,
+//   test/install.test.mjs
+// REVISED: 2026-10-13 (ticket #101, review of PR #103) — test 4: the draft carries the latest
+//   `published_at`, so the `draft` flag alone is what leaves it out
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -126,7 +131,7 @@ test('4. the status is the sheet’s, the version is the tag of the latest relea
     { alpha: gizmo(sheet('released')), bravo: gizmo(sheet('wip')), charlie: gizmo(sheet('future')), delta: gizmo(sheet('beta')) },
     {
       releases: {
-        bravo: [rel('v1.0', '2026-09-01T00:00:00Z'), rel('v2.0-rc1', '2026-10-01T00:00:00Z', { prerelease: true }), rel('v3', null, { draft: true })],
+        bravo: [rel('v1.0', '2026-09-01T00:00:00Z'), rel('v2.0-rc1', '2026-10-01T00:00:00Z', { prerelease: true }), rel('v3', '2026-10-05T00:00:00Z', { draft: true })],
         delta: [rel('v1.0', '2026-09-01T00:00:00Z')],
       },
     },
@@ -246,13 +251,18 @@ test('7. the README kit is generated from the built catalog: one header per prod
     // Byte for byte, the block of the human's decision (campaign #81): the product READMEs carry it verbatim.
     assert.equal(header.trim(), KRAKEN_HEADER.replaceAll('kraken', p.slug), p.slug);
   }
-  // The guide's § 6 (ticket #96): the workflow extract keeps its expression, the dispatch names the site's repository.
+  // The guide's § 6 (tickets #96, #101): the workflow extract keeps its expression, the dispatch names the site's repository.
   const guide = readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8');
   // Ticket #98: the org's real secret, no placeholder left.
   assert.ok(guide.includes('GH_TOKEN: ${{ secrets.ZURP_SITE_DISPATCH }}'), 'the GitHub expression of the workflow extract, as written');
   assert.ok(!guide.includes('<SECRET>'), 'no <SECRET> placeholder left in the guide');
   assert.ok(guide.includes('gh api repos/zUrp-Astronomics/zurp-astronomics.github.io/dispatches -f event_type=zurp-catalog'));
-  assert.ok(guide.includes('?flashConfigURL=https://zurp-astronomics.github.io/<produit>/firmware/esp32s3.toml'));
+  // Ticket #101: the README sentence of the contract (the human's, 2026-10-12), word for word — with
+  // the browsers for an ESP, without them for an STM32 or an RPi — and no ESP Launchpad left.
+  assert.ok(guide.includes('Install it from your browser on the [product page](https://zurp-astronomics.github.io/<slug>/) (Chrome or Edge).\n'));
+  assert.ok(guide.includes('Install it from your browser on the [product page](https://zurp-astronomics.github.io/<slug>/).\n'));
+  assert.ok(guide.includes('## 6. Publier un logiciel'));
+  assert.doesNotMatch(guide, /launchpad|zurp-firmware|flashConfigURL/i);
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');
   for (const p of products) assert.ok(org.includes(`>${p.name}</a>`), `${p.name} in the organisation README`);
   // Every product has its repository (ticket #92): its GitHub badge links it, none is left without.

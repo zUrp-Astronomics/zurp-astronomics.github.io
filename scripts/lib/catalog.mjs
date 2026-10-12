@@ -8,6 +8,7 @@
 //   snapshot's products
 // REVISED: 2026-10-12 (ticket #96) — the firmware manifests rejected (`firmwareRejected`); `siteUrl()`,
 //   the `site` of astro.config.mjs, for the absolute URLs (README kit, firmware TOML checks)
+// REVISED: 2026-10-12 (ticket #101) — the ESP manifests rejected are `installRejected`
 //
 // The same catalog the site was built with, assembled by the same function
 // (src/lib/catalog/assemble.mjs) from the same inputs:
@@ -47,7 +48,7 @@ export async function loadBuiltCatalog({ snapshotFile, root = repoRoot } = {}) {
     read: snapshot.read,
     skipped: snapshot.skipped,
     ignoredReleases: snapshot.ignoredReleases,
-    firmwareRejected: snapshot.firmwareRejected,
+    installRejected: snapshot.installRejected,
   };
 }
 

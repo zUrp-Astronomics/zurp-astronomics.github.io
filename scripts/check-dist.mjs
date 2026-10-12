@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SOURCE: zurp-astronomics-site — post-build guard on dist/: the external contracts only — image weight ceiling, one page per product, the files at the stable URLs the READMEs consume
+// SOURCE: zurp-astronomics-site — post-build guard on dist/: the external contracts only — image weight ceiling, one page per product, the files at the stable URLs the READMEs consume, what each product page offers to install
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // REVISED: 2026-10-10 (ticket #79) — cut down to the external contracts: what the human cannot see by
@@ -10,6 +10,10 @@
 // REVISED: 2026-10-12 (ticket #96, review) — what each product page shows of it: the « Flash » block
 //   when the catalog holds a firmware, none (and no firmware/ folder) when it does not
 //   (scripts/lib/check-firmware.mjs)
+// REVISED: 2026-10-12 (ticket #101) — the ESP Launchpad TOML checks are gone: for a product whose
+//   catalog holds an ESP Web Tools publication, its manifest and every file it names in dist/ at the
+//   size the catalog gives, and the page's button on that manifest; on every page, the #install block
+//   as the catalog says (scripts/lib/check-install.mjs)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -28,26 +32,22 @@
 //       brand/status/<slug>.json                                          per product
 //       brand/badges/<slug>/software.svg, brand/badges/<slug>/hardware.svg per product
 //       favicon.ico, favicon-16.png, favicon-32.png, icon-192.png, apple-touch-icon.png
-//   - for a product whose built catalog holds a firmware (ticket #96, src/lib/firmware.mjs): the TOML
-//     of a chip is missing at its stable URL <slug>/firmware/<chip>.toml (the URL of the contract
-//     with the products: their READMEs link it through ESP Launchpad), does not parse as TOML (with
-//     smol-toml, the parser of Launchpad itself), or does not cite, in order, one URL of this site
-//     and one address per part of the catalog; or a part it cites is missing from dist/ or not of the
-//     size the catalog gives;
-//   - for EVERY product (scripts/lib/check-firmware.mjs): its page's « Flash » block is not what the
-//     built catalog says — one block, one Launchpad link per chip of its firmware, in order, with
-//     the texts of content/site.yml; none, and no Launchpad link, without a firmware — or its folder
-//     dist/<slug>/firmware/ holds anything but the TOMLs and parts of its firmware, or exists
-//     without one.
+//   - for a product whose built catalog holds an ESP Web Tools publication (ticket #101,
+//     src/lib/install.mjs): its manifest <slug>/firmware/<id>/manifest.json is missing, not of the
+//     size the catalog gives, or not JSON; a file it names is missing beside it or not of the size
+//     the catalog gives; its folder dist/<slug>/firmware/ holds anything else (or exists without an
+//     ESP publication);
+//   - for EVERY product (scripts/lib/check-install.mjs): its page's #install block is not what the
+//     built catalog says — one block (id="install") with the version, the ESP Web Tools button on
+//     the copied manifest and a script of the page that defines it, the download links of the
+//     catalog; none, and no button, without an install.
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { parse as parseToml } from 'smol-toml';
-import { loadBuiltCatalog, siteUrl } from './lib/catalog.mjs';
-import { firmwareDirProblems, flashBlockProblems } from './lib/check-firmware.mjs';
-import { firmwareTomlPath } from '../src/lib/firmware.mjs';
+import { loadBuiltCatalog } from './lib/catalog.mjs';
+import { espDirProblems, installBlockProblems } from './lib/check-install.mjs';
 import { LICENSE_KINDS, siteContent } from '../src/lib/content.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 import { statusBadgePath } from '../src/lib/status-badge.mjs';
@@ -121,59 +121,18 @@ for (const path of stable) {
 }
 console.log(`Stable README URLs: ${stable.length} expected`);
 
-// --- 4. The firmware TOML of each chip and the parts it cites -------------------------------------
-const SITE = siteUrl();
-let tomls = 0;
-for (const p of catalog.products.filter((p) => p.firmware)) {
-  for (const { chip, parts } of p.firmware.chips) {
-    const path = firmwareTomlPath(p.slug, chip);
-    const where = `dist/${path}`;
-    const abs = join(distDir, path);
-    if (!existsSync(abs) || !statSync(abs).isFile()) {
-      errors.push(`missing firmware TOML at its stable URL: ${where}`);
-      continue;
-    }
-    tomls++;
-    let config;
-    try {
-      config = parseToml(readFileSync(abs, 'utf8'));
-    } catch (e) {
-      errors.push(`${where}: not valid TOML — ${String(e?.message ?? e).split('\n')[0]}`);
-      continue;
-    }
-    const app = config.supported_apps?.[0];
-    const image = config[app]?.image?.[chip];
-    if (config.multipart !== true || config.chip !== chip || !Array.isArray(image?.parts) || !Array.isArray(image?.addresses)) {
-      errors.push(`${where}: not a Launchpad TOML of ${chip} (multipart, chip, supported_apps, [app] image.${chip}.parts / addresses)`);
-      continue;
-    }
-    if (image.parts.length !== parts.length || image.addresses.some((a, i) => a !== parts[i]?.offset)) {
-      errors.push(`${where}: cites ${image.parts.length} part(s) at ${JSON.stringify(image.addresses)}, the catalog has ${JSON.stringify(parts.map((x) => x.offset))}`);
-    }
-    image.parts.forEach((url, i) => {
-      if (typeof url !== 'string' || !url.startsWith(`${SITE}/`)) {
-        errors.push(`${where}: part ${JSON.stringify(url)} is not an absolute URL of ${SITE}`);
-        return;
-      }
-      const rel = decodeURIComponent(new URL(url).pathname.replace(/^\/+/, ''));
-      const file = join(distDir, rel);
-      if (!existsSync(file) || !statSync(file).isFile()) errors.push(`${where}: part ${url} is missing: dist/${rel}`);
-      else if (parts[i] && statSync(file).size !== parts[i].size) {
-        errors.push(`${where}: part dist/${rel} is ${statSync(file).size} bytes, the catalog gives ${parts[i].size}`);
-      }
-    });
-  }
-}
-console.log(`Firmware TOML: ${tomls} (${catalog.products.filter((p) => p.firmware).map((p) => p.slug).join(', ') || 'no product with a firmware'})`);
-
-// --- 5. What each product page shows of its firmware, and its firmware/ folder -------------------
-const flashTexts = siteContent(repoRoot).product.flash;
+// --- 4. What each product offers to install: its ESP folder, its page's #install block -------------
+const installTexts = siteContent(repoRoot).product.install;
 for (const p of catalog.products) {
+  errors.push(...espDirProblems(distDir, p));
   const page = join(distDir, p.slug, 'index.html');
-  if (existsSync(page)) errors.push(...flashBlockProblems(readFileSync(page, 'utf8'), p, { site: SITE, texts: flashTexts }));
-  errors.push(...firmwareDirProblems(distDir, p));
+  if (existsSync(page)) errors.push(...installBlockProblems(readFileSync(page, 'utf8'), p, { texts: installTexts, distDir }));
 }
-console.log(`« Flash » blocks: on ${catalog.products.filter((p) => p.firmware).length} page(s), absent from ${catalog.products.filter((p) => !p.firmware).length}`);
+const withEsp = catalog.products.filter((p) => p.install?.esp).map((p) => p.slug);
+console.log(
+  `Install: #install block on ${catalog.products.filter((p) => p.install).length} page(s), absent from ${catalog.products.filter((p) => !p.install).length}; ` +
+    `ESP Web Tools manifest: ${withEsp.join(', ') || 'none'}`,
+);
 
 // --- Verdict ---------------------------------------------------------------------------------------
 if (errors.length) {
@@ -181,4 +140,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every firmware TOML and its parts in place, every « Flash » block as the catalog says.');
+console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every ESP manifest and its files in place, every #install block as the catalog says.');

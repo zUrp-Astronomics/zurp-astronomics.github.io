@@ -1,4 +1,4 @@
-// SOURCE: zurp-astronomics-site — reads the product repositories: the sheet 9_Assets/zurp.yml, its poster, the GitHub releases, the firmware a release publishes; validates the sheet
+// SOURCE: zurp-astronomics-site — reads the product repositories: the sheet 9_Assets/zurp.yml, its poster, the GitHub releases, what a release publishes to install; validates the sheet
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active
@@ -17,17 +17,22 @@
 // REVISED: 2026-10-12 (ticket #96) — the firmware: the manifest zurp-firmware.json of ONE release and
 //   the files it names, the second exception to the rule below (arbitrated by the human); each
 //   product carries `firmware`, the release rejected in `firmwareRejected`
+// REVISED: 2026-10-12 (ticket #101) — the ESP Launchpad publication is gone: what a release publishes
+//   to install (ESP Web Tools manifest.json, .hex, .img.xz) is `install`, a rejected manifest in
+//   `installRejected`; the second exception below is rewritten
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases, plus ONE file
 //     at its root: LICENSE-HARDWARE, its hardware licence (ticket #75 — an exception arbitrated by the
 //     human). Never the README, never the docs, no other file, no other directory;
-//   - of the files attached to the releases, it reads ONLY the firmware manifest zurp-firmware.json of
-//     ONE release — the latest published one that carries it — and the files THAT manifest names
-//     (ticket #96 — the second exception, arbitrated by the human on 2026-10-12: the rule is widened
-//     for this need, not abolished). No other attached file is ever downloaded. The selection, the
-//     validation and the download are src/lib/catalog/firmware.mjs; what is published of it,
-//     src/lib/firmware.mjs;
+//   - of the files attached to the releases, it downloads ONLY the ESP Web Tools manifest
+//     `manifest.json` of ONE release — the latest published one carrying an installable file
+//     (manifest.json, *.hex, *.img.xz) — and the files THAT manifest names (the second exception,
+//     arbitrated by the human: ticket #96, rewritten by ticket #101 on 2026-10-12). The .hex and
+//     .img.xz of that release are only LISTED (their name, size and browser_download_url, from the
+//     list of releases), never downloaded; nothing else attached is read. The selection, the
+//     validation and the download are src/lib/catalog/install.mjs; what is published of it,
+//     src/lib/install.mjs;
 //   - the sheet is 9_Assets/zurp.yml. A repository without it is not in the catalog (that leaves out
 //     `.github`, the site's own repository, drafts);
 //   - its fields are those of `Product` (src/data/catalog.ts), minus what is deduced:
@@ -38,10 +43,10 @@
 //       license   the SOFTWARE licence: the one GitHub detects in the repository's LICENSE file, as
 //                 the list of the organisation's repositories gives it (no other request, LICENSE is
 //                 never read); null when there is none — never an error
-//       firmware  null, or the firmware the site publishes: the release that provides it (its tag,
-//                 its `published_at` — it may be older than `release`), its chips and their parts
-//                 (offset, file, size, SHA-256); an invalid manifest leaves it null and is reported
-//                 (`firmwareRejected`), the product is published all the same
+//       install   null, or what the product page offers to install: the release that provides it
+//                 (its tag, its `published_at` — it may be older than `release`), its ESP Web Tools
+//                 manifest (null when absent or invalid) and its .hex / .img.xz links; an invalid
+//                 manifest is reported (`installRejected`), the product is published all the same
 //       hardwareLicense
 //                 the HARDWARE licence: { title }, the first non-empty line of LICENSE-HARDWARE at the
 //                 root of the repository (ticket #75), read through the backend's readFile; null when
@@ -54,7 +59,7 @@
 //     never deduced from the releases — an alpha release of a firmware does not make the product
 //     released (« repo public != projet releasé »);
 //   - a release gives the version shown, the rank in the section, a rebuild — and, when it carries
-//     the manifest, the firmware (above) — nothing else. NO
+//     an installable file, the install (above) — nothing else. NO
 //     analysis of a release's name, tag or pre-release box: « tant que ça pop ça update ». A
 //     prerelease counts like any other. Only drafts are left out: they are not on the Releases page
 //     (no `published_at`, and invisible without push access anyway);
@@ -66,9 +71,9 @@
 //     with a warning (loader.mjs);
 //   - a release whose `published_at` cannot be read is IGNORED (`ignoredReleases`), the product is
 //     read with its other releases;
-//   - an invalid firmware manifest, or a file it names that the release does not carry, never skips
-//     the product: it is published WITHOUT firmware (no fall back to an older release), the problems
-//     in `firmwareRejected`, each naming the repository, the release and the field (ticket #96);
+//   - an invalid ESP manifest, or a file it names that the release does not carry, never skips the
+//     product: it is published WITHOUT its ESP install (no fall back to an older release), the
+//     problems in `installRejected`, each naming the repository, the release and the field;
 //   - only what was READ and is wrong, or is absent (a 404), skips a product: an error of the
 //     backend itself (GitHub answering badly, source.mjs) is never caught here, it fails the build.
 //
@@ -77,7 +82,7 @@
 
 import yaml from 'js-yaml';
 import sharp from 'sharp';
-import { readFirmware } from './firmware.mjs';
+import { readInstall } from './install.mjs';
 
 /** Where a product repository keeps what the site reads. */
 export const ASSETS_DIR = '9_Assets';
@@ -96,7 +101,7 @@ const DEDUCED = {
   repo: 'the « Source » link is the repository URL',
   release: 'the release comes from the GitHub releases',
   license: "the licence is the repository's LICENSE file, as GitHub detects it",
-  firmware: 'the firmware is the zurp-firmware.json of a release',
+  install: 'what installs is read from the files attached to a release',
   hardwareLicense: "it is the first line of the repository's LICENSE-HARDWARE file",
   version: 'the version is the tag of the latest GitHub release',
   order: 'the order inside a section comes from the release dates, then the names',
@@ -221,18 +226,18 @@ export async function posterImageProblem(bytes) {
  * order, with the products skipped and the releases ignored — never throws for a product: an
  * invalid one is in `skipped`, with every problem prefixed by its place. An error of the backend
  * (a failed request) is not caught: it throws.
- * Its hardware licence is read (LICENSE-HARDWARE) and its firmware (firmware.mjs) once the product
- * is valid; a product whose firmware manifest is invalid is published without firmware, the manifest
- * in `firmwareRejected`.
+ * Its hardware licence is read (LICENSE-HARDWARE) and its install (install.mjs) once the product is
+ * valid; a product whose ESP manifest is invalid is published without its ESP install, the manifest
+ * in `installRejected`.
  * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, downloadAsset(repo: string, release: any, asset: any): Promise<Buffer>, describe?: string }} backend
  * @param {{ sectionIds: readonly string[] }} options
- * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }>, firmwareRejected: Array<{ repo: string, origin: string, problems: string[] }> }>}
+ * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }>, installRejected: Array<{ repo: string, origin: string, problems: string[] }> }>}
  */
 export async function readRepoProducts(backend, { sectionIds }) {
   const products = [];
   const skipped = [];
   const ignoredReleases = [];
-  const firmwareRejected = [];
+  const installRejected = [];
   for (const { name: repoName, url, license } of await backend.listRepos()) {
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
@@ -271,8 +276,8 @@ export async function readRepoProducts(backend, { sectionIds }) {
     const release = latestRelease(releases, ignored);
     for (const message of ignored) ignoredReleases.push({ repo: repoName, origin, message: `${origin}: ${message}` });
     const hardwareLicense = await readHardwareLicense(backend, repoName);
-    const { firmware, rejected, files: firmwareFiles } = await readFirmware(backend, repoName, releases);
-    if (rejected) firmwareRejected.push({ repo: repoName, origin, problems: rejected });
+    const { install, rejected, files: installFiles } = await readInstall(backend, repoName, releases);
+    if (rejected) installRejected.push({ repo: repoName, origin, problems: rejected });
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({
       slug,
@@ -291,14 +296,14 @@ export async function readRepoProducts(backend, { sectionIds }) {
       release,
       license: license ?? null,
       hardwareLicense,
-      firmware,
+      install,
       // Named after the slug, not after the sheet's file: Astro names the optimised variants after
       // the source file (_astro/<name>.<hash>.webp).
       posterFile: `${slug}${ext}`,
       posterBytes,
-      // sha256 → bytes of the firmware's files: written next to the posters, never in the snapshot.
-      firmwareFiles,
+      // sha256 → bytes of the ESP manifest and its files: written next to the posters, never in the snapshot.
+      installFiles,
     });
   }
-  return { products, skipped, ignoredReleases, firmwareRejected };
+  return { products, skipped, ignoredReleases, installRejected };
 }

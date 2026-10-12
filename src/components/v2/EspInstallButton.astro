@@ -1,0 +1,68 @@
+---
+// SOURCE: zurp-astronomics-site — the ESP Web Tools install button of a product page, with ESP Web Tools itself, bundled by the build
+// AUTHOR: engineer
+// DATE: 2026-10-12
+// STATUS: active — ticket #101
+//
+// <esp-web-install-button manifest="…"> of ESP Web Tools (esphome/esp-web-tools), loaded at EXACTLY
+// the version package.json pins (10.4.0, src/lib/catalog/install.mjs ESP_WEB_TOOLS_VERSION): the npm
+// package, bundled by the build into the site's own files — no third-party CDN at run time (the
+// human's preference, ticket #101). Astro bundles the <script> below and adds it only to the pages
+// that render this component.
+//
+// WHY dist/web/install-button.js AND NOT THE PACKAGE'S ENTRY (`import 'esp-web-tools'`). The entry,
+// dist/install-button.js, is unbundled: it imports @material/web by internal paths
+// (`@material/web/dialog/internal/dialog-styles.js`), and the @material/web its `^2.2.0` range
+// installs (2.5.0, measured 2026-10-12) renamed them (`dialog-styles.cssresult.js`): the build fails.
+// dist/web/install-button.js is the bundle ESP Web Tools itself builds and publishes in the same
+// package (the file its docs load from a CDN), self-contained (relative imports only): the pinned
+// version's own code, whatever its dependencies' ranges resolve to.
+//
+// `activate` is the one slot filled: the button, with its text from content/site.yml. The
+// `unsupported` and `not-allowed` slots are left to ESP Web Tools' own default messages (in 10.4.0:
+// « Your browser does not support installing things on ESP devices. Use Mozilla Firefox, Google
+// Chrome or Microsoft Edge. ») — the human's rule: no text of the site on browsers.
+//
+// scripts/check-dist.mjs reads the `manifest` attribute (scripts/lib/check-install.mjs): keep it a
+// plain attribute of the element.
+interface Props {
+  /** URL path of the manifest on the site, /<slug>/firmware/<id>/manifest.json. */
+  manifest: string;
+  /** The button's text. */
+  label: string;
+}
+const { manifest, label } = Astro.props;
+---
+
+<esp-web-install-button manifest={manifest}>
+  <button slot="activate" class="esp-install">{label}</button>
+</esp-web-install-button>
+
+<script>
+  import 'esp-web-tools/dist/web/install-button.js';
+</script>
+
+<style>
+  .esp-install {
+    cursor: pointer;
+    padding: 0.95rem 1.6rem 0.85rem;
+    border: 0;
+    background: var(--z2-accent);
+    color: var(--z2-on-accent);
+    font-family: var(--z2-font-type);
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .esp-install:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 rgba(29, 26, 22, 0.45);
+  }
+
+  .esp-install:focus-visible {
+    outline: 3px solid var(--z2-ink);
+    outline-offset: 2px;
+  }
+</style>

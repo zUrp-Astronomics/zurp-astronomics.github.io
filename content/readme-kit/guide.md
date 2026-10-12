@@ -1,9 +1,9 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-12 (ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-12 (ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
-Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; firmwareManifest (le nom du manifeste), firmwareTomlUrl (l'adresse du TOML d'une puce, `<produit>` et `<puce>` à la place), launchpadLink (le lien Launchpad d'un TOML, `<produit>` et `esp32s3` à la place), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
+Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
 ---
 
 # Kit README — mode d'emploi
@@ -183,79 +183,48 @@ POINTS D'ATTENTION
   - <à remplir>
 ```
 
-## 6. Publier un firmware
+## 6. Publier un logiciel
 
-Le site publie le firmware d'un produit pour qu'on le flashe en un clic, depuis le navigateur, avec
-**ESP Launchpad** (l'outil d'Espressif). Launchpad télécharge les fichiers depuis le navigateur :
-il lui faut des adresses qui répondent aux requêtes d'un autre site (CORS). Les téléchargements des
-releases de github.com ne le font pas, GitHub Pages si : le site sert donc, depuis Pages, un fichier
-de configuration (TOML) par puce et les binaires qu'il nomme. Ce qui suit est le contrat entre le
-site et les produits : le site le vérifie à chaque build.
+Un produit publie le logiciel de sa carte dans une release GitHub, construite par GitHub Actions. Le
+site la lit et, sur la page du produit, dans son bloc **Install** (ancre `#install`), propose de
+l'installer. Une seule façon de faire pour tous les produits, avec l'outil habituel de chaque
+famille : ESP Web Tools pour un ESP, un `.hex` pour un STM32, une image `.img.xz` pour un Raspberry
+Pi. Ce qui suit est le contrat entre le site et les produits ; le site le vérifie à chaque build.
 
-**Ce qu'on attache à la release, dans cet ordre.**
+### Commun à toutes les familles
 
-1. Les binaires, aux noms libres.
-2. `{{{firmwareManifest}}}`, **en dernier** : il dit au site que la release porte un firmware complet.
-3. Puis le signal `zurp-catalog` au site (commande plus bas). **Tant que ce signal n'est pas envoyé,
-   le firmware n'apparaît pas** : le build que lance la publication de la release est parti avant que
-   les fichiers soient attachés.
-
-**Le manifeste `{{{firmwareManifest}}}`.**
-
-```json
-{
-  "chips": {
-    "esp32s3": { "parts": [
-      { "offset": "0x0",     "file": "basilisk-esp32s3-bootloader.bin" },
-      { "offset": "0x8000",  "file": "basilisk-esp32s3-partition-table.bin" },
-      { "offset": "0x10000", "file": "basilisk-esp32s3.bin" } ] },
-    "esp32c3": { "parts": [ { "offset": "0x0", "file": "basilisk-esp32c3-merged.bin" } ] }
-  }
-}
-```
-
-- À la racine, la seule clé `chips` : une table d'au moins une puce. Ni `product` ni `version` : le
-  produit est le dépôt, la version est le tag de la release. Tout autre champ est refusé.
-- Une clé de puce est un nom de cible ESP-IDF ou esptool, en minuscules et sans tiret : `esp32`,
-  `esp32s3`, `esp32c3`…
-- `parts` : au moins une part. Chaque part a exactement `offset`, un texte hexadécimal `"0x…"`, et
-  `file`, le nom d'un fichier attaché à la **même** release (sans `/` ni `..`). Une image fusionnée
-  est une seule part, à `0x0`.
-- Les parts d'une puce ne se chevauchent pas (offset + taille du fichier).
-
-**La release retenue.** La plus récente release publiée (brouillons exclus, prereleases comprises)
-**qui porte `{{{firmwareManifest}}}`**. Une release plus récente sans manifeste ne retire rien : le
-firmware publié reste celui de la précédente, et les liens des README ne tombent pas pendant que les
-fichiers s'attachent. Un manifeste invalide, ou un fichier qu'il nomme et que la release ne porte pas :
-**le produit n'a plus de firmware publié**, le site ne revient pas à une release plus ancienne. La
-page du produit reste en ligne, sans son bloc « Flash » ; le rapport du catalogue (résumé du job
-`build` du déploiement du site, onglet **Actions**) dit pourquoi, champ par champ. Corrige le
-manifeste de la release, puis renvoie le signal. La version flashée est le tag de la release du
-firmware : elle peut être plus ancienne que la version du produit.
-
-**Les adresses.** Le TOML d'une puce est servi à `{{{firmwareTomlUrl}}}`, où `<puce>` est sa clé
-dans le manifeste. C'est la seule adresse stable : les binaires sont servis à côté, sous un chemin
-qui change avec leur contenu (le cache de Pages ne peut pas mélanger un TOML neuf et un vieux
-binaire). Ne lie jamais un binaire.
-
-**Le lien dans le README du produit.** Un lien par puce, nommé par sa puce en clair : Launchpad ne
-refuse pas une carte d'une autre puce, il prévient, puis flashe. Il **efface toute la flash** de la
-carte avant d'écrire. Par exemple, pour l'ESP32-S3 :
-
-```markdown
-[Flash an ESP32-S3 board]({{{launchpadLink}}})
-```
-
-Ce lien va dans le texte du README, jamais dans le bloc d'en-tête du § 2 : ce bloc est collé dans
-tous les produits, et un lien de flash y serait mort pour un produit sans firmware. La page du
-produit sur le site porte les mêmes liens, dans son bloc « Flash ».
-
-**Le signal**, une fois `{{{firmwareManifest}}}` attaché : une étape du workflow de la release, avec
-`ZURP_SITE_DISPATCH`, le secret de l'org qu'utilisent déjà les signaux `zurp-catalog` de
-`zurp-site.yml` :
+1. **Un tag semver** (`v1.2.0`), poussé sur le dépôt, lance le workflow de release.
+2. **GitHub Actions construit** les fichiers, **crée la release** et les y attache, avec
+   `softprops/action-gh-release`.
+3. **Les fichiers sont nommés** `<produit>_<version>_<cible>.<ext>`, en minuscules : `<produit>` est
+   le slug (le nom du dépôt en minuscules), `<version>` le tag sans le `v`, `<cible>` la puce ou la
+   carte. Par exemple : `basilisk_1.2.0_esp32s3.bin`, `maelstrom_1.2.0_stm32f411.hex`,
+   `cyclops_1.2.0_rpi4.img.xz`. **Seule exception : le manifeste ESP**, reconnu par son nom exact
+   `{{{espManifest}}}`.
+4. **Le workflow envoie ensuite le signal `zurp-catalog`** au site, avec `ZURP_SITE_DISPATCH`, le
+   secret de l'org qu'utilisent déjà les signaux de `zurp-site.yml`. Tant que ce signal n'est pas
+   parti, la release n'apparaît pas : le build que lance la publication de la release peut partir
+   avant que les fichiers soient attachés.
 
 {{=<% %>=}}
 ```yaml
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # … construire les fichiers de la release dans out/ …
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
       - name: Signal the site (zurp-catalog)
         env:
           GH_TOKEN: ${{ secrets.ZURP_SITE_DISPATCH }}
@@ -263,6 +232,80 @@ produit sur le site porte les mêmes liens, dans son bloc « Flash ».
 ```
 <%={{ }}=%>
 
-À la main, avec `gh` connecté sous un compte qui peut écrire dans le dépôt du site :
+**La release retenue.** La plus récente release publiée (brouillons exclus, prereleases comprises)
+**qui porte au moins un fichier installable** : `{{{espManifest}}}`, un `*.hex` ou un `*.img.xz`. Une
+release plus récente sans fichier installable laisse publiée la précédente : c'est le cas normal
+pendant qu'une release se construit. La version installée est le tag de cette release ; elle peut
+être plus ancienne que la version affichée du produit.
+
+### ESP : ESP Web Tools
+
+Une **image fusionnée par puce** (`esptool.py merge_bin`, écrite à l'offset 0) et un
+**`{{{espManifest}}}`** au format d'[ESP Web Tools](https://github.com/esphome/esp-web-tools). Le
+bouton de la page détecte la puce branchée et choisit son build : un seul manifeste couvre toutes
+les puces du produit.
+
+```json
+{
+  "name": "Basilisk",
+  "version": "1.2.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    { "chipFamily": "ESP32-S3", "parts": [ { "path": "basilisk_1.2.0_esp32s3.bin", "offset": 0 } ] },
+    { "chipFamily": "ESP32-C3", "parts": [ { "path": "basilisk_1.2.0_esp32c3.bin", "offset": 0 } ] }
+  ]
+}
+```
+
+- `name` et `version` : des textes non vides (la version : le tag sans le `v`).
+- `builds` : au moins un. `chipFamily` est une famille que reconnaît ESP Web Tools
+  {{{espWebToolsVersion}}}, la version que charge le site : {{{espChipFamilies}}}.
+- `serialType`, facultatif : `cdc` (USB natif de la puce) ou `uart` (pont USB-série). Deux builds
+  d'une même puce peuvent ne différer que par lui ; le couple (`chipFamily`, `serialType`)
+  n'apparaît qu'une fois.
+- Chaque part : `path`, le nom d'un fichier attaché à la **même** release (sans `/`, jamais une URL),
+  et `offset`, un entier (`0` pour une image fusionnée).
+- Les autres champs d'ESP Web Tools (`new_install_prompt_erase`, `funding_url`…) passent tels quels.
+
+Le site copie le manifeste tel quel, avec les fichiers qu'il nomme, sur GitHub Pages : ESP Web Tools
+les télécharge depuis le navigateur. Un manifeste invalide, ou un fichier qu'il nomme que la release
+ne porte pas : **l'ESP n'est pas publié**, et le site ne revient pas à une release plus ancienne. La
+page du produit reste en ligne ; le rapport du catalogue (résumé du job `build` du déploiement du
+site, onglet **Actions**) dit pourquoi, champ par champ. Corrige la release, puis renvoie le signal.
+
+### STM32 : un `.hex`
+
+Un `.hex`, qui porte son adresse de chargement. La page du produit le lie là où GitHub le sert, avec
+une notice courte : un ST-Link en SWD, STM32CubeProgrammer, ouvrir le `.hex`, **Download**. Ce qui
+est propre au produit (où sont ses pastilles SWD…) va dans son README.
+
+### Raspberry Pi : un `.img.xz`
+
+Une image `.img.xz`, que l'utilisateur écrit sur une carte microSD avec Raspberry Pi Imager
+(« Use custom ») ou Etcher. La page du produit la lie là où GitHub la sert, avec cette notice.
+
+### Firmware de l'amont
+
+Un produit qui tourne sous le firmware d'un projet amont (Unicorn, sous le firmware TeenAstro) **ne
+publie rien** : le site n'a rien à faire, et sa page n'a pas de bloc Install.
+
+### La phrase du README du produit
+
+Mot pour mot, dans le texte du README (jamais dans le bloc d'en-tête du § 2, collé dans tous les
+produits), `<slug>` remplacé par le slug du produit :
+
+- ESP :
+
+  ```markdown
+  Install it from your browser on the [product page]({{{siteUrl}}}/<slug>/) (Chrome or Edge).
+  ```
+
+- STM32 et Raspberry Pi :
+
+  ```markdown
+  Install it from your browser on the [product page]({{{siteUrl}}}/<slug>/).
+  ```
+
+Le signal à la main, avec `gh` connecté sous un compte qui peut écrire dans le dépôt du site :
 `gh api repos/{{{siteRepo}}}/dispatches -f event_type=zurp-catalog` — ou, dans l'onglet **Actions**
 du site, « Deploy to GitHub Pages » → **Run workflow**.

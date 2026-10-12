@@ -1,9 +1,11 @@
-// SOURCE: zurp-astronomics-site — the catalog report of a build: every product published (origin, « Source » link, firmware), every product skipped, release ignored and firmware manifest rejected, with the reason — in the build log and, on GitHub Actions, in the job summary
+// SOURCE: zurp-astronomics-site — the catalog report of a build: every product published (origin, « Source » link, what it installs), every product skipped, release ignored and ESP manifest rejected, with the reason — in the build log and, on GitHub Actions, in the job summary
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — ticket #72
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: no folder ignored to
 //   report any more
+// REVISED: 2026-10-12 (ticket #101) — per product, what it publishes to install (version, ESP chip
+//   families, files to download), « nothing to install », or that its ESP manifest was rejected
 //
 // WHY (ticket #72). The site publishes what it discovers: a repository whose sheet or poster is
 // invalid is skipped, not fatal. Nothing fails any more, so it must be SEEN: each build writes, at
@@ -22,36 +24,40 @@
 import { appendFileSync } from 'node:fs';
 
 /**
- * What the report says of a product's firmware.
- * @param {{ origin: string, firmware?: { tag: string, chips: Array<{ chip: string }> } | null }} product
+ * What the report says a product publishes to install.
+ * @param {{ origin: string, install?: { tag: string, esp: null | { builds: Array<{ chipFamily: string }> }, downloads: Array<{ name: string }> } | null }} product
  * @param {Array<{ origin: string }>} rejected
  */
-function firmwareState(product, rejected) {
-  if (product.firmware) return `firmware ${product.firmware.tag} (${product.firmware.chips.map((c) => c.chip).join(', ')})`;
-  if (rejected.some((r) => r.origin === product.origin)) return 'firmware NOT published (manifest rejected)';
-  return 'no firmware (no release carries zurp-firmware.json)';
+function installState(product, rejected) {
+  const parts = [];
+  const install = product.install;
+  if (install?.esp) parts.push(`ESP ${[...new Set(install.esp.builds.map((b) => b.chipFamily))].join(', ')}`);
+  if (install?.downloads.length) parts.push(`download ${install.downloads.map((d) => d.name).join(', ')}`);
+  const refused = rejected.some((r) => r.origin === product.origin) ? 'ESP manifest REJECTED, not published' : null;
+  if (!install) return refused ?? 'nothing to install';
+  return `install ${install.tag}: ${[...parts, ...(refused ? [refused] : [])].join('; ')}`;
 }
 
 /**
  * The report of a built catalog.
- * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string, firmware?: any }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }>, firmwareRejected?: Array<{ origin: string, problems: string[] }> }} catalog
+ * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string, install?: any }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }>, installRejected?: Array<{ origin: string, problems: string[] }> }} catalog
  * @returns {{ lines: string[], warnings: string[], markdown: string }}
  */
-export function catalogReport({ read, products, skipped, ignoredReleases, firmwareRejected = [] }) {
+export function catalogReport({ read, products, skipped, ignoredReleases, installRejected = [] }) {
   const warnings = [
     ...skipped.map((s) => `product skipped — ${s.problems.join('; ')}`),
     ...ignoredReleases.map((r) => r.message),
-    ...firmwareRejected.map((r) => `firmware not published — ${r.problems.join('; ')}`),
+    ...installRejected.map((r) => `ESP manifest rejected — ${r.problems.join('; ')}`),
   ];
-  const withFirmware = products.filter((p) => p.firmware).length;
+  const withInstall = products.filter((p) => p.install).length;
   const counts =
     `${products.length} product(s) published, ${skipped.length} skipped, ${ignoredReleases.length} release(s) ignored, ` +
-    `${withFirmware} firmware(s) published, ${firmwareRejected.length} rejected`;
-  const firmware = (p) => firmwareState(p, firmwareRejected);
+    `${withInstall} with something to install, ${installRejected.length} ESP manifest(s) rejected`;
+  const install = (p) => installState(p, installRejected);
   const width = (key) => Math.max(0, ...products.map((p) => p[key].length));
   const lines = [
     `catalog of this build — source: ${read} — ${counts}`,
-    ...products.map((p) => `  ${p.slug.padEnd(width('slug'))}  ${p.origin.padEnd(width('origin'))}  ${p.repo}  ${firmware(p)}`),
+    ...products.map((p) => `  ${p.slug.padEnd(width('slug'))}  ${p.origin.padEnd(width('origin'))}  ${p.repo}  ${install(p)}`),
     ...warnings.map((w) => `  ${w}`),
   ];
 
@@ -61,16 +67,16 @@ export function catalogReport({ read, products, skipped, ignoredReleases, firmwa
     '',
     `Source: ${cell(read)} — ${counts}.`,
     '',
-    '| Product | Slug | Origin | Source link | Firmware |',
+    '| Product | Slug | Origin | Source link | Install |',
     '| --- | --- | --- | --- | --- |',
-    ...products.map((p) => `| ${cell(p.name)} | \`${cell(p.slug)}\` | ${cell(p.origin)} | ${cell(p.repo)} | ${cell(firmware(p))} |`),
+    ...products.map((p) => `| ${cell(p.name)} | \`${cell(p.slug)}\` | ${cell(p.origin)} | ${cell(p.repo)} | ${cell(install(p))} |`),
     '',
   ];
   const section = (title, items) => (items.length ? [`### ${title}`, '', ...items.map((i) => `- ${cell(i)}`), ''] : []);
   md.push(
     ...section('Products skipped (not published)', skipped.flatMap((s) => s.problems)),
     ...section('Releases ignored', ignoredReleases.map((r) => r.message)),
-    ...section('Firmware not published (manifest rejected)', firmwareRejected.flatMap((r) => r.problems)),
+    ...section('ESP manifests rejected (ESP install not published)', installRejected.flatMap((r) => r.problems)),
   );
   return { lines, warnings, markdown: md.join('\n') + '\n' };
 }

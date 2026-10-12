@@ -5,6 +5,9 @@
 // REVISED: 2026-10-06 (ticket #66) — listRepos() also gives each repository's licence, as GitHub detects it
 // REVISED: 2026-10-12 (ticket #96) — downloadAsset(): a file attached to a release (the firmware
 //   manifest and the files it names, src/lib/catalog/firmware.mjs); the releases carry their `assets`
+// REVISED: 2026-10-12 (ticket #101) — every asset carries `browser_download_url` in both backends
+//   (the page links the .hex and .img.xz there, src/lib/catalog/install.mjs); the simulator builds it
+//   as GitHub does
 //
 // THE SOURCE IS ALWAYS NAMED. The environment variable ZURP_CATALOG says where the build reads the
 // product repositories: `github` (the organisation on GitHub, what is deployed) or `simulator`
@@ -24,7 +27,9 @@
 //                               (repoLicense below), null when there is none
 //   readFile(repo, path)      → Buffer | null    a file of the default branch, null when absent
 //   listReleases(repo)        → [{ tag_name, published_at, draft, prerelease, assets }]  (GitHub's
-//                               objects; `assets`: the files attached, [{ id, name, size }])
+//                               objects; `assets`: the files attached, [{ id, name, size,
+//                               browser_download_url }] — the last one GitHub's public download URL,
+//                               https://github.com/<org>/<repo>/releases/download/<tag>/<name>)
 //   downloadAsset(repo, release, asset)
 //                             → Buffer           the bytes of `asset`, one of `release.assets`; a
 //                               failure (an asset listed and not served included) throws
@@ -90,7 +95,7 @@ export function repoLicense(raw, where = 'repository') {
  *   <dir>/releases/<name>.json     its releases, as GitHub's API lists them (absent: none), WITHOUT
  *                                  `assets`: those are the files of the folder below
  *   <dir>/releases/<name>/<tag>/…  the files attached to its release <tag> (absent: none); listed as
- *                                  GitHub does, { id, name, size }, by name
+ *                                  GitHub does, { id, name, size, browser_download_url }, by name
  *   <dir>/licenses/<name>.json     its `license`, as GitHub's API lists it in the repositories of the
  *                                  organisation (absent, or `null`: no LICENSE detected)
  * @param {string} dir
@@ -142,7 +147,8 @@ export function simulatorBackend(dir, { org = ORG } = {}) {
         if ('assets' in r) throw new Error(`catalog (simulator): ${p}: release ${JSON.stringify(r.tag_name)} lists \`assets\` — its files are those of ${join(root, 'releases', repo, String(r.tag_name))}/`);
         const dir = assetDir(repo, r.tag_name);
         const names = existsSync(dir) && statSync(dir).isDirectory() ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name).sort() : [];
-        return { ...r, assets: names.map((name, i) => ({ id: i + 1, name, size: statSync(join(dir, name)).size })) };
+        const download = (name) => `https://github.com/${org}/${repo}/releases/download/${encodeURIComponent(String(r.tag_name))}/${encodeURIComponent(name)}`;
+        return { ...r, assets: names.map((name, i) => ({ id: i + 1, name, size: statSync(join(dir, name)).size, browser_download_url: download(name) })) };
       });
     },
     async downloadAsset(repo, release, asset) {
@@ -172,7 +178,8 @@ function nextLink(link) {
  * The organisation's public repositories through the REST API (api.github.com only: files are read
  * through the contents endpoint, with the token, never from raw.githubusercontent.com, which is
  * rate-limited per IP); a file attached to a release through the release-asset endpoint, with the
- * token, never from the github.com download URL (ticket #96). Any failure throws: no retry, no
+ * token, never from the github.com download URL (ticket #96) — that URL, `browser_download_url`, is
+ * only LINKED by the product page, for the .hex and .img.xz (ticket #101). Any failure throws: no retry, no
  * fallback (the build fails, Pages keeps the previous deployment).
  * @param {{ token?: string, org?: string, fetchImpl?: typeof fetch, api?: string }} options
  */

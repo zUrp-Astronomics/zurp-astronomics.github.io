@@ -5,6 +5,8 @@
 # REVISED: 2026-10-06 (ticket #66) — `product.licenseOther`, the stamp of a licence GitHub does not recognise
 # REVISED: 2026-10-06 (ticket #75) — `product.licenseOther` moved to licences.yml (`software.unrecognised`),
 #   with the other texts of the two licences
+# REVISED: 2026-10-12 (ticket #96) — `product.flash`: the « Flash » block of a product page, and the
+#   name ESP Launchpad shows for a firmware
 #
 # Edit the texts freely: the code only places them. `{{product}}` / `{{basedOn}}` are markers the code
 # fills (the product's name, its upstream project). Prose (several sentences) is in the .md files of
@@ -53,6 +55,18 @@ product:
   aboutTitle: About
   sourceTitle: Source
   sourceArrow: ⟶
+  # The « Flash » block, on the page of a product whose repository publishes a firmware (ticket #96):
+  # one ESP Launchpad link per chip. `{{tag}}` is the tag of the firmware's release (it may be older
+  # than the version stamp), `{{chip}}` the chip's name as Espressif writes it (ESP32-S3).
+  flash:
+    title: Flash
+    intro: >-
+      Firmware {{tag}}, flashed from your browser by Espressif’s ESP Launchpad. One link per chip:
+      pick the one on your board — Launchpad flashes whatever board it finds.
+    link: 'Flash an {{chip}} board'
+    erase: Launchpad first erases the whole flash memory of the board.
+    # What ESP Launchpad shows above its Connect button: `{{product}}` is the product's name.
+    appName: '{{product}} {{tag}} ({{chip}})'
 
 # Footer of every page. `productLine` replaces the signature on a product page: `{{product}}` is the
 # product's name, `{{name}}` / `{{affiliation}}` the texts at the top of this file.

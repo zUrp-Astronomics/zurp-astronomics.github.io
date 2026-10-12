@@ -14,6 +14,8 @@
 // REVISED: 2026-10-10 (ticket #83) — the product header shows the poster by a RELATIVE path,
 //   9_Assets/<slug>.webp of the product repository itself (the human's decision: a README points at
 //   the folder beside it, so an offline clone shows it); the org README keeps the absolute poster URLs
+// REVISED: 2026-10-12 (ticket #96) — the guide's § 6, publishing a firmware: the manifest's name, the
+//   TOML URL, the Launchpad link and the site's repository (for the dispatch) come from here
 // REVISED: 2026-10-10 (ticket #92) — every product has its repository: no « product without a
 //   repository » any more (`hasRepo`, `noRepo` gone, the templates show the repository of each)
 //
@@ -52,14 +54,16 @@
 // social preview cards) — change both together, or never. scripts/check-dist.mjs fails the build
 // when one of those files is missing from dist/.
 
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import Mustache from 'mustache';
-import { loadBuiltCatalog, repoRoot } from './lib/catalog.mjs';
+import { loadBuiltCatalog, repoRoot, siteUrl } from './lib/catalog.mjs';
 import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
 import { escapeHtml, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
 import { shieldsEndpoint, statusBadgePath } from '../src/lib/status-badge.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
+import { FIRMWARE_MANIFEST } from '../src/lib/catalog/firmware.mjs';
+import { firmwareTomlPath, launchpadLink } from '../src/lib/firmware.mjs';
 
 const arg = (name) => {
   const i = process.argv.indexOf(name);
@@ -75,9 +79,7 @@ const site = siteContent(repoRoot);
 const kit = readYaml('readme-kit/kit.yml', repoRoot);
 const template = (name) => readMarkdown(`readme-kit/${name}.md`, repoRoot);
 
-const astroConfig = readFileSync(join(repoRoot, 'astro.config.mjs'), 'utf8');
-const SITE = astroConfig.match(/\bsite:\s*['"`]([^'"`]+)['"`]/)?.[1]?.replace(/\/+$/, '');
-if (!SITE) throw new Error('readme-kit: no `site` found in astro.config.mjs');
+const SITE = siteUrl();
 if (!products?.length || !sections?.length) throw new Error('readme-kit: empty catalog — content/ or the snapshot changed shape?');
 
 // --- URLs (mirror of src/lib/brand-images.ts) ---------------------------------------------------------
@@ -208,6 +210,12 @@ function guide() {
     hardwareBadgeUrl: `${SITE}/${licenseBadgePath('<produit>', 'hardware')}`,
     avatarUrl,
     orgSettingsUrl: `${ORG_URL.replace('github.com/', 'github.com/organizations/')}/settings/profile`,
+    // § 6, the firmware (ticket #96): src/lib/firmware.mjs gives the paths and the link.
+    firmwareManifest: FIRMWARE_MANIFEST,
+    firmwareTomlUrl: `${SITE}/${firmwareTomlPath('<produit>', '<puce>')}`,
+    launchpadLink: launchpadLink(`${SITE}/${firmwareTomlPath('<produit>', 'esp32s3')}`),
+    // The organisation's Pages site is the repository named after its host (GitHub's rule).
+    siteRepo: `${ORG_URL.replace(/^https:\/\/github\.com\//, '')}/${siteHost}`,
     products: products.map((p) => ({
       name: p.name,
       slug: p.slug,

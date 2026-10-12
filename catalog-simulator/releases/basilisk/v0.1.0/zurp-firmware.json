@@ -1,0 +1,9 @@
+{
+  "chips": {
+    "esp32s3": { "parts": [
+      { "offset": "0x0",     "file": "basilisk-esp32s3-bootloader.bin" },
+      { "offset": "0x8000",  "file": "basilisk-esp32s3-partition-table.bin" },
+      { "offset": "0x10000", "file": "basilisk-esp32s3.bin" } ] },
+    "esp32c3": { "parts": [ { "offset": "0x0", "file": "basilisk-esp32c3-merged.bin" } ] }
+  }
+}

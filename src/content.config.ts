@@ -7,6 +7,8 @@
 //   drops in silence every key this schema does not declare: a field of the snapshot missing here
 //   never reaches the page
 // REVISED: 2026-10-06 (ticket #75) — `hardwareLicense`, the first line of the repository's LICENSE-HARDWARE
+// REVISED: 2026-10-12 (ticket #96) — `firmware`, the firmware a release publishes (zurp-firmware.json):
+//   declared here, or zod drops it and the product page never shows its « Flash » block
 //
 // The loader (src/lib/catalog/loader.mjs) reads the source named by ZURP_CATALOG (simulator |
 // github, no default) and validates every sheet with messages naming the repository and the field
@@ -41,6 +43,18 @@ const repoProducts = defineCollection({
       release: z.object({ tag: z.string(), publishedAt: z.string() }).nullable(),
       license: z.object({ spdx_id: z.string().nullable(), name: z.string().nullable() }).nullable(),
       hardwareLicense: z.object({ title: z.string() }).nullable(),
+      firmware: z
+        .object({
+          tag: z.string(),
+          publishedAt: z.string(),
+          chips: z.array(
+            z.object({
+              chip: z.string(),
+              parts: z.array(z.object({ offset: z.string(), file: z.string(), size: z.number(), sha256: z.string() })),
+            }),
+          ),
+        })
+        .nullable(),
     }),
 });
 

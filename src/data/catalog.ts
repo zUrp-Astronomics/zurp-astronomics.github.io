@@ -7,6 +7,8 @@
 //   repository, from the build's snapshot
 // REVISED: 2026-10-06 (ticket #75) — and `hardwareLicense`, the first line of its repository's
 //   LICENSE-HARDWARE
+// REVISED: 2026-10-12 (ticket #96) — and `firmware`, the firmware a release of its repository
+//   publishes (src/lib/catalog/firmware.mjs), declared in src/content.config.ts too
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog comes
 //   only from the organisation's repositories (the collection `repoProducts`)
 //
@@ -40,6 +42,28 @@ export interface HardwareLicense {
   title: string;
 }
 
+/** One file of a firmware, flashed at `offset` (src/lib/catalog/firmware.mjs). */
+export interface FirmwarePart {
+  /** Where it is flashed: a hexadecimal text, `0x…`, as the manifest writes it. */
+  offset: string;
+  /** Its name, as attached to the release. */
+  file: string;
+  size: number;
+  /** SHA-256 of its bytes: its published path changes with its content (src/lib/firmware.mjs). */
+  sha256: string;
+}
+
+/**
+ * The firmware the site publishes for a product (ticket #96): the latest release carrying
+ * zurp-firmware.json, its chips (ESP-IDF target names, `esp32s3`) and their parts.
+ */
+export interface Firmware {
+  /** Tag of ITS release: may be older than the product's `release`. */
+  tag: string;
+  publishedAt: string;
+  chips: Array<{ chip: string; parts: FirmwarePart[] }>;
+}
+
 export interface Product {
   slug: string;
   name: string;
@@ -69,6 +93,8 @@ export interface Product {
    * src/lib/catalog/read.mjs); null: no LICENSE-HARDWARE — no stamp, an empty badge.
    */
   hardwareLicense: HardwareLicense | null;
+  /** The firmware it publishes, flashable by ESP Launchpad; null: none (no « Flash » block). */
+  firmware: Firmware | null;
 }
 
 export interface Release {

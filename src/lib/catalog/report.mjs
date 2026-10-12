@@ -1,4 +1,4 @@
-// SOURCE: zurp-astronomics-site — the catalog report of a build: every product published (origin, « Source » link), every product skipped and release ignored, with the reason — in the build log and, on GitHub Actions, in the job summary
+// SOURCE: zurp-astronomics-site — the catalog report of a build: every product published (origin, « Source » link, firmware), every product skipped, release ignored and firmware manifest rejected, with the reason — in the build log and, on GitHub Actions, in the job summary
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — ticket #72
@@ -22,20 +22,36 @@
 import { appendFileSync } from 'node:fs';
 
 /**
+ * What the report says of a product's firmware.
+ * @param {{ origin: string, firmware?: { tag: string, chips: Array<{ chip: string }> } | null }} product
+ * @param {Array<{ origin: string }>} rejected
+ */
+function firmwareState(product, rejected) {
+  if (product.firmware) return `firmware ${product.firmware.tag} (${product.firmware.chips.map((c) => c.chip).join(', ')})`;
+  if (rejected.some((r) => r.origin === product.origin)) return 'firmware NOT published (manifest rejected)';
+  return 'no firmware (no release carries zurp-firmware.json)';
+}
+
+/**
  * The report of a built catalog.
- * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }> }} catalog
+ * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string, firmware?: any }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }>, firmwareRejected?: Array<{ origin: string, problems: string[] }> }} catalog
  * @returns {{ lines: string[], warnings: string[], markdown: string }}
  */
-export function catalogReport({ read, products, skipped, ignoredReleases }) {
+export function catalogReport({ read, products, skipped, ignoredReleases, firmwareRejected = [] }) {
   const warnings = [
     ...skipped.map((s) => `product skipped — ${s.problems.join('; ')}`),
     ...ignoredReleases.map((r) => r.message),
+    ...firmwareRejected.map((r) => `firmware not published — ${r.problems.join('; ')}`),
   ];
-  const counts = `${products.length} product(s) published, ${skipped.length} skipped, ${ignoredReleases.length} release(s) ignored`;
+  const withFirmware = products.filter((p) => p.firmware).length;
+  const counts =
+    `${products.length} product(s) published, ${skipped.length} skipped, ${ignoredReleases.length} release(s) ignored, ` +
+    `${withFirmware} firmware(s) published, ${firmwareRejected.length} rejected`;
+  const firmware = (p) => firmwareState(p, firmwareRejected);
   const width = (key) => Math.max(0, ...products.map((p) => p[key].length));
   const lines = [
     `catalog of this build — source: ${read} — ${counts}`,
-    ...products.map((p) => `  ${p.slug.padEnd(width('slug'))}  ${p.origin.padEnd(width('origin'))}  ${p.repo}`),
+    ...products.map((p) => `  ${p.slug.padEnd(width('slug'))}  ${p.origin.padEnd(width('origin'))}  ${p.repo}  ${firmware(p)}`),
     ...warnings.map((w) => `  ${w}`),
   ];
 
@@ -45,15 +61,16 @@ export function catalogReport({ read, products, skipped, ignoredReleases }) {
     '',
     `Source: ${cell(read)} — ${counts}.`,
     '',
-    '| Product | Slug | Origin | Source link |',
-    '| --- | --- | --- | --- |',
-    ...products.map((p) => `| ${cell(p.name)} | \`${cell(p.slug)}\` | ${cell(p.origin)} | ${cell(p.repo)} |`),
+    '| Product | Slug | Origin | Source link | Firmware |',
+    '| --- | --- | --- | --- | --- |',
+    ...products.map((p) => `| ${cell(p.name)} | \`${cell(p.slug)}\` | ${cell(p.origin)} | ${cell(p.repo)} | ${cell(firmware(p))} |`),
     '',
   ];
   const section = (title, items) => (items.length ? [`### ${title}`, '', ...items.map((i) => `- ${cell(i)}`), ''] : []);
   md.push(
     ...section('Products skipped (not published)', skipped.flatMap((s) => s.problems)),
     ...section('Releases ignored', ignoredReleases.map((r) => r.message)),
+    ...section('Firmware not published (manifest rejected)', firmwareRejected.flatMap((r) => r.problems)),
   );
   return { lines, warnings, markdown: md.join('\n') + '\n' };
 }

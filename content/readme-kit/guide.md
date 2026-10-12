@@ -1,15 +1,15 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-10 (ticket #92 : tout produit a son dépôt, la notion de produit sans dépôt disparaît)
+Dernière révision: 2026-10-12 (ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
-Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl)
+Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; firmwareManifest (le nom du manifeste), firmwareTomlUrl (l'adresse du TOML d'une puce, `<produit>` et `<puce>` à la place), launchpadLink (le lien Launchpad d'un TOML, `<produit>` et `esp32s3` à la place), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
 ---
 
 # Kit README — mode d'emploi
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-10
+**Dernière révision** : 2026-10-12
 **Statut** : généré par `scripts/readme-kit.mjs` (dépôt du site) à chaque déploiement — ne pas éditer à la main
 **Référencé par** : `.github/workflows/deploy.yml` du site (job « README de l'org »), `readme-kit/README.md` du site
 
@@ -182,3 +182,87 @@ ASSEMBLAGE
 POINTS D'ATTENTION
   - <à remplir>
 ```
+
+## 6. Publier un firmware
+
+Le site publie le firmware d'un produit pour qu'on le flashe en un clic, depuis le navigateur, avec
+**ESP Launchpad** (l'outil d'Espressif). Launchpad télécharge les fichiers depuis le navigateur :
+il lui faut des adresses qui répondent aux requêtes d'un autre site (CORS). Les téléchargements des
+releases de github.com ne le font pas, GitHub Pages si : le site sert donc, depuis Pages, un fichier
+de configuration (TOML) par puce et les binaires qu'il nomme. Ce qui suit est le contrat entre le
+site et les produits : le site le vérifie à chaque build.
+
+**Ce qu'on attache à la release, dans cet ordre.**
+
+1. Les binaires, aux noms libres.
+2. `{{{firmwareManifest}}}`, **en dernier** : il dit au site que la release porte un firmware complet.
+3. Puis le signal `zurp-catalog` au site (commande plus bas). **Tant que ce signal n'est pas envoyé,
+   le firmware n'apparaît pas** : le build que lance la publication de la release est parti avant que
+   les fichiers soient attachés.
+
+**Le manifeste `{{{firmwareManifest}}}`.**
+
+```json
+{
+  "chips": {
+    "esp32s3": { "parts": [
+      { "offset": "0x0",     "file": "basilisk-esp32s3-bootloader.bin" },
+      { "offset": "0x8000",  "file": "basilisk-esp32s3-partition-table.bin" },
+      { "offset": "0x10000", "file": "basilisk-esp32s3.bin" } ] },
+    "esp32c3": { "parts": [ { "offset": "0x0", "file": "basilisk-esp32c3-merged.bin" } ] }
+  }
+}
+```
+
+- À la racine, la seule clé `chips` : une table d'au moins une puce. Ni `product` ni `version` : le
+  produit est le dépôt, la version est le tag de la release. Tout autre champ est refusé.
+- Une clé de puce est un nom de cible ESP-IDF ou esptool, en minuscules et sans tiret : `esp32`,
+  `esp32s3`, `esp32c3`…
+- `parts` : au moins une part. Chaque part a exactement `offset`, un texte hexadécimal `"0x…"`, et
+  `file`, le nom d'un fichier attaché à la **même** release (sans `/` ni `..`). Une image fusionnée
+  est une seule part, à `0x0`.
+- Les parts d'une puce ne se chevauchent pas (offset + taille du fichier).
+
+**La release retenue.** La plus récente release publiée (brouillons exclus, prereleases comprises)
+**qui porte `{{{firmwareManifest}}}`**. Une release plus récente sans manifeste ne retire rien : le
+firmware publié reste celui de la précédente, et les liens des README ne tombent pas pendant que les
+fichiers s'attachent. Un manifeste invalide, ou un fichier qu'il nomme et que la release ne porte pas :
+**le produit n'a plus de firmware publié**, le site ne revient pas à une release plus ancienne. La
+page du produit reste en ligne, sans son bloc « Flash » ; le rapport du catalogue (résumé du job
+`build` du déploiement du site, onglet **Actions**) dit pourquoi, champ par champ. Corrige le
+manifeste de la release, puis renvoie le signal. La version flashée est le tag de la release du
+firmware : elle peut être plus ancienne que la version du produit.
+
+**Les adresses.** Le TOML d'une puce est servi à `{{{firmwareTomlUrl}}}`, où `<puce>` est sa clé
+dans le manifeste. C'est la seule adresse stable : les binaires sont servis à côté, sous un chemin
+qui change avec leur contenu (le cache de Pages ne peut pas mélanger un TOML neuf et un vieux
+binaire). Ne lie jamais un binaire.
+
+**Le lien dans le README du produit.** Un lien par puce, nommé par sa puce en clair : Launchpad ne
+refuse pas une carte d'une autre puce, il prévient, puis flashe. Il **efface toute la flash** de la
+carte avant d'écrire. Par exemple, pour l'ESP32-S3 :
+
+```markdown
+[Flash an ESP32-S3 board]({{{launchpadLink}}})
+```
+
+Ce lien va dans le texte du README, jamais dans le bloc d'en-tête du § 2 : ce bloc est collé dans
+tous les produits, et un lien de flash y serait mort pour un produit sans firmware. La page du
+produit sur le site porte les mêmes liens, dans son bloc « Flash ».
+
+**Le signal**, une fois `{{{firmwareManifest}}}` attaché : une étape du workflow de la release, avec
+le jeton qu'utilisent déjà les signaux `zurp-catalog` de `zurp-site.yml` (`<SECRET>` : le nom de son
+secret) :
+
+{{=<% %>=}}
+```yaml
+      - name: Signal the site (zurp-catalog)
+        env:
+          GH_TOKEN: ${{ secrets.<SECRET> }}
+        run: gh api repos/<%& siteRepo %>/dispatches -f event_type=zurp-catalog
+```
+<%={{ }}=%>
+
+À la main, avec `gh` connecté sous un compte qui peut écrire dans le dépôt du site :
+`gh api repos/{{{siteRepo}}}/dispatches -f event_type=zurp-catalog` — ou, dans l'onglet **Actions**
+du site, « Deploy to GitHub Pages » → **Run workflow**.

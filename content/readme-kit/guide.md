@@ -1,6 +1,6 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-12 (ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-12 (ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
 Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; firmwareManifest (le nom du manifeste), firmwareTomlUrl (l'adresse du TOML d'une puce, `<produit>` et `<puce>` à la place), launchpadLink (le lien Launchpad d'un TOML, `<produit>` et `esp32s3` à la place), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
@@ -251,14 +251,14 @@ tous les produits, et un lien de flash y serait mort pour un produit sans firmwa
 produit sur le site porte les mêmes liens, dans son bloc « Flash ».
 
 **Le signal**, une fois `{{{firmwareManifest}}}` attaché : une étape du workflow de la release, avec
-le jeton qu'utilisent déjà les signaux `zurp-catalog` de `zurp-site.yml` (`<SECRET>` : le nom de son
-secret) :
+`ZURP_SITE_DISPATCH`, le secret de l'org qu'utilisent déjà les signaux `zurp-catalog` de
+`zurp-site.yml` :
 
 {{=<% %>=}}
 ```yaml
       - name: Signal the site (zurp-catalog)
         env:
-          GH_TOKEN: ${{ secrets.<SECRET> }}
+          GH_TOKEN: ${{ secrets.ZURP_SITE_DISPATCH }}
         run: gh api repos/<%& siteRepo %>/dispatches -f event_type=zurp-catalog
 ```
 <%={{ }}=%>

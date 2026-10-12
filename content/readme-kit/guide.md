@@ -1,6 +1,6 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-12 (ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
 Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
@@ -297,7 +297,7 @@ produits), `<slug>` remplacé par le slug du produit :
 - ESP :
 
   ```markdown
-  Install it from your browser on the [product page]({{{siteUrl}}}/<slug>/) (Chrome or Edge).
+  Install it from your browser on the [product page]({{{siteUrl}}}/<slug>/) (Firefox, Chrome or Edge).
   ```
 
 - STM32 et Raspberry Pi :

@@ -1,0 +1,21 @@
+# SOURCE: zurp-astronomics-site — trial (ticket #101): the head of `npm ci`'s error on the runner
+# AUTHOR: engineer
+# DATE: 2026-10-12
+# STATUS: temporary — removed before delivery
+name: trial npm ci
+on: workflow_dispatch
+jobs:
+  npmci:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: versions
+        run: node --version && npm --version
+      - name: npm ci (head of the error)
+        run: |
+          npm ci > ci.log 2>&1 && echo NPM-CI-OK || true
+          head -30 ci.log

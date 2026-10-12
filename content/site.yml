@@ -7,6 +7,8 @@
 #   with the other texts of the two licences
 # REVISED: 2026-10-12 (ticket #96) — `product.flash`: the « Flash » block of a product page, and the
 #   name ESP Launchpad shows for a firmware
+# REVISED: 2026-10-12 (ticket #101) — `product.flash` is gone with ESP Launchpad: `product.install`, the
+#   #install block (ESP Web Tools button, .hex and .img.xz links with their notice)
 #
 # Edit the texts freely: the code only places them. `{{product}}` / `{{basedOn}}` are markers the code
 # fills (the product's name, its upstream project). Prose (several sentences) is in the .md files of
@@ -55,18 +57,26 @@ product:
   aboutTitle: About
   sourceTitle: Source
   sourceArrow: ⟶
-  # The « Flash » block, on the page of a product whose repository publishes a firmware (ticket #96):
-  # one ESP Launchpad link per chip. `{{tag}}` is the tag of the firmware's release (it may be older
-  # than the version stamp), `{{chip}}` the chip's name as Espressif writes it (ESP32-S3).
-  flash:
-    title: Flash
-    intro: >-
-      Firmware {{tag}}, flashed from your browser by Espressif’s ESP Launchpad. One link per chip:
-      pick the one on your board — Launchpad flashes whatever board it finds.
-    link: 'Flash an {{chip}} board'
-    erase: Launchpad first erases the whole flash memory of the board.
-    # What ESP Launchpad shows above its Connect button: `{{product}}` is the product's name.
-    appName: '{{product}} {{tag}} ({{chip}})'
+  # The #install block (ticket #101), on the page of a product whose latest release carrying an
+  # installable file (manifest.json, .hex, .img.xz) publishes one. `{{tag}}` is the tag of that
+  # release (it may be older than the version stamp).
+  install:
+    title: Install
+    version: 'Version {{tag}}'
+    # ESP: the ESP Web Tools button, which finds the chip plugged in and picks its build. No text on
+    # browsers here: when a browser cannot install, ESP Web Tools says so itself (the human's rule).
+    esp:
+      intro: Plug the board in over USB, then press the button.
+      button: Install
+    # The files linked where GitHub serves them, by kind, each list followed by its notice. `{{file}}`
+    # is the file's name. What is proper to a product (where its SWD pads are…) is in its README.
+    download: 'Download {{file}}'
+    hex: >-
+      STM32: connect an ST-Link to the board’s SWD pins, open the .hex in STM32CubeProgrammer, then
+      press Download.
+    img: >-
+      Raspberry Pi: write the image to a microSD card with Raspberry Pi Imager (“Use custom”) or with
+      Etcher.
 
 # Footer of every page. `productLine` replaces the signature on a product page: `{{product}}` is the
 # product's name, `{{name}}` / `{{affiliation}}` the texts at the top of this file.

@@ -9,6 +9,8 @@
 //   LICENSE-HARDWARE
 // REVISED: 2026-10-12 (ticket #96) — and `firmware`, the firmware a release of its repository
 //   publishes (src/lib/catalog/firmware.mjs), declared in src/content.config.ts too
+// REVISED: 2026-10-12 (ticket #101) — `install` replaces `firmware`: what a release of its repository
+//   publishes to install (src/lib/catalog/install.mjs), declared in src/content.config.ts too
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog comes
 //   only from the organisation's repositories (the collection `repoProducts`)
 //
@@ -42,26 +44,52 @@ export interface HardwareLicense {
   title: string;
 }
 
-/** One file of a firmware, flashed at `offset` (src/lib/catalog/firmware.mjs). */
-export interface FirmwarePart {
-  /** Where it is flashed: a hexadecimal text, `0x…`, as the manifest writes it. */
-  offset: string;
+/** A file the site copies from a release, as is (src/lib/catalog/install.mjs). */
+export interface InstallFile {
   /** Its name, as attached to the release. */
-  file: string;
+  name: string;
   size: number;
-  /** SHA-256 of its bytes: its published path changes with its content (src/lib/firmware.mjs). */
+  /** SHA-256 of its bytes. */
   sha256: string;
 }
 
 /**
- * The firmware the site publishes for a product (ticket #96): the latest release carrying
- * zurp-firmware.json, its chips (ESP-IDF target names, `esp32s3`) and their parts.
+ * A product's ESP Web Tools publication: its release's manifest.json, copied as is with the files
+ * it names under <slug>/firmware/<id>/ (src/lib/install.mjs).
  */
-export interface Firmware {
+export interface EspInstall {
+  /** Changes as soon as the manifest or one of its files does: the folder's name. */
+  id: string;
+  /** The manifest's `name` and `version`, as ESP Web Tools shows them. */
+  name: string;
+  version: string;
+  /** Its builds, in its order: ESP Web Tools picks one by chip family and serial type. */
+  builds: Array<{ chipFamily: string; serialType: string | null }>;
+  manifest: InstallFile;
+  /** The files it names, each once. */
+  files: InstallFile[];
+}
+
+/** A file the product page links where GitHub serves it, never copied: an STM32 `.hex`, an RPi `.img.xz`. */
+export interface InstallDownload {
+  kind: 'hex' | 'img';
+  name: string;
+  size: number;
+  /** GitHub's `browser_download_url` of the asset. */
+  url: string;
+}
+
+/**
+ * What a product publishes to install (ticket #101): the latest release carrying an installable file
+ * (manifest.json, *.hex, *.img.xz), its ESP Web Tools manifest and its downloads.
+ */
+export interface Install {
   /** Tag of ITS release: may be older than the product's `release`. */
   tag: string;
   publishedAt: string;
-  chips: Array<{ chip: string; parts: FirmwarePart[] }>;
+  /** null: no manifest.json in that release, or one that was rejected (the catalog report says why). */
+  esp: EspInstall | null;
+  downloads: InstallDownload[];
 }
 
 export interface Product {
@@ -93,8 +121,8 @@ export interface Product {
    * src/lib/catalog/read.mjs); null: no LICENSE-HARDWARE — no stamp, an empty badge.
    */
   hardwareLicense: HardwareLicense | null;
-  /** The firmware it publishes, flashable by ESP Launchpad; null: none (no « Flash » block). */
-  firmware: Firmware | null;
+  /** What it publishes to install; null: nothing (no #install block on its page). */
+  install: Install | null;
 }
 
 export interface Release {

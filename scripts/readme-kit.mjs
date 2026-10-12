@@ -16,6 +16,9 @@
 //   the folder beside it, so an offline clone shows it); the org README keeps the absolute poster URLs
 // REVISED: 2026-10-12 (ticket #96) — the guide's § 6, publishing a firmware: the manifest's name, the
 //   TOML URL, the Launchpad link and the site's repository (for the dispatch) come from here
+// REVISED: 2026-10-12 (ticket #101) — the guide's § 6 is « Publier un logiciel »: the ESP manifest's
+//   name, the ESP Web Tools version the site loads and its chip families come from here (the
+//   Launchpad TOML URL and link are gone)
 // REVISED: 2026-10-10 (ticket #92) — every product has its repository: no « product without a
 //   repository » any more (`hasRepo`, `noRepo` gone, the templates show the repository of each)
 //
@@ -62,8 +65,7 @@ import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
 import { escapeHtml, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
 import { shieldsEndpoint, statusBadgePath } from '../src/lib/status-badge.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
-import { FIRMWARE_MANIFEST } from '../src/lib/catalog/firmware.mjs';
-import { firmwareTomlPath, launchpadLink } from '../src/lib/firmware.mjs';
+import { ESP_CHIP_FAMILIES, ESP_MANIFEST, ESP_WEB_TOOLS_VERSION } from '../src/lib/catalog/install.mjs';
 
 const arg = (name) => {
   const i = process.argv.indexOf(name);
@@ -210,10 +212,10 @@ function guide() {
     hardwareBadgeUrl: `${SITE}/${licenseBadgePath('<produit>', 'hardware')}`,
     avatarUrl,
     orgSettingsUrl: `${ORG_URL.replace('github.com/', 'github.com/organizations/')}/settings/profile`,
-    // § 6, the firmware (ticket #96): src/lib/firmware.mjs gives the paths and the link.
-    firmwareManifest: FIRMWARE_MANIFEST,
-    firmwareTomlUrl: `${SITE}/${firmwareTomlPath('<produit>', '<puce>')}`,
-    launchpadLink: launchpadLink(`${SITE}/${firmwareTomlPath('<produit>', 'esp32s3')}`),
+    // § 6, publishing a release (ticket #101): what src/lib/catalog/install.mjs reads and accepts.
+    espManifest: ESP_MANIFEST,
+    espWebToolsVersion: ESP_WEB_TOOLS_VERSION,
+    espChipFamilies: ESP_CHIP_FAMILIES.map((f) => `\`${f}\``).join(', '),
     // The organisation's Pages site is the repository named after its host (GitHub's rule).
     siteRepo: `${ORG_URL.replace(/^https:\/\/github\.com\//, '')}/${siteHost}`,
     products: products.map((p) => ({

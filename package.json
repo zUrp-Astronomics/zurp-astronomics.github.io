@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "astro": "^7.3.5",
+    "esp-web-tools": "10.4.0",
     "js-yaml": "^4.3.2",
     "markdown-it": "^14.3.2",
     "mustache": "^4.2.0",
-    "sharp": "^0.35.5",
-    "smol-toml": "^1.9.0"
+    "sharp": "^0.35.5"
   },
   "engines": {
     "node": ">=24"

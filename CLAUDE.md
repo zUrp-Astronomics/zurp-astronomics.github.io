@@ -11,9 +11,11 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   gabarits, marqueurs Mustache). `content/README.md` dit ce qui est où ; `src/lib/content.mjs` le lit.
 - Le catalogue est lu au build dans les dépôts produit de l'organisation, et seulement là
   (`9_Assets/zurp.yml`, son affiche + releases GitHub, `src/lib/catalog/`). Des fichiers attachés aux
-  releases, seuls le manifeste firmware `zurp-firmware.json` d'UNE release et les fichiers qu'il
-  nomme sont lus : le site les sert pour ESP Launchpad (`<slug>/firmware/<puce>.toml`, norme au § 6
-  de `content/readme-kit/guide.md`). Une page par produit ; le lien « Source » d'un produit est son
+  releases, seule compte UNE release, la plus récente qui porte un fichier installable : son
+  `manifest.json` d'ESP Web Tools et les fichiers qu'il nomme sont téléchargés et servis par Pages
+  (`<slug>/firmware/<id>/`, pour le bouton d'ESP Web Tools, épinglé à 10.4.0 dans `package.json`) ;
+  ses `.hex` et `.img.xz` sont liés là où GitHub les sert, jamais téléchargés (norme au § 6 de
+  `content/readme-kit/guide.md`). Une page par produit ; le lien « Source » d'un produit est son
   dépôt.
 - La source du catalogue est toujours nommée par `ZURP_CATALOG` : `github` (déploiement) ou
   `simulator` (`catalog-simulator/`, hors ligne — voir son `README.md`).
@@ -61,5 +63,5 @@ npm ci && ZURP_CATALOG=simulator npm run build && node scripts/check-dist.mjs &&
 ## Harness
 
 ```
-scripts/check-dist.mjs test/catalog.test.mjs test/firmware.test.mjs
+scripts/check-dist.mjs test/catalog.test.mjs test/install.test.mjs
 ```

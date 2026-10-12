@@ -12,6 +12,11 @@
 //   publishes a firmware: one ESP Launchpad link per chip, named by its chip, the version flashed,
 //   the whole flash erased (texts: content/site.yml, `product.flash`); `data-flash` on the block for
 //   scripts/check-dist.mjs (review of #96)
+// REVISED: 2026-10-12 (ticket #101) — the « Flash » block is gone with ESP Launchpad: the #install
+//   block, only when the release the product installs from carries a valid installable file — the
+//   ESP Web Tools button (src/components/v2/EspInstallButton.astro) on the manifest the site copies,
+//   the version installed, the .hex / .img.xz links with their notice (texts: content/site.yml,
+//   `product.install`); `id="install"` (a stable anchor) and `data-install` for scripts/check-dist.mjs
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
 // software and hardware licences, each when there is one, based on), About, Source + repo link,
@@ -39,7 +44,8 @@ import { getCatalog } from '../../data/catalog';
 import { accessibleFill, onAccent } from '../../lib/color';
 import { catalogContent, fill, licenseContent, siteContent } from '../../lib/content.mjs';
 import { licenseStamps } from '../../lib/license-stamp.mjs';
-import { chipLabel, firmwareTomlPath, launchpadLink } from '../../lib/firmware.mjs';
+import { espManifestUrlPath } from '../../lib/install.mjs';
+import EspInstallButton from '../../components/v2/EspInstallButton.astro';
 
 export async function getStaticPaths() {
   return (await getCatalog()).map((p) => ({
@@ -54,17 +60,22 @@ const site = siteContent();
 const { statuses } = catalogContent();
 const licenses = licenseStamps(product, licenseContent());
 
-// The « Flash » block (ticket #96): one Launchpad link per chip, to the stable URL of its TOML
-// (src/pages/[slug]/firmware/[chip].toml.ts). Launchpad flashes whatever board it finds: each link
-// names its chip. The section's `data-flash` attribute and each link's `data-chip` are what
-// scripts/check-dist.mjs reads (scripts/lib/check-firmware.mjs): keep them.
-const flash = product.firmware && {
-  intro: fill(site.product.flash.intro, { tag: product.firmware.tag }),
-  links: product.firmware.chips.map(({ chip }) => ({
-    chip,
-    href: launchpadLink(new URL(firmwareTomlPath(product.slug, chip), Astro.site).href),
-    text: fill(site.product.flash.link, { chip: chipLabel(chip) }),
-  })),
+// The #install block (ticket #101): present only when the product's install release carries a valid
+// installable file (src/lib/catalog/install.mjs). ESP: one button for all the chips of the manifest
+// (ESP Web Tools detects the chip). .hex / .img.xz: links where GitHub serves them, grouped by kind,
+// each group followed by its notice. The section's `data-install`, the button's `manifest` and each
+// link's `data-download` are what scripts/check-dist.mjs reads (scripts/lib/check-install.mjs): keep them.
+const texts = site.product.install;
+const install = product.install && {
+  version: fill(texts.version, { tag: product.install.tag }),
+  manifest: product.install.esp && espManifestUrlPath(product.slug, product.install.esp),
+  groups: (['hex', 'img'] as const)
+    .map((kind) => ({
+      kind,
+      notice: texts[kind],
+      links: product.install!.downloads.filter((d) => d.kind === kind).map((d) => ({ href: d.url, text: fill(texts.download, { file: d.name }) })),
+    }))
+    .filter((g) => g.links.length),
 };
 
 // Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than a flat
@@ -137,21 +148,31 @@ const tint = [
           {product.description.map((paragraph) => <p>{paragraph}</p>)}
         </section>
 
-        {flash && (
-          <section class="flash" data-flash>
-            <h2 class="z2-band">{site.product.flash.title}</h2>
-            <p>{flash.intro}</p>
-            <ul class="flash-links">
-              {flash.links.map((l) => (
-                <li>
-                  <a class="repo-link flash-link" href={l.href} data-chip={l.chip}>
-                    <span class="repo-icon" aria-hidden="true">{site.product.sourceArrow}</span>
-                    <span class="repo-url">{l.text}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-            <p class="flash-erase">{site.product.flash.erase}</p>
+        {install && (
+          <section class="install" id="install" data-install>
+            <h2 class="z2-band">{texts.title}</h2>
+            <p class="install-version">{install.version}</p>
+            {install.manifest && (
+              <div class="install-esp">
+                <p>{texts.esp.intro}</p>
+                <EspInstallButton manifest={install.manifest} label={texts.esp.button} />
+              </div>
+            )}
+            {install.groups.map((g) => (
+              <div class="install-download">
+                <ul class="install-links">
+                  {g.links.map((l) => (
+                    <li>
+                      <a class="repo-link" href={l.href} data-download={g.kind}>
+                        <span class="repo-icon" aria-hidden="true">{site.product.sourceArrow}</span>
+                        <span class="repo-url">{l.text}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p>{g.notice}</p>
+              </div>
+            ))}
           </section>
         )}
 
@@ -370,24 +391,34 @@ const tint = [
     max-width: 680px;
   }
 
-  .flash p {
+  .install p {
     color: var(--z2-ink);
     font-size: 1.05rem;
     line-height: 1.7;
     max-width: 680px;
   }
 
-  .flash-links {
+  .install .install-version {
+    font-family: var(--z2-font-type);
+    letter-spacing: 0.04em;
+  }
+
+  .install-esp,
+  .install-download {
+    margin-top: 1.4rem;
+  }
+
+  .install-esp p {
+    margin-bottom: 1rem;
+  }
+
+  .install-links {
     list-style: none;
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    margin: 1.4rem 0;
+    margin: 0 0 1rem;
     padding: 0;
-  }
-
-  .flash .flash-erase {
-    font-weight: 700;
   }
 
   .repo-link {

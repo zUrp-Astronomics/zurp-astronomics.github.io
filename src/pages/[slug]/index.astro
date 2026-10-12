@@ -10,7 +10,8 @@
 //   (LICENSE, as GitHub detects it) and « Hardware · … » (LICENSE-HARDWARE, its first line)
 // REVISED: 2026-10-12 (ticket #96) — the « Flash » block, only when the product's repository
 //   publishes a firmware: one ESP Launchpad link per chip, named by its chip, the version flashed,
-//   the whole flash erased (texts: content/site.yml, `product.flash`)
+//   the whole flash erased (texts: content/site.yml, `product.flash`); `data-flash` on the block for
+//   scripts/check-dist.mjs (review of #96)
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
 // software and hardware licences, each when there is one, based on), About, Source + repo link,
@@ -55,7 +56,8 @@ const licenses = licenseStamps(product, licenseContent());
 
 // The « Flash » block (ticket #96): one Launchpad link per chip, to the stable URL of its TOML
 // (src/pages/[slug]/firmware/[chip].toml.ts). Launchpad flashes whatever board it finds: each link
-// names its chip.
+// names its chip. The section's `data-flash` attribute and each link's `data-chip` are what
+// scripts/check-dist.mjs reads (scripts/lib/check-firmware.mjs): keep them.
 const flash = product.firmware && {
   intro: fill(site.product.flash.intro, { tag: product.firmware.tag }),
   links: product.firmware.chips.map(({ chip }) => ({
@@ -136,7 +138,7 @@ const tint = [
         </section>
 
         {flash && (
-          <section class="flash">
+          <section class="flash" data-flash>
             <h2 class="z2-band">{site.product.flash.title}</h2>
             <p>{flash.intro}</p>
             <ul class="flash-links">

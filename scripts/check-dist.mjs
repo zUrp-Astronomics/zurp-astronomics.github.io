@@ -7,6 +7,9 @@
 //   order and width, icon declarations on each page are gone: they are visible on the site.
 // REVISED: 2026-10-12 (ticket #96) — the firmware TOML of each chip, at its stable URL, and every part
 //   it cites, in dist/ at the size the catalog gives
+// REVISED: 2026-10-12 (ticket #96, review) — what each product page shows of it: the « Flash » block
+//   when the catalog holds a firmware, none (and no firmware/ folder) when it does not
+//   (scripts/lib/check-firmware.mjs)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -30,7 +33,12 @@
 //     with the products: their READMEs link it through ESP Launchpad), does not parse as TOML (with
 //     smol-toml, the parser of Launchpad itself), or does not cite, in order, one URL of this site
 //     and one address per part of the catalog; or a part it cites is missing from dist/ or not of the
-//     size the catalog gives.
+//     size the catalog gives;
+//   - for EVERY product (scripts/lib/check-firmware.mjs): its page's « Flash » block is not what the
+//     built catalog says — one block, one Launchpad link per chip of its firmware, in order, with
+//     the texts of content/site.yml; none, and no Launchpad link, without a firmware — or its folder
+//     dist/<slug>/firmware/ holds anything but the TOMLs and parts of its firmware, or exists
+//     without one.
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -38,8 +46,9 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { parse as parseToml } from 'smol-toml';
 import { loadBuiltCatalog, siteUrl } from './lib/catalog.mjs';
+import { firmwareDirProblems, flashBlockProblems } from './lib/check-firmware.mjs';
 import { firmwareTomlPath } from '../src/lib/firmware.mjs';
-import { LICENSE_KINDS } from '../src/lib/content.mjs';
+import { LICENSE_KINDS, siteContent } from '../src/lib/content.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 import { statusBadgePath } from '../src/lib/status-badge.mjs';
 
@@ -157,10 +166,19 @@ for (const p of catalog.products.filter((p) => p.firmware)) {
 }
 console.log(`Firmware TOML: ${tomls} (${catalog.products.filter((p) => p.firmware).map((p) => p.slug).join(', ') || 'no product with a firmware'})`);
 
+// --- 5. What each product page shows of its firmware, and its firmware/ folder -------------------
+const flashTexts = siteContent(repoRoot).product.flash;
+for (const p of catalog.products) {
+  const page = join(distDir, p.slug, 'index.html');
+  if (existsSync(page)) errors.push(...flashBlockProblems(readFileSync(page, 'utf8'), p, { site: SITE, texts: flashTexts }));
+  errors.push(...firmwareDirProblems(distDir, p));
+}
+console.log(`« Flash » blocks: on ${catalog.products.filter((p) => p.firmware).length} page(s), absent from ${catalog.products.filter((p) => !p.firmware).length}`);
+
 // --- Verdict ---------------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every firmware TOML and its parts in place.');
+console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every firmware TOML and its parts in place, every « Flash » block as the catalog says.');

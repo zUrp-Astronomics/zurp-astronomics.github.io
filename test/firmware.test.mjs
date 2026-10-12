@@ -1,6 +1,8 @@
-// SOURCE: zurp-astronomics-site — the tests of the firmware a product publishes (ticket #96): the release selected, the manifest's validation, the downloads (GitHub: 200 and 302, the token kept off the storage host), the Launchpad TOML, the report
+// SOURCE: zurp-astronomics-site — the tests of the firmware a product publishes (ticket #96): the release selected, the manifest's validation, the downloads (GitHub: 200 and 302, the token kept off the storage host), the Launchpad TOML, the report, what the product page shows of it
 // AUTHOR: engineer
 // DATE: 2026-10-12
+// REVISED: 2026-10-12 (ticket #96, review) — test 7: the « Flash » block of a product page and its
+//   firmware/ folder, as scripts/check-dist.mjs checks them on every build (scripts/lib/check-firmware.mjs)
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). The contract with the products (src/lib/catalog/firmware.mjs)
@@ -25,8 +27,9 @@ import { FIRMWARE_MANIFEST, firmwareManifestProblems } from '../src/lib/catalog/
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogReport } from '../src/lib/catalog/report.mjs';
 import { chipLabel, firmwarePartPath, firmwareToml, firmwareTomlPath, launchpadLink } from '../src/lib/firmware.mjs';
-import { catalogContent } from '../src/lib/content.mjs';
+import { catalogContent, fill, siteContent } from '../src/lib/content.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
+import { firmwareDirProblems, flashBlockProblems } from '../scripts/lib/check-firmware.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sectionIds = catalogContent(ROOT).sections.map((s) => s.id);
@@ -281,4 +284,64 @@ test('6. the offline build publishes Basilisk’s firmware of v0.1.0 (two chips)
     const file = join(root, '.zurp-catalog', 'firmware', part.sha256);
     assert.ok(existsSync(file) && readFileSync(file).length === part.size, `${part.file} written beside the snapshot`);
   }
+});
+
+// 7 -------------------------------------------------------------------------------------------------
+// The page is the one src/pages/[slug]/index.astro renders, as Astro writes it (compressed, scoped
+// `data-astro-cid-*` attributes, text escaped): what the check reads on dist/<slug>/index.html.
+const FLASH = siteContent(ROOT).product.flash;
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const CID = 'data-astro-cid-7a3f2k1q';
+const flashLink = ({ chip, href, text }) =>
+  `<li ${CID}><a class="repo-link flash-link" href="${esc(href)}" data-chip="${chip}" ${CID}><span class="repo-icon" aria-hidden="true" ${CID}>=&gt;</span><span class="repo-url" ${CID}>${esc(text)}</span></a></li>`;
+const flashBlock = ({ tag, links, intro = fill(FLASH.intro, { tag }), erase = FLASH.erase }) =>
+  `<section class="flash" data-flash ${CID}><h2 class="z2-band" ${CID}>${esc(FLASH.title)}</h2><p ${CID}>${esc(intro)}</p><ul class="flash-links" ${CID}>${links.map(flashLink).join('')}</ul><p class="flash-erase" ${CID}>${esc(erase)}</p></section>`;
+const productPage = (block = '') =>
+  `<!DOCTYPE html><html lang="en"><body><main class="z2-container" ${CID}><div class="sheet z2-plate" ${CID}><section class="lead" ${CID}><p class="pitch" ${CID}>A gizmo.</p></section><section class="description" ${CID}><h2 class="z2-band" ${CID}>About</h2><p ${CID}>First paragraph.</p></section>${block}<section class="repo" ${CID}><h2 class="z2-band" ${CID}>Source</h2><a class="repo-link" href="https://github.com/zUrp-Astronomics/Gizmo" ${CID}><span class="repo-icon" aria-hidden="true" ${CID}>=&gt;</span><span class="repo-url" ${CID}>github.com/zUrp-Astronomics/Gizmo</span></a></section></div></main></body></html>`;
+
+test('7. the product page shows a « Flash » block — one Launchpad link per chip, to its stable TOML, in order — only when the catalog holds a firmware; without one, no block, no Launchpad link, no firmware/ folder', () => {
+  const part = (file, n) => ({ offset: '0x0', file, size: 1, sha256: String(n).repeat(64) });
+  const firmware = { tag: 'v1.2', chips: [{ chip: 'esp32s3', parts: [part('app.bin', 1)] }, { chip: 'esp32c3', parts: [part('merged.bin', 2)] }] };
+  const gizmo = { slug: 'gizmo', firmware };
+  const bare = { slug: 'gizmo', firmware: null };
+  const opts = { site: SITE, texts: FLASH };
+  const links = firmware.chips.map(({ chip }) => ({
+    chip,
+    href: `https://espressif.github.io/esp-launchpad/minimal-launchpad/?flashConfigURL=${SITE}/gizmo/firmware/${chip}.toml`,
+    text: fill(FLASH.link, { chip: chipLabel(chip) }),
+  }));
+  const check = (product, block) => flashBlockProblems(productPage(block), product, opts).join('\n');
+
+  // The pages as the site writes them.
+  assert.equal(check(gizmo, flashBlock({ tag: 'v1.2', links })), '', 'the block of a product with a firmware');
+  assert.equal(check(bare), '', 'no block for a product without a firmware');
+  assert.match(fill(FLASH.intro, { tag: 'v1.2' }), /v1\.2/, 'the intro names the firmware\'s tag');
+
+  // A product WITH a firmware.
+  assert.match(check(gizmo), /dist\/gizmo\/index\.html: 0 « Flash » block\(s\), the catalog holds a firmware \(v1\.2\): expected 1/);
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links }).repeat(2)), /2 « Flash » block\(s\)/);
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links }).replace(' data-flash', '')), /0 « Flash » block\(s\)/, 'the block is found by data-flash, a styled section is not one');
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links: links.slice(0, 1) })), /1 link\(s\) in the « Flash » block, the firmware has 2 chip\(s\): esp32s3, esp32c3/);
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links: [...links].reverse() })), /« Flash » link 1 \(esp32s3\): chip is "esp32c3", expected "esp32s3"/, 'in the catalog\'s order');
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links: [{ ...links[0], chip: undefined }, links[1]] }).replace('data-chip="undefined"', '')), /link 1 \(esp32s3\): chip is null/);
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links: [{ ...links[0], href: links[0].href.replace('esp32s3.toml', '1111111111111111/app.bin') }, links[1]] })),
+    /link 1 \(esp32s3\): href is ".*1111111111111111\/app\.bin", expected ".*\?flashConfigURL=https:\/\/zurp-astronomics\.github\.io\/gizmo\/firmware\/esp32s3\.toml"/, 'the stable URL of the TOML, nothing else');
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links: [links[0], { ...links[1], text: 'Flash a board' }] })), /link 2 \(esp32c3\): text is "Flash a board", expected "Flash an ESP32-C3 board"/, 'each link names its chip');
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links, intro: fill(FLASH.intro, { tag: 'v1.1' }) })), /the « Flash » block says .*v1\.1.*, expected .*v1\.2/, 'the tag of the firmware flashed');
+  assert.match(check(gizmo, flashBlock({ tag: 'v1.2', links, erase: '' })), /the « Flash » block says/, 'the erase warning');
+
+  // A product WITHOUT a firmware.
+  assert.match(check(bare, flashBlock({ tag: 'v1.2', links })), /dist\/gizmo\/index\.html: a « Flash » block, the catalog holds no firmware for gizmo/);
+  assert.match(check(bare, `<p><a href="${esc(links[0].href)}">flash</a></p>`), /an ESP Launchpad link, the catalog holds no firmware for gizmo/);
+
+  // The firmware/ folder.
+  const dist = mkdtempSync(join(tmpdir(), 'zurp-dist-'));
+  const put = (rel) => { mkdirSync(dirname(join(dist, rel)), { recursive: true }); writeFileSync(join(dist, rel), 'x'); };
+  assert.equal(firmwareDirProblems(dist, bare).join('\n'), '', 'no firmware, no folder');
+  assert.match(firmwareDirProblems(dist, gizmo).join('\n'), /^dist\/gizmo\/firmware\/ is missing, the catalog holds a firmware \(v1\.2\)$/);
+  ['gizmo/firmware/esp32s3.toml', 'gizmo/firmware/esp32c3.toml', 'gizmo/firmware/1111111111111111/app.bin', 'gizmo/firmware/2222222222222222/merged.bin'].forEach(put);
+  assert.equal(firmwareDirProblems(dist, gizmo).join('\n'), '', 'exactly the TOMLs and the parts');
+  assert.match(firmwareDirProblems(dist, bare).join('\n'), /^dist\/gizmo\/firmware\/ exists, the catalog holds no firmware for gizmo$/);
+  put('gizmo/firmware/9999999999999999/app.bin');
+  assert.match(firmwareDirProblems(dist, gizmo).join('\n'), /^dist\/gizmo\/firmware\/9999999999999999\/app\.bin: not a file of the firmware v1\.2 of the catalog$/);
 });

@@ -248,7 +248,9 @@ test('7. the README kit is generated from the built catalog: one header per prod
   }
   // The guide's § 6 (ticket #96): the workflow extract keeps its expression, the dispatch names the site's repository.
   const guide = readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8');
-  assert.ok(guide.includes('GH_TOKEN: ${{ secrets.<SECRET> }}'), 'the GitHub expression of the workflow extract, as written');
+  // Ticket #98: the org's real secret, no placeholder left.
+  assert.ok(guide.includes('GH_TOKEN: ${{ secrets.ZURP_SITE_DISPATCH }}'), 'the GitHub expression of the workflow extract, as written');
+  assert.ok(!guide.includes('<SECRET>'), 'no <SECRET> placeholder left in the guide');
   assert.ok(guide.includes('gh api repos/zUrp-Astronomics/zurp-astronomics.github.io/dispatches -f event_type=zurp-catalog'));
   assert.ok(guide.includes('?flashConfigURL=https://zurp-astronomics.github.io/<produit>/firmware/esp32s3.toml'));
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');

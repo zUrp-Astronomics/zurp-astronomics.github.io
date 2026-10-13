@@ -16,6 +16,8 @@
 //   test/install.test.mjs
 // REVISED: 2026-10-13 (ticket #101, review of PR #103) — test 4: the draft carries the latest
 //   `published_at`, so the `draft` flag alone is what leaves it out
+// REVISED: 2026-10-13 (ticket #102) — test 7: the ESP README sentence names Firefox, Chrome and Edge
+//   (ESP Web Tools' browsers), and no « (Chrome or Edge) » is left in the rendered guide
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -259,7 +261,9 @@ test('7. the README kit is generated from the built catalog: one header per prod
   assert.ok(guide.includes('gh api repos/zUrp-Astronomics/zurp-astronomics.github.io/dispatches -f event_type=zurp-catalog'));
   // Ticket #101: the README sentence of the contract (the human's, 2026-10-12), word for word — with
   // the browsers for an ESP, without them for an STM32 or an RPi — and no ESP Launchpad left.
-  assert.ok(guide.includes('Install it from your browser on the [product page](https://zurp-astronomics.github.io/<slug>/) (Chrome or Edge).\n'));
+  // Ticket #102: the ESP sentence names the browsers of ESP Web Tools (the human's, 2026-10-12), not ESP Launchpad's.
+  assert.ok(guide.includes('Install it from your browser on the [product page](https://zurp-astronomics.github.io/<slug>/) (Firefox, Chrome or Edge).\n'));
+  assert.ok(!guide.includes('(Chrome or Edge)'), 'no ESP Launchpad browser list left in the guide');
   assert.ok(guide.includes('Install it from your browser on the [product page](https://zurp-astronomics.github.io/<slug>/).\n'));
   assert.ok(guide.includes('## 6. Publier un logiciel'));
   assert.doesNotMatch(guide, /launchpad|zurp-firmware|flashConfigURL/i);

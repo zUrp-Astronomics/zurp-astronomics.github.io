@@ -77,6 +77,15 @@ product:
     img: >-
       Raspberry Pi: write the image to a microSD card with Raspberry Pi Imager (“Use custom”) or with
       Etcher.
+    # The web bench (ticket #107), when the same release attaches one: a page that drives the board
+    # over USB, speaking the firmware of that version. `button` opens it over the page, `tab` in a new
+    # tab, `close` closes it; `frame` names it for screen readers ({{product}}: the product's name).
+    bench:
+      intro: Plug the board in over USB, then drive it from its bench, made for this version.
+      button: Bench
+      tab: Open in a new tab
+      close: Close
+      frame: '{{product}} bench'
 
 # Footer of every page. `productLine` replaces the signature on a product page: `{{product}}` is the
 # product's name, `{{name}}` / `{{affiliation}}` the texts at the top of this file.

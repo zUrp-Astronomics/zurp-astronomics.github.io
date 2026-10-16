@@ -17,6 +17,10 @@
 //   ESP Web Tools button (src/components/v2/EspInstallButton.astro) on the manifest the site copies,
 //   the version installed, the .hex / .img.xz links with their notice (texts: content/site.yml,
 //   `product.install`); `id="install"` (a stable anchor) and `data-install` for scripts/check-dist.mjs
+// REVISED: 2026-10-16 (ticket #107) — the web bench, in the #install block when the catalog holds
+//   one: a button opening a near full-screen <dialog> on an <iframe allow="serial">, its `src` set
+//   only when the dialog opens, and an « open in a new tab » link to the same URL (texts:
+//   content/site.yml, `product.install.bench`)
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
 // software and hardware licences, each when there is one, based on), About, Source + repo link,
@@ -44,7 +48,7 @@ import { getCatalog } from '../../data/catalog';
 import { accessibleFill, onAccent } from '../../lib/color';
 import { catalogContent, fill, licenseContent, siteContent } from '../../lib/content.mjs';
 import { licenseStamps } from '../../lib/license-stamp.mjs';
-import { espManifestUrlPath } from '../../lib/install.mjs';
+import { benchUrlPath, espManifestUrlPath } from '../../lib/install.mjs';
 import EspInstallButton from '../../components/v2/EspInstallButton.astro';
 
 export async function getStaticPaths() {
@@ -65,10 +69,16 @@ const licenses = licenseStamps(product, licenseContent());
 // (ESP Web Tools detects the chip). .hex / .img.xz: links where GitHub serves them, grouped by kind,
 // each group followed by its notice. The section's `data-install`, the button's `manifest` and each
 // link's `data-download` are what scripts/check-dist.mjs reads (scripts/lib/check-install.mjs): keep them.
+// The web bench (ticket #107): the bench page the site copies from the same release, opened in a
+// dialog over an <iframe allow="serial"> (Web Serial needs the permission in a frame; the bench is
+// served from the site's own origin, src/lib/install.mjs) or in a tab. The button's `data-bench`
+// (the bench's URL), the link's `data-bench-tab` and the frame's `data-bench-frame` are read by the
+// same check.
 const texts = site.product.install;
 const install = product.install && {
   version: fill(texts.version, { tag: product.install.tag }),
   manifest: product.install.esp && espManifestUrlPath(product.slug, product.install.esp),
+  bench: product.install.bench && benchUrlPath(product.slug, product.install.bench),
   groups: (['hex', 'img'] as const)
     .map((kind) => ({
       kind,
@@ -173,6 +183,24 @@ const tint = [
                 <p>{g.notice}</p>
               </div>
             ))}
+            {install.bench && (
+              <div class="install-bench">
+                <p>{texts.bench.intro}</p>
+                <div class="bench-actions">
+                  <button type="button" class="bench-open" data-bench={install.bench} aria-haspopup="dialog">{texts.bench.button}</button>
+                  <a class="repo-link" href={install.bench} target="_blank" rel="noopener" data-bench-tab>
+                    <span class="repo-icon" aria-hidden="true">{site.product.sourceArrow}</span>
+                    <span class="repo-url">{texts.bench.tab}</span>
+                  </a>
+                </div>
+                <dialog class="bench-dialog" data-bench-dialog aria-label={fill(texts.bench.frame, { product: product.name })}>
+                  <form method="dialog" class="bench-bar">
+                    <button class="bench-close">{texts.bench.close}</button>
+                  </form>
+                  <iframe allow="serial" title={fill(texts.bench.frame, { product: product.name })} data-bench-frame></iframe>
+                </dialog>
+              </div>
+            )}
           </section>
         )}
 
@@ -187,6 +215,25 @@ const tint = [
     </main>
   </div>
 </V2Layout>
+
+<script>
+  // The bench dialog (ticket #107). Nothing loads before the click: the frame has no `src` until the
+  // dialog opens. Closed (its close button, a <form method="dialog">, or Escape, native to a modal
+  // <dialog>), the frame is emptied: the bench page unloads and gives the serial port back, so that
+  // the « new tab » link, or the next opening, can take it (a port is open in one page at a time).
+  for (const open of document.querySelectorAll<HTMLButtonElement>('button[data-bench]')) {
+    const dialog = open.closest('.install-bench')?.querySelector<HTMLDialogElement>('dialog[data-bench-dialog]');
+    const frame = dialog?.querySelector<HTMLIFrameElement>('iframe[data-bench-frame]');
+    if (!dialog || !frame) continue;
+    open.addEventListener('click', () => {
+      frame.src = open.dataset.bench!;
+      dialog.showModal();
+    });
+    dialog.addEventListener('close', () => {
+      frame.src = 'about:blank';
+    });
+  }
+</script>
 
 <style>
   /* Top padding: the gap under the common header's hairline (the breadcrumb that used to sit
@@ -410,6 +457,88 @@ const tint = [
 
   .install-esp p {
     margin-bottom: 1rem;
+  }
+
+  .install-bench {
+    margin-top: 1.4rem;
+  }
+
+  .install-bench p {
+    margin-bottom: 1rem;
+  }
+
+  .bench-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .bench-open,
+  .bench-close {
+    cursor: pointer;
+    border: 0;
+    background: var(--z2-accent);
+    color: var(--z2-on-accent);
+    font-family: var(--z2-font-type);
+    letter-spacing: 0.04em;
+  }
+
+  .bench-open {
+    padding: 0.95rem 1.6rem 0.85rem;
+    font-size: 1.05rem;
+    box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .bench-open:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 rgba(29, 26, 22, 0.45);
+  }
+
+  .bench-open:focus-visible,
+  .bench-close:focus-visible {
+    outline: 3px solid var(--z2-ink);
+    outline-offset: 2px;
+  }
+
+  /* Near full screen (95vw × 90vh, Basilisk's measure of what its bench needs). */
+  .bench-dialog {
+    width: 95vw;
+    height: 90vh;
+    max-width: none;
+    max-height: none;
+    margin: auto;
+    padding: 0;
+    border: 3px solid var(--z2-soot-deep);
+    background: var(--z2-soot-deep);
+  }
+
+  .bench-dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bench-dialog::backdrop {
+    background: rgba(16, 15, 14, 0.75);
+  }
+
+  .bench-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.4rem;
+  }
+
+  .bench-close {
+    padding: 0.55rem 1.1rem 0.45rem;
+    font-size: 0.95rem;
+  }
+
+  .bench-dialog iframe {
+    flex: 1;
+    width: 100%;
+    border: 0;
+    background: var(--z2-cream-light);
   }
 
   .install-links {

@@ -2,6 +2,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-12
 // STATUS: active — ticket #101 (replaces the ESP Launchpad publication of ticket #96)
+// REVISED: 2026-10-16 (ticket #107) — the web bench: the `*_bench.html` of the release selected,
+//   downloaded and published beside an install, never on its own (BENCH below)
 //
 // WHY (ticket #101, the human: « on n'invente pas la roue »). One publication for every product, in
 // the 2026 canon of the OSS tinker world:
@@ -48,10 +50,32 @@
 //   .img.xz if the release carries some), the problems are reported (`rejected`), never thrown.
 //   A failure of the backend (GitHub answering badly) throws: the build fails, as everywhere.
 //
+// THE BENCH (ticket #107): a self-contained HTML page a product attaches to its release, that drives
+// the board over Web Serial and speaks the protocol of the firmware of THAT release. Recognised by
+// the exact suffix `_bench.html` after a non-empty prefix (the products' norm names it
+// `<product>_<version>_bench.html`, § 6 of the guide; the site does not judge the rest of the name).
+//   - it is taken from the release selected above and from no other: it follows the firmware whose
+//     protocol it speaks. A bench does NOT make a release installable (isInstallable is unchanged):
+//     a release whose only file of interest is a bench is not selected, and the release selected
+//     without a bench has none — no fall back to an older one;
+//   - it is published only BESIDE an install (`install` not null: a valid ESP, or a .hex / .img.xz):
+//     it adds to the install, it never creates one. When the release selected carries only an
+//     invalid manifest as installable file, its bench is neither downloaded nor published;
+//   - two benches or more in the release selected: none is published;
+//   - these two cases are bench problems (`benchProblems`), warnings of their own — never in
+//     `rejected`, whose readers all say « ESP manifest » — and the rest of the install is untouched;
+//   - its bytes are served as is (src/lib/install.mjs: the path, versioned by its content): never
+//     judged, never rewritten. WHY copied and served by the site rather than linked: Web Serial
+//     (navigator.serial.requestPort) is refused in an iframe of another origin without
+//     allow="serial", and the files of a GitHub release are of another origin, served without CORS;
+//     from the site's own origin the page's iframe (allow="serial") reaches the port picker
+//     (measured by Basilisk on 2026-10-16, Chromium 156 and Firefox 157).
+//
 // WHAT IS READ (the human's rule, read.mjs): of everything attached to the releases, ONLY the
-// manifest.json of the release selected and the files THAT manifest names are downloaded. The .hex
-// and .img.xz are never downloaded. The list of releases the backend already returned gives the
-// assets (name, size, id, browser_download_url): no other request to find them.
+// manifest.json of the release selected, the files THAT manifest names, and the bench of that
+// release (when it is the only one and the release publishes an install, as above) are downloaded.
+// The .hex and .img.xz are never downloaded. The list of releases the backend already returned
+// gives the assets (name, size, id, browser_download_url): no other request to find them.
 
 import { createHash } from 'node:crypto';
 
@@ -93,6 +117,12 @@ export const downloadKind = (name) => DOWNLOAD_KINDS.find((k) => name.endsWith(k
 
 /** Whether a file attached to a release is installable: the ESP manifest, a .hex, an .img.xz. */
 export const isInstallable = (name) => typeof name === 'string' && (name === ESP_MANIFEST || downloadKind(name) !== null);
+
+/** The suffix of a product's web bench, `<product>_<version>_bench.html` (ticket #107). */
+export const BENCH_SUFFIX = '_bench.html';
+
+/** Whether a file attached to a release is a web bench: the exact suffix, after a non-empty prefix. Never installable. */
+export const isBench = (name) => typeof name === 'string' && name.endsWith(BENCH_SUFFIX) && name.length > BENCH_SUFFIX.length;
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isText = (v) => typeof v === 'string' && v.trim() !== '';
@@ -200,6 +230,9 @@ export function espId(manifestSha256, files) {
   return createHash('sha256').update(lines.join('\n')).digest('hex').slice(0, 16);
 }
 
+/** The id of a published bench: it changes as soon as its bytes do. */
+export const benchId = (benchSha256) => benchSha256.slice(0, 16);
+
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 /**
@@ -223,7 +256,7 @@ const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 export async function readInstall(backend, repo, releases) {
   const files = new Map();
   const selected = installRelease(releases);
-  if (!selected) return { install: null, rejected: null, files };
+  if (!selected) return { install: null, rejected: null, benchProblems: null, files };
   const { tag, publishedAt, release } = selected;
   const assets = (release.assets ?? []).filter((a) => a && typeof a.name === 'string');
 
@@ -273,8 +306,28 @@ export async function readInstall(backend, repo, releases) {
       };
     }
   }
-  const install = esp || downloads.length ? { tag, publishedAt, esp, downloads } : null;
-  return { install, rejected, files };
+  const published = Boolean(esp || downloads.length);
+
+  // The bench: beside a published install only, and only when it is the one bench of the release.
+  let bench = null;
+  let benchProblems = null;
+  const benches = assets.filter((a) => isBench(a.name));
+  if (benches.length) {
+    const where = `repository ${repo}, release ${JSON.stringify(tag)} (bench)`;
+    const names = benches.map((a) => a.name).sort();
+    if (!published) {
+      benchProblems = [`${where}: ${names.join(', ')} not published — the release publishes nothing to install (its ESP manifest is rejected), and a bench is published only beside an install`];
+    } else if (benches.length > 1) {
+      benchProblems = [`${where}: ${benches.length} files ending in ${BENCH_SUFFIX} (${names.join(', ')}) — a release carries one bench at most: none is published`];
+    } else {
+      const bytes = await download(backend, repo, release, benches[0]);
+      const own = { name: benches[0].name, size: bytes.length, sha256: sha256(bytes) };
+      files.set(own.sha256, bytes); // served as is: never judged, never rewritten
+      bench = { id: benchId(own.sha256), ...own };
+    }
+  }
+  const install = published ? { tag, publishedAt, esp, downloads, bench } : null;
+  return { install, rejected, benchProblems, files };
 }
 
 /** The bytes of `asset`, checked against the size the release lists: a mismatch is the backend's failure. */

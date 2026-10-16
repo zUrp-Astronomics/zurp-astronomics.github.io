@@ -2,6 +2,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-12
 // STATUS: active — ticket #101 (replaces scripts/lib/check-firmware.mjs, the ESP Launchpad checks of ticket #96)
+// REVISED: 2026-10-16 (ticket #107) — the web bench: its button, dialog frame and « new tab » link in
+//   the #install block, its file in dist/<slug>/bench/, none of them without a bench
 //
 // Pure checks, called by scripts/check-dist.mjs on every product of the built catalog and tested by
 // test/install.test.mjs against pages and folders that pass and that do not. Each returns the list of
@@ -15,7 +17,14 @@
 //     element (with every chunk it lazy-loads): a button without its script is a dead tag; the
 //     download links (`data-download`) are the catalog's, in its order grouped by kind (hex, then
 //     img), each to its GitHub URL;
-//   - a product WITHOUT an install: no <section data-install>, no <esp-web-install-button>.
+//   - the web bench (ticket #107): when the catalog holds one, exactly one bench button
+//     (<button data-bench>) on the page, in the block, whose `data-bench` is the bench's URL path,
+//     a file of dist/ at the size the catalog gives; exactly one « new tab » link (<a
+//     data-bench-tab>) to that same URL; exactly one frame (<iframe data-bench-frame>) with
+//     allow="serial" and no `src` (set when the dialog opens: nothing loads before the click); the
+//     button's and the link's texts those of content/site.yml. Without a bench: none of the three;
+//   - a product WITHOUT an install: no <section data-install>, no <esp-web-install-button>, nothing
+//     of a bench.
 // The block is found by its `data-install` attribute, not by its class: a class is styling, Astro may
 // rewrite it; the attribute is there for this check.
 //
@@ -25,11 +34,19 @@
 //     catalog gives, valid JSON, and each `path` of its builds' parts a file of the same folder at the
 //     size the catalog gives;
 //   - WITHOUT one: no firmware/ folder at all.
+//
+// THE bench/ FOLDER OF A PRODUCT (dist/<slug>/bench/, ticket #107):
+//   - WITH a bench: exactly <id>/<file>, byte for byte the bench of the catalog (its size and its
+//     SHA-256);
+//   - WITHOUT one: no bench/ folder at all; and no file of dist/ ending in `_bench.html` but the
+//     benches of the catalog (strayBenchProblems).
 
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { BENCH_SUFFIX } from '../../src/lib/catalog/install.mjs';
 import { fill } from '../../src/lib/content.mjs';
-import { espDirPath, espManifestUrlPath, espPublishedPaths } from '../../src/lib/install.mjs';
+import { benchPath, benchUrlPath, espDirPath, espManifestUrlPath, espPublishedPaths } from '../../src/lib/install.mjs';
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 const DEFINES_BUTTON = /customElements\.define\(\s*["'`]esp-web-install-button["'`]/;
@@ -63,6 +80,62 @@ function installSections(html) {
 /** Each <esp-web-install-button> of an HTML fragment, its attributes. */
 const espButtons = (html) => [...html.matchAll(/<esp-web-install-button\b([^>]*)>/gi)].map(([, attrs]) => attributesOf(attrs));
 
+/** Each element `tag` of an HTML fragment carrying the attribute `marker`: its attributes and its text. */
+const marked = (html, tag, marker) =>
+  [...html.matchAll(new RegExp(`<${tag}\\b([^>]*)>([\\s\\S]*?)<\\/${tag}>`, 'gi'))]
+    .map(([, attrs, inner]) => ({ attrs: attributesOf(attrs), text: textOf(inner.replace(/<span\b[^>]*\baria-hidden="true"[^>]*>[\s\S]*?<\/span>/gi, '')) }))
+    .filter(({ attrs }) => marker in attrs);
+
+/** The bench's button, « new tab » link and frame in an HTML fragment. */
+const benchParts = (html) => ({
+  buttons: marked(html, 'button', 'data-bench'),
+  tabs: marked(html, 'a', 'data-bench-tab'),
+  frames: marked(html, 'iframe', 'data-bench-frame'),
+});
+
+/** The problems of the bench's parts in the #install block, the catalog holding `bench`. */
+function benchBlockProblems(page, block, slug, bench, { texts, distDir }, where) {
+  const all = benchParts(page);
+  const own = benchParts(block);
+  const url = benchUrlPath(slug, bench);
+  const problems = [];
+  if (all.buttons.length !== 1 || own.buttons.length !== 1) {
+    problems.push(`${where}: ${all.buttons.length} bench button(s), ${own.buttons.length} in the #install block — expected exactly 1, in it`);
+  } else {
+    const [button] = own.buttons;
+    if (button.attrs['data-bench'] !== url) problems.push(`${where}: the bench button opens ${JSON.stringify(button.attrs['data-bench'] ?? null)}, expected ${JSON.stringify(url)}`);
+    else {
+      const file = join(distDir, benchPath(slug, bench));
+      if (!existsSync(file) || !statSync(file).isFile()) problems.push(`${where}: the bench button opens ${url}, missing: dist/${benchPath(slug, bench)}`);
+      else if (statSync(file).size !== bench.size) problems.push(`${where}: the bench button opens ${url}, ${statSync(file).size} bytes, the catalog gives ${bench.size}`);
+    }
+    if (button.text !== textOf(texts.bench.button)) problems.push(`${where}: the bench button says ${JSON.stringify(button.text)}, expected ${JSON.stringify(texts.bench.button)}`);
+  }
+  if (all.tabs.length !== 1 || own.tabs.length !== 1) {
+    problems.push(`${where}: ${all.tabs.length} bench « new tab » link(s), ${own.tabs.length} in the #install block — expected exactly 1, in it`);
+  } else {
+    const [tab] = own.tabs;
+    if (tab.attrs.href !== url) problems.push(`${where}: the bench « new tab » link goes to ${JSON.stringify(tab.attrs.href ?? null)}, expected ${JSON.stringify(url)} (the bench button's URL)`);
+    if (tab.text !== textOf(texts.bench.tab)) problems.push(`${where}: the bench « new tab » link says ${JSON.stringify(tab.text)}, expected ${JSON.stringify(texts.bench.tab)}`);
+  }
+  if (all.frames.length !== 1 || own.frames.length !== 1) {
+    problems.push(`${where}: ${all.frames.length} bench frame(s), ${own.frames.length} in the #install block — expected exactly 1, in it`);
+  } else {
+    const [{ attrs }] = own.frames;
+    if (!(attrs.allow ?? '').split(/[;\s]+/).includes('serial')) problems.push(`${where}: the bench frame's allow is ${JSON.stringify(attrs.allow ?? null)}: Web Serial needs allow="serial"`);
+    if ('src' in attrs) problems.push(`${where}: the bench frame has a src (${JSON.stringify(attrs.src)}): it is set when the dialog opens, nothing loads before the click`);
+  }
+  return problems;
+}
+
+/** The problems of a page showing something of a bench the catalog does not hold. */
+function noBenchProblems(page, product, why) {
+  const where = `dist/${product.slug}/index.html`;
+  const { buttons, tabs, frames } = benchParts(page);
+  const found = [[buttons, 'bench button'], [tabs, 'bench « new tab » link'], [frames, 'bench frame']].filter(([l]) => l.length);
+  return found.map(([l, what]) => `${where}: ${l.length} ${what}(s), the catalog holds no bench for ${product.slug}${why}`);
+}
+
 /**
  * Whether one of the page's module scripts, in dist/, defines <esp-web-install-button>; the problems
  * otherwise (or a chunk it lazy-loads that is missing).
@@ -83,9 +156,9 @@ function buttonScriptProblems(html, distDir, where) {
 /**
  * The problems of the #install block on the page of `product`.
  * @param {string} html the page, dist/<slug>/index.html
- * @param {{ slug: string, install: null | { tag: string, esp: any, downloads: Array<{ kind: string, name: string, url: string }> } }} product from the built catalog
- * @param {{ texts: { title: string, version: string, download: string }, distDir: string }} options
- *   `texts` content/site.yml `product.install`; `distDir` where the page's scripts are
+ * @param {{ slug: string, install: null | { tag: string, esp: any, downloads: Array<{ kind: string, name: string, url: string }>, bench?: null | { id: string, name: string, size: number } } }} product from the built catalog
+ * @param {{ texts: { title: string, version: string, download: string, bench: { button: string, tab: string } }, distDir: string }} options
+ *   `texts` content/site.yml `product.install`; `distDir` where the page's scripts and the bench are
  * @returns {string[]}
  */
 export function installBlockProblems(html, product, { texts, distDir }) {
@@ -97,6 +170,7 @@ export function installBlockProblems(html, product, { texts, distDir }) {
     const problems = [];
     if (sections.length) problems.push(`${where}: an #install block, the catalog holds nothing to install for ${product.slug}`);
     if (buttons.length) problems.push(`${where}: an ESP Web Tools button, the catalog holds nothing to install for ${product.slug}`);
+    problems.push(...noBenchProblems(html, product, ' (nothing to install)'));
     return problems;
   }
   if (sections.length !== 1) return [`${where}: ${sections.length} #install block(s), the catalog holds an install (${install.tag}): expected 1`];
@@ -123,6 +197,10 @@ export function installBlockProblems(html, product, { texts, distDir }) {
     }
     problems.push(...buttonScriptProblems(html, distDir, where));
   }
+
+  // The web bench.
+  if (install.bench) problems.push(...benchBlockProblems(html, block, product.slug, install.bench, { texts, distDir }, where));
+  else problems.push(...noBenchProblems(html, product, ` (${install.tag})`));
 
   // The download links.
   const links = [...block.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)]
@@ -198,4 +276,43 @@ export function espDirProblems(distDir, product) {
     else if (statSync(file).size !== sizes.get(path)) problems.push(`dist/${folder}/${path} is ${statSync(file).size} bytes, the catalog gives ${sizes.get(path)}`);
   }
   return problems;
+}
+
+/**
+ * The problems of dist/<slug>/bench/ for `product`: exactly the bench of the catalog, byte for byte
+ * (its size and SHA-256), when the catalog holds one; no folder at all when it does not.
+ * @param {string} distDir
+ * @param {{ slug: string, install: null | { tag: string, bench?: null | { id: string, name: string, size: number, sha256: string } } }} product
+ * @returns {string[]}
+ */
+export function benchDirProblems(distDir, product) {
+  const dir = join(distDir, product.slug, 'bench');
+  const where = `dist/${product.slug}/bench/`;
+  const bench = product.install?.bench;
+  if (!bench) return existsSync(dir) ? [`${where} exists, the catalog holds no bench for ${product.slug}`] : [];
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return [`${where} is missing, the catalog holds a bench (${product.install.tag})`];
+  const expected = benchPath(product.slug, bench);
+  const found = walk(dir).map((abs) => relative(distDir, abs).split(sep).join('/'));
+  const problems = found.filter((rel) => rel !== expected).map((rel) => `dist/${rel}: not the bench ${bench.name} of the catalog (${product.install.tag})`);
+  const file = join(distDir, expected);
+  if (!existsSync(file) || !statSync(file).isFile()) return [...problems, `dist/${expected} is missing`];
+  const bytes = readFileSync(file);
+  if (bytes.length !== bench.size) problems.push(`dist/${expected} is ${bytes.length} bytes, the catalog gives ${bench.size}`);
+  else if (createHash('sha256').update(bytes).digest('hex') !== bench.sha256) problems.push(`dist/${expected} is not the bench of the release byte for byte (its SHA-256 differs from the catalog's)`);
+  return problems;
+}
+
+/**
+ * Every file of dist/ whose name ends in `_bench.html` and is not a bench of the built catalog: a
+ * bench the catalog does not hold must not be served.
+ * @param {string} distDir
+ * @param {Array<{ slug: string, install: null | { bench?: null | { id: string, name: string } } }>} products
+ * @returns {string[]}
+ */
+export function strayBenchProblems(distDir, products) {
+  const expected = new Set(products.filter((p) => p.install?.bench).map((p) => benchPath(p.slug, p.install.bench)));
+  return walk(distDir)
+    .map((abs) => relative(distDir, abs).split(sep).join('/'))
+    .filter((rel) => rel.endsWith(BENCH_SUFFIX) && !expected.has(rel))
+    .map((rel) => `dist/${rel}: a bench file, not a bench of the built catalog`);
 }

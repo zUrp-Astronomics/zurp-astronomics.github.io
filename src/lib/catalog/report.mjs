@@ -1,4 +1,4 @@
-// SOURCE: zurp-astronomics-site — the catalog report of a build: every product published (origin, « Source » link, what it installs), every product skipped, release ignored and ESP manifest rejected, with the reason — in the build log and, on GitHub Actions, in the job summary
+// SOURCE: zurp-astronomics-site — the catalog report of a build: every product published (origin, « Source » link, what it installs, its bench), every product skipped, release ignored, ESP manifest rejected and bench not published, with the reason — in the build log and, on GitHub Actions, in the job summary
 // AUTHOR: engineer
 // DATE: 2026-10-06
 // STATUS: active — ticket #72
@@ -6,6 +6,9 @@
 //   report any more
 // REVISED: 2026-10-12 (ticket #101) — per product, what it publishes to install (version, ESP chip
 //   families, files to download), « nothing to install », or that its ESP manifest was rejected
+// REVISED: 2026-10-16 (ticket #107) — the web bench: per product, its bench or that it is not
+//   published; the benches not published (`benchProblems`) in their own warnings, count and section,
+//   apart from the ESP manifests rejected (whose labels are unchanged)
 //
 // WHY (ticket #72). The site publishes what it discovers: a repository whose sheet or poster is
 // invalid is skipped, not fatal. Nothing fails any more, so it must be SEEN: each build writes, at
@@ -25,35 +28,43 @@ import { appendFileSync } from 'node:fs';
 
 /**
  * What the report says a product publishes to install.
- * @param {{ origin: string, install?: { tag: string, esp: null | { builds: Array<{ chipFamily: string }> }, downloads: Array<{ name: string }> } | null }} product
+ * @param {{ origin: string, install?: { tag: string, esp: null | { builds: Array<{ chipFamily: string }> }, downloads: Array<{ name: string }>, bench?: null | { name: string } } | null }} product
  * @param {Array<{ origin: string }>} rejected
+ * @param {Array<{ origin: string }>} benchProblems
  */
-function installState(product, rejected) {
+function installState(product, rejected, benchProblems) {
   const parts = [];
   const install = product.install;
   if (install?.esp) parts.push(`ESP ${[...new Set(install.esp.builds.map((b) => b.chipFamily))].join(', ')}`);
   if (install?.downloads.length) parts.push(`download ${install.downloads.map((d) => d.name).join(', ')}`);
+  if (install?.bench) parts.push(`bench ${install.bench.name}`);
   const refused = rejected.some((r) => r.origin === product.origin) ? 'ESP manifest REJECTED, not published' : null;
-  if (!install) return refused ?? 'nothing to install';
-  return `install ${install.tag}: ${[...parts, ...(refused ? [refused] : [])].join('; ')}`;
+  const noBench = benchProblems.some((r) => r.origin === product.origin) ? 'bench NOT published' : null;
+  const notes = [refused, noBench].filter(Boolean);
+  if (!install) return notes.length ? notes.join('; ') : 'nothing to install';
+  return `install ${install.tag}: ${[...parts, ...notes].join('; ')}`;
 }
 
 /**
  * The report of a built catalog.
- * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string, install?: any }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }>, installRejected?: Array<{ origin: string, problems: string[] }> }} catalog
+ * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string, install?: any }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }>, installRejected?: Array<{ origin: string, problems: string[] }>, benchProblems?: Array<{ origin: string, problems: string[] }> }} catalog
  * @returns {{ lines: string[], warnings: string[], markdown: string }}
  */
-export function catalogReport({ read, products, skipped, ignoredReleases, installRejected = [] }) {
+export function catalogReport({ read, products, skipped, ignoredReleases, installRejected = [], benchProblems = [] }) {
   const warnings = [
     ...skipped.map((s) => `product skipped — ${s.problems.join('; ')}`),
     ...ignoredReleases.map((r) => r.message),
     ...installRejected.map((r) => `ESP manifest rejected — ${r.problems.join('; ')}`),
+    ...benchProblems.map((r) => `bench not published — ${r.problems.join('; ')}`),
   ];
   const withInstall = products.filter((p) => p.install).length;
+  const withBench = products.filter((p) => p.install?.bench).length;
+  // The bench counts before the install counts: the ESP labels end the line, as they did (test 3b).
   const counts =
     `${products.length} product(s) published, ${skipped.length} skipped, ${ignoredReleases.length} release(s) ignored, ` +
+    `${withBench} bench(es) published, ${benchProblems.length} bench(es) not published, ` +
     `${withInstall} with something to install, ${installRejected.length} ESP manifest(s) rejected`;
-  const install = (p) => installState(p, installRejected);
+  const install = (p) => installState(p, installRejected, benchProblems);
   const width = (key) => Math.max(0, ...products.map((p) => p[key].length));
   const lines = [
     `catalog of this build — source: ${read} — ${counts}`,
@@ -77,6 +88,7 @@ export function catalogReport({ read, products, skipped, ignoredReleases, instal
     ...section('Products skipped (not published)', skipped.flatMap((s) => s.problems)),
     ...section('Releases ignored', ignoredReleases.map((r) => r.message)),
     ...section('ESP manifests rejected (ESP install not published)', installRejected.flatMap((r) => r.problems)),
+    ...section('Benches not published', benchProblems.flatMap((r) => r.problems)),
   );
   return { lines, warnings, markdown: md.join('\n') + '\n' };
 }

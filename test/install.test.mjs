@@ -7,6 +7,9 @@
 //   and zurp-firmware.json are gone; ESP Web Tools manifest.json, .hex, .img.xz (src/lib/catalog/install.mjs)
 // REVISED: 2026-10-13 (ticket #101, review of PR #103) — test 1: the draft carries a `published_at`
 //   (the `draft` flag alone must leave it out); test 3b: the catalog report's three cases
+// REVISED: 2026-10-16 (ticket #107) — the web bench: tests 9 to 11 (the suffix, the release it is
+//   taken from, its problems through the real chain of the report, the page and dist/ checks); test 6
+//   publishes Basilisk's bench of v0.1.0, never the one of v0.2.0
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). The contract with the products (src/lib/catalog/install.mjs)
@@ -19,11 +22,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { createHash } from 'node:crypto';
 
 import { githubBackend, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readRepoProducts } from '../src/lib/catalog/read.mjs';
@@ -35,13 +39,15 @@ import {
   espId,
   espManifestProblems,
   isBareFileName,
+  isBench,
+  isInstallable,
 } from '../src/lib/catalog/install.mjs';
-import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
+import { readAndSnapshot, readSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogReport } from '../src/lib/catalog/report.mjs';
-import { espManifestPath, espManifestUrlPath, espPublishedPaths } from '../src/lib/install.mjs';
+import { benchPath, benchUrlPath, espManifestPath, espManifestUrlPath, espPublishedPaths } from '../src/lib/install.mjs';
 import { catalogContent, fill, siteContent } from '../src/lib/content.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
-import { espDirProblems, installBlockProblems } from '../scripts/lib/check-install.mjs';
+import { benchDirProblems, espDirProblems, installBlockProblems, strayBenchProblems } from '../scripts/lib/check-install.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sectionIds = catalogContent(ROOT).sections.map((s) => s.id);
@@ -100,16 +106,19 @@ function makeSim(repos, releases = {}) {
   return dir;
 }
 
-/** The simulator backend of `dir`, every download recorded in `downloads` (`<tag>/<name>`). */
+/** The simulator backend of `dir`, every download recorded in `downloads` (`<tag>/<name>`) and in `byRepo` (`<repo>:<tag>/<name>`). */
 function spied(dir) {
   const be = simulatorBackend(dir);
   const downloads = [];
+  const byRepo = [];
   return {
     downloads,
+    byRepo,
     backend: {
       ...be,
       async downloadAsset(r, release, asset) {
         downloads.push(`${release.tag_name}/${asset.name}`);
+        byRepo.push(`${r}:${release.tag_name}/${asset.name}`);
         return be.downloadAsset(r, release, asset);
       },
     },
@@ -381,15 +390,17 @@ test('5. ESP Web Tools is pinned exactly at 10.4.0, and the chip families and se
 });
 
 // 6 -------------------------------------------------------------------------------------------------
-test('6. the offline build: Basilisk installs the ESP of v0.1.0 (two chip families), not its later v0.2.0; Maelstrom a .hex, Cyclops an .img.xz, linked on GitHub; the bytes are beside the snapshot, never in it', async () => {
+test('6. the offline build: Basilisk installs the ESP and the bench of v0.1.0 (two chip families), not its later v0.2.0 (nor its bench); Maelstrom a .hex, Cyclops an .img.xz, linked on GitHub; the bytes are beside the snapshot, never in it', async () => {
   const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
   cpSync(join(ROOT, 'content'), join(root, 'content'), { recursive: true });
   cpSync(join(ROOT, 'catalog-simulator'), join(root, 'catalog-simulator'), { recursive: true });
-  await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds });
+  const { backend, byRepo } = spied(join(root, 'catalog-simulator'));
+  await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds, backend });
   const snapshotFile = join(root, '.zurp-catalog', 'remote.json');
-  const { products, installRejected } = await loadBuiltCatalog({ snapshotFile, root });
+  const { products, installRejected, benchProblems } = await loadBuiltCatalog({ snapshotFile, root });
   const by = Object.fromEntries(products.map((p) => [p.slug, p]));
   assert.deepEqual(installRejected, []);
+  assert.deepEqual(benchProblems, []);
   assert.deepEqual(products.filter((p) => p.install).map((p) => p.slug).sort(), ['basilisk', 'cyclops', 'maelstrom'], 'the others install nothing (Unicorn runs TeenAstro)');
 
   assert.equal(by.basilisk.release.tag, 'v0.2.0');
@@ -409,6 +420,23 @@ test('6. the offline build: Basilisk installs the ESP of v0.1.0 (two chip famili
   }
   assert.deepEqual(readFileSync(join(root, '.zurp-catalog', 'firmware', esp.manifest.sha256)),
     readFileSync(join(ROOT, 'catalog-simulator', 'releases', 'basilisk', 'v0.1.0', ESP_MANIFEST)), 'the manifest as is, byte for byte');
+
+  // The bench (ticket #107): v0.1.0's, the release installed; v0.2.0's, of a release with nothing
+  // installable, is neither downloaded nor kept.
+  const bench = by.basilisk.install.bench;
+  assert.equal(bench.name, 'basilisk_0.1.0_bench.html');
+  const source = readFileSync(join(ROOT, 'catalog-simulator', 'releases', 'basilisk', 'v0.1.0', bench.name));
+  assert.equal(bench.size, source.length);
+  assert.deepEqual(readFileSync(join(root, '.zurp-catalog', 'firmware', bench.sha256)), source, 'the bench as is, byte for byte');
+  assert.match(bench.id, /^[0-9a-f]{16}$/);
+  assert.ok(!text.includes('simulator stand-in'), 'no bench bytes in the snapshot');
+  const later = readFileSync(join(ROOT, 'catalog-simulator', 'releases', 'basilisk', 'v0.2.0', 'basilisk_0.2.0_bench.html'));
+  assert.notDeepEqual(later, source, 'the two benches differ: the one kept proves the release');
+  assert.ok(readdirSync(join(root, '.zurp-catalog', 'firmware')).every((f) => !readFileSync(join(root, '.zurp-catalog', 'firmware', f)).equals(later)), 'v0.2.0\'s bench kept nowhere');
+  assert.deepEqual(byRepo.filter((d) => d.startsWith('basilisk:')).sort(),
+    ['basilisk:v0.1.0/basilisk_0.1.0_bench.html', 'basilisk:v0.1.0/basilisk_0.1.0_esp32c3.bin', 'basilisk:v0.1.0/basilisk_0.1.0_esp32s3.bin', `basilisk:v0.1.0/${ESP_MANIFEST}`].sort(),
+    'the manifest, its files and the bench of v0.1.0: nothing of v0.2.0');
+  for (const slug of ['maelstrom', 'cyclops', 'unicorn']) assert.equal(by[slug].install?.bench ?? null, null, `${slug}: no bench`);
 });
 
 // 7 -------------------------------------------------------------------------------------------------
@@ -508,4 +536,185 @@ test('8. the product page shows an #install block — the version, the ESP Web T
   put('gizmo/firmware/abcdef0123456789/gizmo_1.2.0_esp32s3.bin', 'SSSSS');
   put('gizmo/firmware/9999999999999999/manifest.json');
   assert.match(espDirProblems(dist, sized).join('\n'), /^dist\/gizmo\/firmware\/9999999999999999\/manifest\.json: not a file of the ESP publication v1\.2\.0 of the catalog$/);
+});
+
+// 9 -------------------------------------------------------------------------------------------------
+const BENCH = (v) => `<!doctype html><title>Gizmo bench ${v}</title>`;
+
+test('9. the web bench: recognised by the exact suffix _bench.html after a non-empty prefix, never installable', () => {
+  for (const name of ['basilisk_0.1.0_bench.html', 'x_bench.html', 'Gizmo_1.2.0_bench.html']) assert.equal(isBench(name), true, name);
+  for (const name of ['_bench.html', 'bench.html', 'x-bench.html', 'x_bench.htm', 'x_bench.HTML', 'x_BENCH.html', 'x_bench.html.bak', 'x_bench.html/', null, undefined]) {
+    assert.equal(isBench(name), false, String(name));
+  }
+  assert.equal(isInstallable('gizmo_1.2.0_bench.html'), false, 'a bench does not make a release installable');
+});
+
+test('9b. the bench is taken from the release selected and from no other; a bench alone selects no release; two benches, or an install not published: no bench, a problem of its own', async () => {
+  const sim = makeSim(
+    { alpha: repo(), bravo: repo(), charlie: repo(), delta: repo(), echo: repo(), foxtrot: repo(), golf: repo() },
+    {
+      // The bench of the release selected; a later release with only an image and a bench is not selected.
+      alpha: [
+        rel('v1', '2026-09-01T00:00:00Z', { files: { [ESP_MANIFEST]: manifest(ESP), ...FILES, 'gizmo_1.2.0_bench.html': BENCH('v1') } }),
+        rel('v2', '2026-10-01T00:00:00Z', { files: { 'gizmo_1.3.0_esp32s3.bin': 'new', 'gizmo_1.3.0_bench.html': BENCH('v2') } }),
+      ],
+      // A later release with only a bench is not selected: the install stays v1's, which has no bench.
+      bravo: [
+        rel('v1', '2026-09-01T00:00:00Z', { files: { 'gizmo_1.0.0_stm32f411.hex': 'hex' } }),
+        rel('v2', '2026-10-01T00:00:00Z', { files: { 'gizmo_2.0.0_bench.html': BENCH('v2') } }),
+      ],
+      // Only a bench, anywhere: nothing to install, and nothing to report.
+      charlie: [rel('v1', '2026-09-01T00:00:00Z', { files: { 'gizmo_1.0.0_bench.html': BENCH('v1') } })],
+      // The release selected has no bench: no fall back to the bench of an older release.
+      delta: [
+        rel('v1', '2026-09-01T00:00:00Z', { files: { 'gizmo_1.0.0_stm32f411.hex': 'hex', 'gizmo_1.0.0_bench.html': BENCH('v1') } }),
+        rel('v2', '2026-10-01T00:00:00Z', { files: { 'gizmo_2.0.0_stm32f411.hex': 'hex2' } }),
+      ],
+      // Two benches: the ESP is published, no bench, a bench problem.
+      echo: [rel('v1', '2026-09-01T00:00:00Z', { files: { [ESP_MANIFEST]: manifest(ESP), ...FILES, 'gizmo_1.2.0_bench.html': BENCH('a'), 'gizmo_1.2.0-alt_bench.html': BENCH('b') } })],
+      // An invalid manifest as the only installable file, plus a bench: nothing published, reported.
+      foxtrot: [rel('v1', '2026-09-01T00:00:00Z', { files: { [ESP_MANIFEST]: manifest([]), ...FILES, 'gizmo_1.2.0_bench.html': BENCH('f') } })],
+      // A bench beside a .hex only (no ESP publication): published.
+      golf: [rel('v1', '2026-09-01T00:00:00Z', { files: { 'gizmo_1.0.0_stm32f411.hex': 'hex', 'gizmo_1.0.0_bench.html': BENCH('g') } })],
+    },
+  );
+  const { backend, byRepo } = spied(sim);
+  const { products, installRejected, benchProblems } = await readRepoProducts(backend, { sectionIds });
+  const by = Object.fromEntries(products.map((p) => [p.slug, p]));
+  const of = (slug) => byRepo.filter((d) => d.startsWith(`${slug}:`)).map((d) => d.slice(slug.length + 1)).sort();
+
+  assert.equal(by.alpha.install.tag, 'v1');
+  assert.deepEqual([by.alpha.install.bench.name, by.alpha.install.bench.size], ['gizmo_1.2.0_bench.html', Buffer.byteLength(BENCH('v1'))]);
+  assert.match(by.alpha.install.bench.id, /^[0-9a-f]{16}$/);
+  assert.equal(by.alpha.install.bench.id, by.alpha.install.bench.sha256.slice(0, 16), 'versioned by its content');
+  assert.equal(by.bravo.install.tag, 'v1', 'a bench alone does not select a release');
+  assert.equal(by.bravo.install.bench, null);
+  assert.equal(by.charlie.install, null, 'a bench alone publishes nothing');
+  assert.equal(by.delta.install.tag, 'v2');
+  assert.equal(by.delta.install.bench, null, 'no fall back to the bench of an older release');
+  assert.ok(by.echo.install.esp, 'two benches: the ESP is published all the same');
+  assert.equal(by.echo.install.bench, null, 'two benches: none is published');
+  assert.equal(by.foxtrot.install, null, 'an invalid manifest and a bench: nothing published');
+  assert.equal(by.golf.install.bench.name, 'gizmo_1.0.0_bench.html', 'a bench beside a .hex only');
+  assert.equal(by.golf.install.esp, null);
+
+  const problems = Object.fromEntries(benchProblems.map((r) => [r.repo, r.problems.join('\n')]));
+  assert.deepEqual(Object.keys(problems).sort(), ['echo', 'foxtrot'], 'only the two cases are bench problems');
+  assert.match(problems.echo, /^repository echo, release "v1" \(bench\): 2 files ending in _bench\.html \(gizmo_1\.2\.0-alt_bench\.html, gizmo_1\.2\.0_bench\.html\) — a release carries one bench at most: none is published$/);
+  assert.match(problems.foxtrot, /^repository foxtrot, release "v1" \(bench\): gizmo_1\.2\.0_bench\.html not published — the release publishes nothing to install/);
+  assert.deepEqual(installRejected.map((r) => r.repo), ['foxtrot'], 'the manifest is rejected as before; the bench is never in installRejected');
+  assert.ok(installRejected.every((r) => r.problems.every((p) => !p.includes('bench'))));
+
+  assert.deepEqual(of('alpha'), ['v1/gizmo_1.2.0_bench.html', 'v1/gizmo_1.2.0_esp32c3.bin', 'v1/gizmo_1.2.0_esp32s3.bin', `v1/${ESP_MANIFEST}`].sort(), 'never the bench of v2');
+  assert.deepEqual(of('bravo'), [], 'a .hex is linked, never downloaded; a bench of a release not selected neither');
+  assert.deepEqual(of('charlie'), []);
+  assert.deepEqual(of('delta'), []);
+  assert.deepEqual(of('echo'), ['v1/gizmo_1.2.0_esp32c3.bin', 'v1/gizmo_1.2.0_esp32s3.bin', `v1/${ESP_MANIFEST}`].sort(), 'two benches: none downloaded');
+  assert.deepEqual(of('foxtrot'), [`v1/${ESP_MANIFEST}`], 'an invalid manifest: the bench is not downloaded');
+  assert.deepEqual(of('golf'), ['v1/gizmo_1.0.0_bench.html']);
+});
+
+// 10 ------------------------------------------------------------------------------------------------
+test('10. a bench problem goes through the real chain of the report — readAndSnapshot, loadBuiltCatalog, catalogReport — apart from the ESP labels, the ESP of the same product reported as published', async () => {
+  const sim = makeSim(
+    { echo: repo(), foxtrot: repo(), golf: repo() },
+    {
+      echo: [rel('v1', '2026-09-01T00:00:00Z', { files: { [ESP_MANIFEST]: manifest(ESP), ...FILES, 'gizmo_1.2.0_bench.html': BENCH('a'), 'gizmo_1.2.0-alt_bench.html': BENCH('b') } })],
+      foxtrot: [rel('v1', '2026-09-01T00:00:00Z', { files: { [ESP_MANIFEST]: manifest([]), ...FILES, 'gizmo_1.2.0_bench.html': BENCH('f') } })],
+      golf: [rel('v1', '2026-09-01T00:00:00Z', { files: { 'gizmo_1.0.0_stm32f411.hex': 'hex', 'gizmo_1.0.0_bench.html': BENCH('g') } })],
+    },
+  );
+  const root = mkdtempSync(join(tmpdir(), 'zurp-root-'));
+  cpSync(join(ROOT, 'content'), join(root, 'content'), { recursive: true });
+  await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds, backend: simulatorBackend(sim) });
+  const snapshotFile = join(root, '.zurp-catalog', 'remote.json');
+  const report = catalogReport(await loadBuiltCatalog({ snapshotFile, root }));
+  const line = (slug) => report.lines.find((l) => l.startsWith(`  ${slug} `));
+
+  assert.deepEqual(report.warnings.filter((w) => w.startsWith('bench not published — ')).map((w) => w.split(',')[0]),
+    ['bench not published — repository echo', 'bench not published — repository foxtrot'], 'one warning per bench problem, labelled as a bench');
+  assert.match(line('echo'), /  install v1: ESP ESP32-S3, ESP32-C3; bench NOT published$/, 'the ESP of the same product published');
+  assert.match(line('foxtrot'), /  ESP manifest REJECTED, not published; bench NOT published$/);
+  assert.match(line('golf'), /  install v1: download gizmo_1\.0\.0_stm32f411\.hex; bench gizmo_1\.0\.0_bench\.html$/);
+  assert.match(report.lines[0], /, 1 bench\(es\) published, 2 bench\(es\) not published, 2 with something to install, 1 ESP manifest\(s\) rejected$/);
+  assert.ok(report.warnings.some((w) => /^ESP manifest rejected — repository foxtrot/.test(w)), 'the ESP warning as it was');
+  assert.ok(!report.warnings.some((w) => /^ESP manifest rejected — repository echo/.test(w)), 'two benches are no ESP problem');
+  assert.match(report.markdown, /### Benches not published\n\n- repository echo, release "v1" \(bench\): 2 files ending in _bench\.html/);
+  assert.match(report.markdown, /\| `echo` \| .* \| install v1: ESP ESP32-S3, ESP32-C3; bench NOT published \|/);
+  assert.match(report.markdown, /### ESP manifests rejected \(ESP install not published\)\n\n- repository foxtrot, release "v1" \(manifest\.json\)/);
+
+  // The snapshot keeps the key; a snapshot without it is refused (rebuild), never read as « no problem ».
+  const snapshot = JSON.parse(readFileSync(snapshotFile, 'utf8'));
+  assert.equal(snapshot.benchProblems.length, 2);
+  const old = join(root, 'old.json');
+  const { benchProblems: _, ...rest } = snapshot;
+  writeFileSync(old, JSON.stringify(rest));
+  assert.throws(() => readSnapshot(old), /not a catalog snapshot .*benchProblems.* — rebuild/);
+  // The bytes of the bench published, and only those, are beside the snapshot.
+  const kept = readdirSync(join(root, '.zurp-catalog', 'firmware')).map((f) => readFileSync(join(root, '.zurp-catalog', 'firmware', f), 'utf8'));
+  assert.ok(kept.includes(BENCH('g')));
+  assert.ok(!kept.some((k) => [BENCH('a'), BENCH('b'), BENCH('f')].includes(k)), 'no bench of a problem is kept');
+  rmSync(root, { recursive: true, force: true });
+});
+
+// 11 ------------------------------------------------------------------------------------------------
+const benchPart = (url, { tab = url, frame = 'allow="serial"', button = TEXTS.bench.button } = {}) =>
+  `<div class="install-bench" ${CID}><p ${CID}>${esc(TEXTS.bench.intro)}</p><div class="bench-actions" ${CID}><button type="button" class="bench-open" data-bench="${esc(url)}" aria-haspopup="dialog" ${CID}>${esc(button)}</button><a class="repo-link" href="${esc(tab)}" target="_blank" rel="noopener" data-bench-tab ${CID}><span class="repo-icon" aria-hidden="true" ${CID}>⟶</span><span class="repo-url" ${CID}>${esc(TEXTS.bench.tab)}</span></a></div><dialog class="bench-dialog" data-bench-dialog aria-label="Gizmo bench" ${CID}><form method="dialog" class="bench-bar" ${CID}><button class="bench-close" ${CID}>${esc(TEXTS.bench.close)}</button></form><iframe ${frame} title="Gizmo bench" data-bench-frame ${CID}></iframe></dialog></div>`;
+
+test('11. the product page shows the bench — one button on the bench\'s file in dist/, one « new tab » link to the same URL, one frame allow="serial" without src — only when the catalog holds one; dist/<slug>/bench/ holds exactly that file, byte for byte', () => {
+  const dist = mkdtempSync(join(tmpdir(), 'zurp-dist-'));
+  const put = (rel, content = 'x') => { mkdirSync(dirname(join(dist, rel)), { recursive: true }); writeFileSync(join(dist, rel), content); };
+  const opts = { texts: TEXTS, distDir: dist };
+  const bytes = BENCH('v1.0.0');
+  const sha = createHash('sha256').update(bytes).digest('hex');
+  const bench = { id: sha.slice(0, 16), name: 'gizmo_1.0.0_bench.html', size: Buffer.byteLength(bytes), sha256: sha };
+  const hex = { kind: 'hex', name: 'gizmo_1.0.0_stm32f411.hex', size: 3, url: 'https://github.com/zUrp-Astronomics/Gizmo/releases/download/v1.0.0/gizmo_1.0.0_stm32f411.hex' };
+  const link = { href: hex.url, text: fill(TEXTS.download, { file: hex.name }) };
+  const withBench = { slug: 'gizmo', install: { tag: 'v1.0.0', esp: null, downloads: [hex], bench } };
+  const without = { slug: 'gizmo', install: { tag: 'v1.0.0', esp: null, downloads: [hex], bench: null } };
+  const bare = { slug: 'gizmo', install: null };
+  const url = benchUrlPath('gizmo', bench);
+  assert.equal(url, `/gizmo/bench/${bench.id}/gizmo_1.0.0_bench.html`);
+  assert.equal(benchPath('gizmo', bench), `gizmo/bench/${bench.id}/gizmo_1.0.0_bench.html`, 'a folder of its own: it works without an ESP publication');
+  const block = (inner) => installBlock({ tag: 'v1.0.0', inner: downloadPart('hex', [link]) + inner });
+  const check = (product, html) => installBlockProblems(productPage(html), product, opts).join('\n');
+
+  put(benchPath('gizmo', bench), bytes);
+  assert.equal(check(withBench, block(benchPart(url))), '', 'the page as the site writes it');
+  assert.equal(check(without, block('')), '', 'no bench: nothing of it');
+  assert.match(check(withBench, block('')), /0 bench button\(s\), 0 in the #install block — expected exactly 1, in it/);
+  assert.match(check(withBench, block(benchPart(url)) + benchPart(url)), /2 bench button\(s\), 1 in the #install block/);
+  assert.match(check(withBench, block(benchPart('/gizmo/bench/0000000000000000/gizmo_1.0.0_bench.html'))), /the bench button opens "\/gizmo\/bench\/0000000000000000\/gizmo_1\.0\.0_bench\.html", expected/);
+  assert.match(check(withBench, block(benchPart(url, { tab: 'https://github.com/zUrp-Astronomics/Gizmo/releases/download/v1.0.0/gizmo_1.0.0_bench.html' }))),
+    /the bench « new tab » link goes to "https:\/\/github\.com\/.*", expected "\/gizmo\/bench\/.*" \(the bench button's URL\)/, 'never linked from the release');
+  assert.match(check(withBench, block(benchPart(url, { frame: '' }))), /the bench frame's allow is null: Web Serial needs allow="serial"/);
+  assert.match(check(withBench, block(benchPart(url, { frame: `allow="serial" src="${url}"` }))), /the bench frame has a src .*: it is set when the dialog opens/);
+  assert.match(check(withBench, block(benchPart(url, { button: 'Open' }))), /the bench button says "Open", expected "Bench"/);
+  assert.match(check(withBench, block(benchPart(url).replace(' data-bench-tab', ''))), /0 bench « new tab » link\(s\)/);
+  assert.match(check(without, block(benchPart(url))), /1 bench button\(s\), the catalog holds no bench for gizmo \(v1\.0\.0\)/);
+  assert.match(check(without, block(benchPart(url))), /1 bench frame\(s\), the catalog holds no bench/);
+  assert.match(check(bare, `<p>${benchPart(url)}</p>`), /1 bench button\(s\), the catalog holds no bench for gizmo \(nothing to install\)/);
+
+  // The bench/ folder.
+  assert.equal(benchDirProblems(dist, withBench).join('\n'), '', 'exactly the bench, byte for byte');
+  assert.match(benchDirProblems(dist, without).join('\n'), /^dist\/gizmo\/bench\/ exists, the catalog holds no bench for gizmo$/);
+  put(benchPath('gizmo', bench), bytes.replace('v1.0.0', 'v9.9.9'));
+  assert.match(benchDirProblems(dist, withBench).join('\n'), /is not the bench of the release byte for byte/, 'same size, other bytes');
+  put(benchPath('gizmo', bench), 'short');
+  assert.match(benchDirProblems(dist, withBench).join('\n'), /is 5 bytes, the catalog gives \d+/);
+  assert.match(check(withBench, block(benchPart(url))), /the bench button opens .*, 5 bytes, the catalog gives \d+/);
+  put(benchPath('gizmo', bench), bytes);
+  put('gizmo/bench/9999999999999999/gizmo_0.9.0_bench.html');
+  assert.match(benchDirProblems(dist, withBench).join('\n'), /^dist\/gizmo\/bench\/9999999999999999\/gizmo_0\.9\.0_bench\.html: not the bench gizmo_1\.0\.0_bench\.html of the catalog/);
+  rmSync(join(dist, 'gizmo', 'bench'), { recursive: true });
+  assert.match(benchDirProblems(dist, withBench).join('\n'), /^dist\/gizmo\/bench\/ is missing, the catalog holds a bench \(v1\.0\.0\)$/);
+  assert.match(check(withBench, block(benchPart(url))), /the bench button opens .*, missing: dist\/gizmo\/bench\//);
+  assert.equal(benchDirProblems(dist, without).join('\n'), '');
+
+  // No bench file anywhere else in dist/.
+  put(benchPath('gizmo', bench), bytes);
+  assert.deepEqual(strayBenchProblems(dist, [withBench]), []);
+  assert.deepEqual(strayBenchProblems(dist, [without]), [`dist/${benchPath('gizmo', bench)}: a bench file, not a bench of the built catalog`]);
+  put('gizmo/firmware/abcdef0123456789/gizmo_1.0.0_bench.html');
+  assert.deepEqual(strayBenchProblems(dist, [withBench]), ['dist/gizmo/firmware/abcdef0123456789/gizmo_1.0.0_bench.html: a bench file, not a bench of the built catalog']);
 });

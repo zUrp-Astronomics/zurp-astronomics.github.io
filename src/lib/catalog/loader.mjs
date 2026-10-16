@@ -12,6 +12,8 @@
 //   `firmware` and the manifests rejected (`firmwareRejected`) kept in the snapshot
 // REVISED: 2026-10-12 (ticket #101) — `install` replaces `firmware` (ESP Web Tools manifest, .hex,
 //   .img.xz), `installRejected` replaces `firmwareRejected`; firmware/ holds the manifest and its files
+// REVISED: 2026-10-16 (ticket #107) — firmware/ holds the web bench too; `benchProblems` (a bench not
+//   published) kept in the snapshot, required by readSnapshot, warned at the build
 //
 // Declared in src/content.config.ts. At each build (and `astro dev`/`astro sync`) it:
 //   1. reads the source named by ZURP_CATALOG (source.mjs) — the build fails without it;
@@ -24,8 +26,9 @@
 //                               variants after the source file: _astro/<slug>.<hash>.webp, the
 //                               names the posters of src/assets/posters/ had before ticket #49);
 //        firmware/<sha256>      a product's ESP Web Tools manifest and each file it names (ticket
-//                               #101), named after the SHA-256 of its bytes; published by
-//                               src/pages/[slug]/firmware/ (src/lib/install.mjs) — their bytes never
+//                               #101), and its web bench (ticket #107), named after the SHA-256 of
+//                               its bytes; published by src/pages/[slug]/firmware/ and
+//                               src/pages/[slug]/bench/ (src/lib/install.mjs) — their bytes never
 //                               go in the snapshot;
 //        remote.json            the snapshot of what was read (no image bytes): the scripts that run
 //                               after the build (scripts/check-dist.mjs, scripts/readme-kit.mjs)
@@ -35,8 +38,9 @@
 //                               with its URL and its two licences, so the page and the README kit
 //                               see the same ones), it keeps what was left out: `skipped` (the
 //                               repositories whose product is invalid, with the problems),
-//                               `ignoredReleases` and `installRejected` (the ESP manifests rejected,
-//                               with the problems): src/lib/catalog/report.mjs prints them;
+//                               `ignoredReleases`, `installRejected` (the ESP manifests rejected,
+//                               with the problems) and `benchProblems` (the benches not published,
+//                               with the reason): src/lib/catalog/report.mjs prints them;
 //   4. stores one entry per product, its `poster` given to the schema's image() as a local file:
 //      Astro imports it like a poster of src/assets/ (same `fsPath`, same variants, no original
 //      copied to dist/ as long as only `fsPath` is read outside <Image>/getImage).
@@ -50,7 +54,7 @@ import { readRepoProducts } from './read.mjs';
 export const SNAPSHOT_DIR = '.zurp-catalog';
 export const SNAPSHOT_FILE = `${SNAPSHOT_DIR}/remote.json`;
 export const SIMULATOR_DIR = 'catalog-simulator';
-/** Where the build keeps the bytes of an ESP manifest or of a file it names, named after its SHA-256. */
+/** Where the build keeps the bytes of an ESP manifest, of a file it names or of a bench, named after its SHA-256. */
 export const firmwareFile = (root, sha256) => join(root, SNAPSHOT_DIR, 'firmware', sha256);
 
 /**
@@ -66,7 +70,7 @@ export async function readAndSnapshot({ root, env = process.env, sectionIds, bac
   const be =
     backend ??
     (source === 'github' ? githubBackend({ token: env[TOKEN_VAR] || undefined }) : simulatorBackend(join(root, SIMULATOR_DIR)));
-  const { products, skipped, ignoredReleases, installRejected } = await readRepoProducts(be, { sectionIds });
+  const { products, skipped, ignoredReleases, installRejected, benchProblems } = await readRepoProducts(be, { sectionIds });
   mkdirSync(join(outDir, 'posters'), { recursive: true });
   mkdirSync(join(outDir, 'firmware'), { recursive: true });
   for (const p of products) {
@@ -80,6 +84,7 @@ export async function readAndSnapshot({ root, env = process.env, sectionIds, bac
     skipped,
     ignoredReleases,
     installRejected,
+    benchProblems,
   };
   writeFileSync(join(root, SNAPSHOT_FILE), JSON.stringify(snapshot, null, 2) + '\n');
   return { snapshot, requests: be.requests };
@@ -95,7 +100,7 @@ export function readSnapshot(file) {
     throw new Error(`no catalog snapshot at ${file} — run the build first (ZURP_CATALOG=simulator|github npm run build)`);
   }
   const snapshot = JSON.parse(readFileSync(file, 'utf8'));
-  const lists = ['products', 'skipped', 'ignoredReleases', 'installRejected'];
+  const lists = ['products', 'skipped', 'ignoredReleases', 'installRejected', 'benchProblems'];
   if (!snapshot || !lists.every((k) => Array.isArray(snapshot[k]))) {
     throw new Error(`${file}: not a catalog snapshot (${lists.join(', ')}) — rebuild`);
   }
@@ -125,6 +130,7 @@ export function repoProductsLoader({ sectionIds }) {
       for (const s of snapshot.skipped) logger.warn(`product SKIPPED — ${s.problems.join('; ')}`);
       for (const r of snapshot.ignoredReleases) logger.warn(r.message);
       for (const r of snapshot.installRejected) logger.warn(`ESP install NOT PUBLISHED — ${r.problems.join('; ')}`);
+      for (const r of snapshot.benchProblems) logger.warn(`bench NOT PUBLISHED — ${r.problems.join('; ')}`);
       logger.info(
         `catalog source: ${snapshot.read} — ${snapshot.products.length} product(s) with a sheet` +
           (snapshot.skipped.length ? `, ${snapshot.skipped.length} skipped` : '') +
@@ -132,6 +138,7 @@ export function repoProductsLoader({ sectionIds }) {
           `; licences detected by GitHub: ${snapshot.products.filter((p) => p.license).map((p) => `${p.slug} ${p.license.spdx_id ?? p.license.name}`).join(', ') || 'none'}` +
           `; LICENSE-HARDWARE: ${snapshot.products.filter((p) => p.hardwareLicense).map((p) => `${p.slug} « ${p.hardwareLicense.title} »`).join(', ') || 'none'}` +
           `; install: ${snapshot.products.filter((p) => p.install).map((p) => `${p.slug} ${p.install.tag}`).join(', ') || 'none'}` +
+          `; bench: ${snapshot.products.filter((p) => p.install?.bench).map((p) => `${p.slug} ${p.install.bench.name}`).join(', ') || 'none'}` +
           (requests !== undefined ? `, ${requests} API request(s)` : ''),
       );
     },

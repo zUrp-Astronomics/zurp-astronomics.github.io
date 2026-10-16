@@ -1,7 +1,8 @@
-// SOURCE: zurp-astronomics-site — what the site publishes of a product's installable release: the paths of its ESP Web Tools folder in dist/, the chip families of its manifest
+// SOURCE: zurp-astronomics-site — what the site publishes of a product's installable release: the paths of its ESP Web Tools folder and of its web bench in dist/, the chip families of its manifest
 // AUTHOR: engineer
 // DATE: 2026-10-12
 // STATUS: active — ticket #101 (replaces src/lib/firmware.mjs, the ESP Launchpad TOML of ticket #96)
+// REVISED: 2026-10-16 (ticket #107) — the web bench, in a folder of its own: <slug>/bench/<id>/<file>
 //
 // What the site publishes of the install read by src/lib/catalog/install.mjs. Plain JavaScript, so
 // that the page (src/pages/[slug]/…), the post-build guard (scripts/check-dist.mjs) and the tests
@@ -18,6 +19,12 @@
 // worst case is a stale but coherent pair, or a clean 404, for 10 minutes at most. No stable URL is
 // promised to the products: their README links the product page (the contract's sentence, § 6 of
 // content/readme-kit/guide.md), which the site rewrites at each build.
+//   <slug>/bench/<id>/<file>             the web bench (ticket #107), copied AS IS, under its name in
+//                                        the release; <id> is the start of its SHA-256 (benchId), for
+//                                        the same reason of cache. A folder of its own, NOT beside the
+//                                        manifest: a product may have a bench without an ESP
+//                                        publication (a .hex only), and firmware/ stays exactly the ESP
+//                                        publication (scripts/lib/check-install.mjs, espDirProblems).
 // The slug is [a-z0-9_-] (read.mjs), the id hexadecimal: only the file name needs encoding in a URL.
 
 /** The folder of a product's ESP publication, relative to the site root. */
@@ -34,3 +41,12 @@ export const espPublishedPaths = (slug, esp) => [esp.manifest, ...esp.files].map
 
 /** The chip families of a manifest's builds, each once, in the manifest's order. */
 export const espChipFamilies = (esp) => [...new Set(esp.builds.map((b) => b.chipFamily))];
+
+/** The folder of a product's web bench, relative to the site root. */
+export const benchDirPath = (slug, bench) => `${slug}/bench/${bench.id}`;
+
+/** The bench's published path, relative to the site root. */
+export const benchPath = (slug, bench) => `${benchDirPath(slug, bench)}/${bench.name}`;
+
+/** The bench's URL path on the site (the iframe's `src`, the « new tab » link's `href`). */
+export const benchUrlPath = (slug, bench) => `/${benchDirPath(slug, bench)}/${encodeURIComponent(bench.name)}`;

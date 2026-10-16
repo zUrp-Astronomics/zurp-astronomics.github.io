@@ -11,6 +11,8 @@
 //   declared here, or zod drops it and the product page never shows its « Flash » block
 // REVISED: 2026-10-12 (ticket #101) — `install` replaces `firmware`: the ESP Web Tools manifest and
 //   the .hex / .img.xz links of a release; declared here, or the page never shows its #install block
+// REVISED: 2026-10-16 (ticket #107) — `install.bench`, the web bench of that release; declared here,
+//   or zod drops it and the page never shows its bench
 //
 // The loader (src/lib/catalog/loader.mjs) reads the source named by ZURP_CATALOG (simulator |
 // github, no default) and validates every sheet with messages naming the repository and the field
@@ -60,6 +62,7 @@ const repoProducts = defineCollection({
             })
             .nullable(),
           downloads: z.array(z.object({ kind: z.enum(['hex', 'img']), name: z.string(), size: z.number(), url: z.string() })),
+          bench: z.object({ id: z.string(), name: z.string(), size: z.number(), sha256: z.string() }).nullable(),
         })
         .nullable(),
     }),

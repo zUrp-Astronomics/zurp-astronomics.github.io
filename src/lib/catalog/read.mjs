@@ -20,6 +20,8 @@
 // REVISED: 2026-10-12 (ticket #101) — the ESP Launchpad publication is gone: what a release publishes
 //   to install (ESP Web Tools manifest.json, .hex, .img.xz) is `install`, a rejected manifest in
 //   `installRejected`; the second exception below is rewritten
+// REVISED: 2026-10-16 (ticket #107) — the web bench of the release selected (`install.bench`),
+//   downloaded beside an install only; its problems in `benchProblems`, a key of their own
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases, plus ONE file
@@ -28,7 +30,9 @@
 //   - of the files attached to the releases, it downloads ONLY the ESP Web Tools manifest
 //     `manifest.json` of ONE release — the latest published one carrying an installable file
 //     (manifest.json, *.hex, *.img.xz) — and the files THAT manifest names (the second exception,
-//     arbitrated by the human: ticket #96, rewritten by ticket #101 on 2026-10-12). The .hex and
+//     arbitrated by the human: ticket #96, rewritten by ticket #101 on 2026-10-12) — and the web
+//     bench `*_bench.html` of that same release, when it is its only one and the release publishes
+//     an install (ticket #107). The .hex and
 //     .img.xz of that release are only LISTED (their name, size and browser_download_url, from the
 //     list of releases), never downloaded; nothing else attached is read. The selection, the
 //     validation and the download are src/lib/catalog/install.mjs; what is published of it,
@@ -46,7 +50,9 @@
 //       install   null, or what the product page offers to install: the release that provides it
 //                 (its tag, its `published_at` — it may be older than `release`), its ESP Web Tools
 //                 manifest (null when absent or invalid) and its .hex / .img.xz links; an invalid
-//                 manifest is reported (`installRejected`), the product is published all the same
+//                 manifest is reported (`installRejected`), the product is published all the same;
+//                 and its web bench (`bench`, null when there is none), whose problems (two benches,
+//                 or a bench without an install) are reported apart (`benchProblems`)
 //       hardwareLicense
 //                 the HARDWARE licence: { title }, the first non-empty line of LICENSE-HARDWARE at the
 //                 root of the repository (ticket #75), read through the backend's readFile; null when
@@ -228,16 +234,17 @@ export async function posterImageProblem(bytes) {
  * (a failed request) is not caught: it throws.
  * Its hardware licence is read (LICENSE-HARDWARE) and its install (install.mjs) once the product is
  * valid; a product whose ESP manifest is invalid is published without its ESP install, the manifest
- * in `installRejected`.
+ * in `installRejected`; a bench of its install release that is not published, in `benchProblems`.
  * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, downloadAsset(repo: string, release: any, asset: any): Promise<Buffer>, describe?: string }} backend
  * @param {{ sectionIds: readonly string[] }} options
- * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }>, installRejected: Array<{ repo: string, origin: string, problems: string[] }> }>}
+ * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }>, installRejected: Array<{ repo: string, origin: string, problems: string[] }>, benchProblems: Array<{ repo: string, origin: string, problems: string[] }> }>}
  */
 export async function readRepoProducts(backend, { sectionIds }) {
   const products = [];
   const skipped = [];
   const ignoredReleases = [];
   const installRejected = [];
+  const benchProblems = [];
   for (const { name: repoName, url, license } of await backend.listRepos()) {
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
@@ -276,8 +283,9 @@ export async function readRepoProducts(backend, { sectionIds }) {
     const release = latestRelease(releases, ignored);
     for (const message of ignored) ignoredReleases.push({ repo: repoName, origin, message: `${origin}: ${message}` });
     const hardwareLicense = await readHardwareLicense(backend, repoName);
-    const { install, rejected, files: installFiles } = await readInstall(backend, repoName, releases);
+    const { install, rejected, benchProblems: bench, files: installFiles } = await readInstall(backend, repoName, releases);
     if (rejected) installRejected.push({ repo: repoName, origin, problems: rejected });
+    if (bench) benchProblems.push({ repo: repoName, origin, problems: bench });
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({
       slug,
@@ -301,9 +309,9 @@ export async function readRepoProducts(backend, { sectionIds }) {
       // the source file (_astro/<name>.<hash>.webp).
       posterFile: `${slug}${ext}`,
       posterBytes,
-      // sha256 → bytes of the ESP manifest and its files: written next to the posters, never in the snapshot.
+      // sha256 → bytes of the ESP manifest, its files and the bench: written next to the posters, never in the snapshot.
       installFiles,
     });
   }
-  return { products, skipped, ignoredReleases, installRejected };
+  return { products, skipped, ignoredReleases, installRejected, benchProblems };
 }

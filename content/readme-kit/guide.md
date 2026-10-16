@@ -1,6 +1,6 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
 Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
@@ -283,6 +283,28 @@ est propre au produit (où sont ses pastilles SWD…) va dans son README.
 
 Une image `.img.xz`, que l'utilisateur écrit sur une carte microSD avec Raspberry Pi Imager
 (« Use custom ») ou Etcher. La page du produit la lie là où GitHub la sert, avec cette notice.
+
+### Banc web : un `_bench.html`
+
+Un produit peut joindre à sa release un **banc web** : une page HTML autonome (sans dépendance ni
+appel réseau) qui pilote la carte par Web Serial et parle le protocole du firmware de **cette**
+release. La page du produit l'ouvre, dans son bloc Install, par-dessus la page (bouton **Bench**) ou
+dans un nouvel onglet.
+
+- **Son nom** : `<produit>_<version>_bench.html`, en minuscules (par exemple
+  `basilisk_1.2.0_bench.html`). Le site le reconnaît au suffixe exact `_bench.html` ; un seul par
+  release : avec deux bancs ou plus, aucun n'est publié.
+- **La même release que le firmware** : le banc est pris dans la release retenue (ci-dessus), et
+  dans aucune autre. Il suit le firmware dont il parle le protocole : une release retenue sans banc
+  n'a pas de banc, le site ne reprend pas celui d'une release plus ancienne.
+- **Un banc seul ne publie rien** : il ne rend pas une release installable, et il n'est publié qu'à
+  côté d'une installation publiée (un ESP valide, un `.hex` ou un `.img.xz`). Une release dont le
+  seul fichier installable est un manifeste invalide ne publie pas non plus son banc ; le rapport du
+  catalogue le dit, à part des manifestes rejetés.
+- **Servi par le site, sur sa propre origine** : le site copie le banc tel quel, octet pour octet, sur
+  GitHub Pages, et la page l'ouvre dans un cadre qui a le droit d'accéder au port série. Web Serial est
+  refusé dans un cadre d'une autre origine, et les fichiers d'une release GitHub sont d'une autre
+  origine : un lien vers la release ne marcherait pas.
 
 ### Firmware de l'amont
 

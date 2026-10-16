@@ -1,7 +1,7 @@
 # Simulateur du catalogue
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-12 (ticket #101 : `browser_download_url` des fichiers attachés ; Basilisk publie un manifeste ESP Web Tools, Maelstrom un `.hex`, Cyclops un `.img.xz` — ticket #96 : les fichiers attachés aux releases)
+**Dernière révision** : 2026-10-16 (ticket #107 : un banc web dans chacune des deux releases de Basilisk, seul celui de `v0.1.0` est retenu) — 2026-10-12 (ticket #101 : `browser_download_url` des fichiers attachés ; Basilisk publie un manifeste ESP Web Tools, Maelstrom un `.hex`, Cyclops un `.img.xz` — ticket #96 : les fichiers attachés aux releases)
 **Statut** : actif — source `ZURP_CATALOG=simulator` du build (tests, CI Gitea)
 **Référencé par** : `src/lib/catalog/source.mjs`, `src/lib/catalog/loader.mjs`, `CLAUDE.md` (`## Test`)
 
@@ -23,14 +23,17 @@ browser_download_url }`, la taille lue sur le disque, l'adresse construite comme
 qu'un produit attache ce qu'il publie (norme : § 6 de `content/readme-kit/guide.md`).
 
 - **Basilisk** (ESP) : sa release `v0.1.0` porte un `manifest.json` d'ESP Web Tools valide pour deux
-  familles de puces (`ESP32-S3`, `ESP32-C3`, une image fusionnée chacune) ; sa release `v0.2.0`,
-  plus récente, n'a qu'une image et pas de manifeste (ses fichiers « en cours d'attache »). Le build
-  publie donc l'ESP de `v0.1.0`, et la version du produit reste `v0.2.0`.
+  familles de puces (`ESP32-S3`, `ESP32-C3`, une image fusionnée chacune) et un banc web,
+  `basilisk_0.1.0_bench.html` ; sa release `v0.2.0`, plus récente, n'a qu'une image et pas de
+  manifeste (ses fichiers « en cours d'attache »), plus un banc au contenu différent,
+  `basilisk_0.2.0_bench.html`. Le build publie donc l'ESP et le banc de `v0.1.0` — un banc ne rend
+  pas une release installable, celui de `v0.2.0` n'est ni téléchargé ni publié —, et la version du
+  produit reste `v0.2.0`.
 - **Maelstrom** (STM32) : sa release `v0.1.0` porte un `.hex`.
 - **Cyclops** (Raspberry Pi) : sa release `v0.1.0` porte un `.img.xz`.
 
-Ces fichiers sont de petits fichiers texte factices : **ce ne sont ni des firmwares ni des
-images**.
+Ces fichiers sont de petits fichiers texte factices : **ce ne sont ni des firmwares, ni des
+images, ni des bancs** (les deux pages de banc ne pilotent rien).
 
 Les noms de dossier sont en minuscules : ils font l'URL du dépôt, donc le lien « Source ».
 

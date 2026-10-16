@@ -1,7 +1,7 @@
 # content/ — les textes et les ressources du site
 
 **Date** : 2026-10-06
-**Dernière révision** : 2026-10-12 (ticket #101 : le bloc « Install » des pages produit remplace le bloc « Flash » d'ESP Launchpad, `site.yml` ; la norme de publication d'un logiciel, § 6 de `readme-kit/guide.md`)
+**Dernière révision** : 2026-10-16 (ticket #107 : le banc web d'un produit dans le bloc « Install », `site.yml` `product.install.bench`) — 2026-10-12 (ticket #101 : le bloc « Install » des pages produit remplace le bloc « Flash » d'ESP Launchpad, `site.yml` ; la norme de publication d'un logiciel, § 6 de `readme-kit/guide.md`)
 **Statut** : actif — tout texte destiné au lecteur vit ici ; le code (`src/`, `scripts/`) ne fait que le placer
 **Référencé par** : `src/lib/content.mjs`, `src/lib/status-badge.mjs`, `src/lib/license-stamp.mjs`, `src/lib/license-badge.mjs`, `scripts/readme-kit.mjs`, `CLAUDE.md`
 
@@ -13,7 +13,7 @@ changement part au déploiement suivant (push sur `main`).
 
 | Fichier | Ce qu'il porte | Où ça sort |
 |---|---|---|
-| `site.yml` | le nom, l'accroche, l'affiliation (« a subsidiary of… », écrite une fois : la signature et la ligne produit du pied de page la reprennent), la signature, l'organisation GitHub, les titres, libellés et textes alternatifs des pages ; le bloc « Install » d'une page produit (`product.install` : titre, version, bouton ESP, liens de téléchargement et leurs notices) | tout le site ; nom, accroche et signature aussi dans le README de l'org, le nom aussi sur les cartes d'aperçu |
+| `site.yml` | le nom, l'accroche, l'affiliation (« a subsidiary of… », écrite une fois : la signature et la ligne produit du pied de page la reprennent), la signature, l'organisation GitHub, les titres, libellés et textes alternatifs des pages ; le bloc « Install » d'une page produit (`product.install` : titre, version, bouton ESP, liens de téléchargement et leurs notices, et le banc web : son intro, son bouton, son lien « nouvel onglet », le bouton qui le ferme, le nom de son cadre) | tout le site ; nom, accroche et signature aussi dans le README de l'org, le nom aussi sur les cartes d'aperçu |
 | `catalog.yml` | les sections (ordre, titres), les libellés de statut (et la couleur de leur badge README), les textes du badge de statut (`statusBadge`) | accueil, pages produit, README de l'org et JSON de statut des badges (`/brand/status/<slug>.json`, rendu par shields.io dans l'en-tête de chaque README produit) |
 | `licences.yml` | le vocabulaire des deux licences d'un produit : le texte des tampons « Software · … » et « Hardware · … », le libellé générique d'une licence non reconnue, le libellé et la couleur des badges de licence, la table des titres de licences matérielles (titre officiel → libellé court, nom complet) | pages produit (tampons), en-tête de README de chaque produit (badges `/brand/badges/<slug>/software.svg` et `hardware.svg`) |
 | `home/pitch.md` | le pitch, sur une ligne | accueil (étiquette de l'affiche), README de l'org (« Hi here ») |
@@ -72,7 +72,10 @@ Un produit publie son logiciel dans une release de son dépôt (la norme : § 6 
 `readme-kit/guide.md`) : pour un ESP, un `manifest.json` d'ESP Web Tools et ses images ; pour un
 STM32, un `.hex` ; pour un Raspberry Pi, un `.img.xz`. Sa page porte alors un bloc « Install » (ancre
 `#install`) : le bouton d'ESP Web Tools, ou les liens de téléchargement, chacun suivi de sa notice.
-Ici ne vivent que les mots de ce bloc (`site.yml`, `product.install`) ; `{{tag}}` y est le tag de la
-release installée, `{{file}}` le nom d'un fichier à télécharger. Aucun texte sur les navigateurs :
-quand un navigateur ne sait pas installer, ESP Web Tools le dit lui-même. Un produit sans rien à
-installer n'a pas de bloc.
+Quand la même release joint un banc web (`<produit>_<version>_bench.html`), le bloc porte aussi un
+bouton qui l'ouvre par-dessus la page et un lien qui l'ouvre dans un nouvel onglet.
+Ici ne vivent que les mots de ce bloc (`site.yml`, `product.install`, le banc sous
+`product.install.bench`) ; `{{tag}}` y est le tag de la release installée, `{{file}}` le nom d'un
+fichier à télécharger, `{{product}}` (dans `bench.frame`) le nom du produit. Aucun texte sur les
+navigateurs : quand un navigateur ne sait pas installer, ESP Web Tools le dit lui-même. Un produit
+sans rien à installer n'a pas de bloc, ni de banc.

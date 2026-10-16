@@ -11,6 +11,7 @@
 //   publishes (src/lib/catalog/firmware.mjs), declared in src/content.config.ts too
 // REVISED: 2026-10-12 (ticket #101) — `install` replaces `firmware`: what a release of its repository
 //   publishes to install (src/lib/catalog/install.mjs), declared in src/content.config.ts too
+// REVISED: 2026-10-16 (ticket #107) — `install.bench`, the web bench of the release it installs from
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog comes
 //   only from the organisation's repositories (the collection `repoProducts`)
 //
@@ -90,6 +91,11 @@ export interface Install {
   /** null: no manifest.json in that release, or one that was rejected (the catalog report says why). */
   esp: EspInstall | null;
   downloads: InstallDownload[];
+  /**
+   * The web bench of that same release (ticket #107): its `*_bench.html`, copied as is under
+   * <slug>/bench/<id>/ (src/lib/install.mjs); null: none, or more than one (the catalog report says so).
+   */
+  bench: (InstallFile & { id: string }) | null;
 }
 
 export interface Product {

@@ -14,6 +14,9 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   releases, seule compte UNE release, la plus récente qui porte un fichier installable : son
   `manifest.json` d'ESP Web Tools et les fichiers qu'il nomme sont téléchargés et servis par Pages
   (`<slug>/firmware/<id>/`, pour le bouton d'ESP Web Tools, épinglé à 10.4.0 dans `package.json`) ;
+  son banc web (`*_bench.html`, un seul, et seulement à côté d'une installation publiée) est
+  téléchargé et servi tel quel par Pages (`<slug>/bench/<id>/`, ouvert dans une iframe
+  `allow="serial"` de la page) ;
   ses `.hex` et `.img.xz` sont liés là où GitHub les sert, jamais téléchargés (norme au § 6 de
   `content/readme-kit/guide.md`). Une page par produit ; le lien « Source » d'un produit est son
   dépôt.

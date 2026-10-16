@@ -1,0 +1,12 @@
+<!doctype html>
+<!-- catalog-simulator: NOT a bench — a stand-in for the bench Basilisk attaches to its release v0.1.0 (ticket #107) -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Basilisk bench v0.1.0 (simulator)</title></head>
+<body>
+<p>Basilisk bench v0.1.0 — simulator stand-in, it drives nothing.</p>
+<button type="button" id="connect">Connect</button>
+<script>
+document.getElementById('connect').addEventListener('click', () => navigator.serial?.requestPort().catch(() => {}));
+</script>
+</body>
+</html>

@@ -14,6 +14,8 @@
 //   catalog holds an ESP Web Tools publication, its manifest and every file it names in dist/ at the
 //   size the catalog gives, and the page's button on that manifest; on every page, the #install block
 //   as the catalog says (scripts/lib/check-install.mjs)
+// REVISED: 2026-10-16 (ticket #107) — the web bench: its file in dist/<slug>/bench/ byte for byte
+//   the catalog's, its button, frame and « new tab » link in the #install block; none without one
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -40,14 +42,19 @@
 //   - for EVERY product (scripts/lib/check-install.mjs): its page's #install block is not what the
 //     built catalog says — one block (id="install") with the version, the ESP Web Tools button on
 //     the copied manifest and a script of the page that defines it, the download links of the
-//     catalog; none, and no button, without an install.
+//     catalog; none, and no button, without an install;
+//   - for a product whose built catalog holds a web bench (ticket #107): its file
+//     <slug>/bench/<id>/<file> is missing or not the catalog's byte for byte, its folder holds
+//     anything else; the #install block has not exactly one bench button on that file, one « new
+//     tab » link to it, one frame allow="serial" without src. Without a bench: any of these, or any
+//     file of dist/ ending in `_bench.html` that is not a bench of the catalog.
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
-import { espDirProblems, installBlockProblems } from './lib/check-install.mjs';
+import { benchDirProblems, espDirProblems, installBlockProblems, strayBenchProblems } from './lib/check-install.mjs';
 import { LICENSE_KINDS, siteContent } from '../src/lib/content.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 import { statusBadgePath } from '../src/lib/status-badge.mjs';
@@ -125,13 +132,16 @@ console.log(`Stable README URLs: ${stable.length} expected`);
 const installTexts = siteContent(repoRoot).product.install;
 for (const p of catalog.products) {
   errors.push(...espDirProblems(distDir, p));
+  errors.push(...benchDirProblems(distDir, p));
   const page = join(distDir, p.slug, 'index.html');
   if (existsSync(page)) errors.push(...installBlockProblems(readFileSync(page, 'utf8'), p, { texts: installTexts, distDir }));
 }
+errors.push(...strayBenchProblems(distDir, catalog.products));
 const withEsp = catalog.products.filter((p) => p.install?.esp).map((p) => p.slug);
+const withBench = catalog.products.filter((p) => p.install?.bench).map((p) => p.slug);
 console.log(
   `Install: #install block on ${catalog.products.filter((p) => p.install).length} page(s), absent from ${catalog.products.filter((p) => !p.install).length}; ` +
-    `ESP Web Tools manifest: ${withEsp.join(', ') || 'none'}`,
+    `ESP Web Tools manifest: ${withEsp.join(', ') || 'none'}; bench: ${withBench.join(', ') || 'none'}`,
 );
 
 // --- Verdict ---------------------------------------------------------------------------------------
@@ -140,4 +150,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every ESP manifest and its files in place, every #install block as the catalog says.');
+console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every ESP manifest and its files in place, every bench in place, every #install block as the catalog says.');

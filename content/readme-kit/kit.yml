@@ -6,6 +6,7 @@
 # REVISED: 2026-10-06 (ticket #66) — no licence badge in the header any more (`header.licenceAlt` gone)
 # REVISED: 2026-10-06 (ticket #75) — the two licence badges drawn by the site (`header.softwareAlt`,
 #   `header.hardwareAlt`)
+# REVISED: 2026-10-20 (ticket #115) — `footer`: the texts of the product README footer, pasted once
 
 # The notice at the top of the files the deployment overwrites (the org README, the guide). Not the
 # product headers: those are pasted once and never again (`header` below).
@@ -34,3 +35,23 @@ header:
   statusAlt: status
   softwareAlt: software licence
   hardwareAlt: hardware licence
+
+# The README footer of a product (product-footer.md), the same for every product, pasted ONCE at the
+# end of its repository's README, in place of the hand-written signature, and never again: it holds
+# only the URLs of the enamel plate and of the signature, which the site draws at each build
+# (content/site.yml: `signature`, `header.subtitle`), and the two links of the organisation.
+footer:
+  # The comments that open and close the block: how to find it in a README.
+  begin: zurp-readme-footer:begin
+  end: zurp-readme-footer:end
+  # What the opening comment says, after `begin`.
+  notice: >-
+    paste this block once, at the end of the README, never again: the plate and the signature update
+    themselves at each build of the site — do not edit it
+  # Alt texts of the plate (a link to the site) and of the signature. No text of the signature here:
+  # the block is never pasted again, it would go stale.
+  plateAlt: zUrp Astronomics enamel plate
+  signatureAlt: zUrp Astronomics signature
+  # The two links, in text.
+  siteLabel: Website
+  orgLabel: GitHub organisation

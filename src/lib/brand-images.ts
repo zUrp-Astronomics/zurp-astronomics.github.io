@@ -2,6 +2,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+// REVISED: 2026-10-20 (ticket #115) — the footer of the product READMEs: the enamel plate
+//   (brand/zurp-plate.webp) and the signature (brand/signature.png, src/lib/signature-image.mjs)
 //
 // WHY. Astro serves optimised images under /_astro/<name>.<hash>.webp: the address changes every
 // time the image does. The READMEs of the GitHub organisation and of the product repositories
@@ -32,6 +34,14 @@
 //   https://zurp-astronomics.github.io/brand/badges/<slug>/hardware.svg   the hardware licence badge
 //                                                                     (an empty SVG when the
 //                                                                     repository declares none)
+// And two with the footer block of the product READMEs (content/readme-kit/product-footer.md, ticket #115):
+//   https://zurp-astronomics.github.io/brand/zurp-plate.webp          the zUrp Astronomics enamel plate
+//                                                                     (the site header's photo), 800 px
+//                                                                     wide WebP (~400 px displayed, 2×)
+//   https://zurp-astronomics.github.io/brand/signature.png            the signature, drawn from
+//                                                                     content/site.yml (`signature`,
+//                                                                     `header.subtitle`), 800 px wide
+//                                                                     opaque PNG (src/lib/signature-image.mjs)
 //
 // Panel and posters are WebP; the social cards are JPEG (GitHub's upload form takes PNG, JPG or
 // GIF). All well under the 614 400-byte ceiling of scripts/check-dist.mjs.
@@ -43,6 +53,8 @@
 //                                                 the product repository's sheet)
 //   src/pages/brand/social/[slug].jpg.ts        ← each product's `poster`, `name`, `slogan`
 //                                                 (composition: src/lib/social-card.ts)
+//   src/pages/brand/zurp-plate.webp.ts          ← src/assets/header/zurp-astronomics-plate.webp
+//   src/pages/brand/signature.png.ts            ← content/site.yml (src/lib/signature-image.mjs)
 // The README kit (scripts/readme-kit.mjs → readme-kit/) links these URLs; it mirrors the paths
 // below — change both together, or never.
 // The pixels go through Astro's own configured image service (sharp), the one the pages use.
@@ -59,10 +71,13 @@ import { getConfiguredImageService, imageConfig } from 'astro:assets';
 export const BRAND_PANEL_PATH = 'brand/low-tech-diy.webp';
 export const brandPosterPath = (slug: string) => `brand/posters/${slug}.webp`;
 export const brandSocialPath = (slug: string) => `brand/social/${slug}.jpg`;
+export const BRAND_PLATE_PATH = 'brand/zurp-plate.webp';
 
 /** README sizes: posters ~600 px (a README column), the panel a header-wide 800 px. */
 export const BRAND_POSTER_WIDTH = 600;
 export const BRAND_PANEL_WIDTH = 800;
+/** The README footer's plate (2172 × 724 source): ~400 px displayed, at double density. */
+export const BRAND_PLATE_WIDTH = 800;
 
 /**
  * Re-encodes an imported image (src/assets/…) as a WebP of the given width, as an endpoint

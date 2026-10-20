@@ -19,6 +19,8 @@
 // REVISED: 2026-10-20 (ticket #111) — the manual: on every page, its tabs as the built catalog says
 //   (none without a manual), the #install block in the Setup tab, its images in dist/<slug>/manual/
 //   byte for byte (scripts/lib/check-manual.mjs)
+// REVISED: 2026-10-20 (ticket #115) — the two stable URLs of the product READMEs' footer block:
+//   brand/zurp-plate.webp (the enamel plate) and brand/signature.png (the signature)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -33,6 +35,7 @@
 //   - a file is missing at a stable URL that the READMEs of the organisation and of the product
 //     repositories link (src/lib/brand-images.ts, src/lib/site-icons.ts — mirrored below):
 //       brand/low-tech-diy.webp, brand/avatar.png
+//       brand/zurp-plate.webp, brand/signature.png                       the footer (ticket #115)
 //       brand/posters/<slug>.webp, brand/social/<slug>.jpg              per product
 //       brand/status/<slug>.json                                          per product
 //       brand/badges/<slug>/software.svg, brand/badges/<slug>/hardware.svg per product
@@ -69,6 +72,7 @@ import { manualTabs, manualTexts } from '../src/lib/manual.mjs';
 import { LICENSE_KINDS, siteContent } from '../src/lib/content.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 import { statusBadgePath } from '../src/lib/status-badge.mjs';
+import { SIGNATURE_PATH } from '../src/lib/signature-image.mjs';
 
 const MAX_IMAGE_BYTES = 600 * 1024; // 614 400
 const IMAGE_EXT = /\.(webp|jpe?g|png|avif|gif|svg|ico)$/i;
@@ -77,6 +81,9 @@ const HOME_PAGE = 'index.html';
 const FIXED_URLS = [
   'brand/low-tech-diy.webp',
   'brand/avatar.png',
+  // The footer block of the product READMEs (content/readme-kit/product-footer.md, ticket #115).
+  'brand/zurp-plate.webp',
+  SIGNATURE_PATH,
   'favicon.ico',
   'favicon-16.png',
   'favicon-32.png',

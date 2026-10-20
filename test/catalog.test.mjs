@@ -18,6 +18,8 @@
 //   `published_at`, so the `draft` flag alone is what leaves it out
 // REVISED: 2026-10-13 (ticket #102) — test 7: the ESP README sentence names Firefox, Chrome and Edge
 //   (ESP Web Tools' browsers), and no « (Chrome or Edge) » is left in the rendered guide
+// REVISED: 2026-10-20 (ticket #115) — test 7: the footer block readme-kit/footer.md, byte for byte,
+//   and the guide naming it; test 9: the signature image follows content/site.yml
 // STATUS: active
 //
 // Run with `npm test` (needs `npm ci`). A case the simulator does not hold is built in a temporary
@@ -39,6 +41,7 @@ import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
 import { catalogContent, licenseContent, siteContent } from '../src/lib/content.mjs';
 import { licenseStamps } from '../src/lib/license-stamp.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
+import { SIGNATURE_WIDTH, signaturePng, signatureTexts } from '../src/lib/signature-image.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SIM = join(ROOT, 'catalog-simulator');
@@ -229,6 +232,16 @@ const KRAKEN_HEADER = `<!-- zurp-readme-header:begin — paste this block once, 
 
 <!-- zurp-readme-header:end -->`;
 
+// The footer block of every product README (ticket #115), byte for byte: the plate (a link to the
+// site), the signature, the two links in text — and nothing else, no product name.
+const FOOTER = `<!-- zurp-readme-footer:begin — paste this block once, at the end of the README, never again: the plate and the signature update themselves at each build of the site — do not edit it -->
+<p align="center"><a href="https://zurp-astronomics.github.io/"><img src="https://zurp-astronomics.github.io/brand/zurp-plate.webp" alt="zUrp Astronomics enamel plate" width="400"></a></p>
+
+<p align="center"><img src="https://zurp-astronomics.github.io/brand/signature.png" alt="zUrp Astronomics signature" width="400"></p>
+
+<p align="center"><a href="https://zurp-astronomics.github.io/">Website</a> · <a href="https://github.com/zUrp-Astronomics">GitHub organisation</a></p>
+<!-- zurp-readme-footer:end -->`;
+
 // 7 -------------------------------------------------------------------------------------------------
 test('7. the README kit is generated from the built catalog: one header per product, no Mustache marker left empty', async () => {
   const root = tempRoot();
@@ -237,7 +250,7 @@ test('7. the README kit is generated from the built catalog: one header per prod
   execFileSync(process.execPath, [join(ROOT, 'scripts', 'readme-kit.mjs'), '--catalog', snapshotFile, '--out', out], { stdio: 'pipe' });
   const headers = readdirSync(join(out, 'readme-kit', 'repos')).sort();
   assert.deepEqual(headers, products.map((p) => `${p.slug}.md`).sort(), 'one header per product of the built catalog');
-  const files = ['profile/README.md', 'readme-kit/README.md', ...headers.map((h) => `readme-kit/repos/${h}`)];
+  const files = ['profile/README.md', 'readme-kit/README.md', 'readme-kit/footer.md', ...headers.map((h) => `readme-kit/repos/${h}`)];
   for (const f of files) {
     // A GitHub Actions expression `${{ … }}` of a workflow extract is text, not a marker (guide, § 6).
     const text = readFileSync(join(out, f), 'utf8').replace(/\$\{\{ [^{}]+ \}\}/g, '');
@@ -253,8 +266,16 @@ test('7. the README kit is generated from the built catalog: one header per prod
     // Byte for byte, the block of the human's decision (campaign #81): the product READMEs carry it verbatim.
     assert.equal(header.trim(), KRAKEN_HEADER.replaceAll('kraken', p.slug), p.slug);
   }
+  // Ticket #115: one footer block for every product, byte for byte, out of repos/ (it names no product).
+  assert.equal(readFileSync(join(out, 'readme-kit', 'footer.md'), 'utf8').trim(), FOOTER);
   // The guide's § 6 (tickets #96, #101): the workflow extract keeps its expression, the dispatch names the site's repository.
   const guide = readFileSync(join(out, 'readme-kit', 'README.md'), 'utf8');
+  // Ticket #115: § 2 names the footer block, where it is published, its markers, its two images, and
+  // its skeleton closes on it in place of the hand-written signature.
+  assert.ok(guide.includes('[`zUrp-Astronomics/.github` → `readme-kit/footer.md`](https://github.com/zUrp-Astronomics/.github/blob/main/readme-kit/footer.md)'));
+  assert.ok(guide.includes('<!-- zurp-readme-footer:begin … -->') && guide.includes('<!-- zurp-readme-footer:end -->'));
+  assert.ok(guide.includes('https://zurp-astronomics.github.io/brand/zurp-plate.webp') && guide.includes('https://zurp-astronomics.github.io/brand/signature.png'));
+  assert.ok(!guide.includes('… la signature …'), 'the skeleton shows the footer block, not a hand-written signature');
   // Ticket #98: the org's real secret, no placeholder left.
   assert.ok(guide.includes('GH_TOKEN: ${{ secrets.ZURP_SITE_DISPATCH }}'), 'the GitHub expression of the workflow extract, as written');
   assert.ok(!guide.includes('<SECRET>'), 'no <SECRET> placeholder left in the guide');
@@ -285,4 +306,35 @@ test('8. the offline build publishes every product of the simulator — the eigh
   assert.equal(products.length, 8, 'the eight products of the organisation');
   for (const slug of ['cyclops', 'wraith']) assert.ok(products.some((p) => p.slug === slug), `${slug} is published`);
   for (const p of products) assert.equal(p.repo, `${orgUrl}/${p.slug}`, `${p.slug}: its « Source » link is its repository`);
+});
+
+// 9 -------------------------------------------------------------------------------------------------
+test('9. the signature image of the README footer is drawn from content/site.yml — `signature` (name, affiliation) and `header.subtitle`: change one, the image changes; an opaque PNG, 800 px wide', async () => {
+  const fontFile = join(ROOT, 'src', 'assets', 'fonts', 'BlackOpsOne-Regular.ttf');
+  const image = (root) => signaturePng(signatureTexts(siteContent(root)), { fontFile });
+  /** A temporary root whose content/site.yml has `from` replaced by `to`. */
+  const editedSite = (from, to) => {
+    const root = tempRoot();
+    const file = join(root, 'content', 'site.yml');
+    const yml = readFileSync(file, 'utf8');
+    assert.ok(yml.includes(from), `site.yml holds ${from}`);
+    writeFileSync(file, yml.replace(from, to));
+    return root;
+  };
+  const site = siteContent(ROOT);
+  assert.deepEqual(signatureTexts(site), { signature: 'zUrp Astronomics — a subsidiary of zUrp Industries.', subtitle: 'Because buying is cheating.' });
+  const original = await image(ROOT);
+  assert.ok(original.equals(await image(tempRoot())), 'the same texts draw the same bytes');
+  const meta = await sharp(original).metadata();
+  assert.equal(meta.format, 'png');
+  assert.equal(meta.width, SIGNATURE_WIDTH);
+  // Opaque: its own soot background carries the contrast on GitHub's light and dark backgrounds.
+  assert.equal(meta.hasAlpha, false, 'no transparency');
+  for (const [from, to] of [
+    ['affiliation: a subsidiary of zUrp Industries', 'affiliation: a subsidiary of zUrp Holdings'],
+    ['name: zUrp Astronomics', 'name: zUrp Optics'],
+    ['subtitle: Because buying is cheating.', 'subtitle: Because buying is for quitters.'],
+  ]) {
+    assert.ok(!original.equals(await image(editedSite(from, to))), `${to}: the image changes`);
+  }
 });

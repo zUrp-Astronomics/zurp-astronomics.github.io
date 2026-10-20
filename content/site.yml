@@ -10,6 +10,8 @@
 # REVISED: 2026-10-12 (ticket #101) — `product.flash` is gone with ESP Launchpad: `product.install`, the
 #   #install block (ESP Web Tools button, .hex and .img.xz links with their notice)
 # REVISED: 2026-10-20 (ticket #111) — `product.manual`: the tabs of a product's manual (their titles)
+# REVISED: 2026-10-20 (ticket #115) — `signature` and `header.subtitle` are also drawn on
+#   /brand/signature.png, the signature of the product READMEs' footer block
 #
 # Edit the texts freely: the code only places them. `{{product}}` / `{{basedOn}}` are markers the code
 # fills (the product's name, its upstream project). Prose (several sentences) is in the .md files of
@@ -26,7 +28,8 @@ tagline: Low-tech, DIY, amateur astronomy hardware.
 # both take it through their `{{affiliation}}` marker.
 affiliation: a subsidiary of zUrp Industries
 
-# The signature: footer of the home page, foot of the org README. `{{name}}` / `{{affiliation}}` are
+# The signature: footer of the home page, foot of the org README, and the signature image of the
+# product READMEs' footer block (/brand/signature.png, with `header.subtitle`: ticket #115). `{{name}}` / `{{affiliation}}` are
 # the two texts above.
 signature: '{{name}} — {{affiliation}}.'
 
@@ -35,7 +38,8 @@ org:
   url: https://github.com/zUrp-Astronomics
   handle: '@zUrp-Astronomics'
 
-# The header of every page: the zUrp plate (a link to the home page) and the subtitle under it.
+# The header of every page: the zUrp plate (a link to the home page) and the subtitle under it (also
+# on the signature image of the product READMEs' footer, /brand/signature.png).
 header:
   plateAlt: zUrp Astronomics
   homeLabel: zUrp Astronomics — home

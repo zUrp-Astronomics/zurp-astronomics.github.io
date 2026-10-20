@@ -1,9 +1,9 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-20 (ticket #113 : § 2, la norme du README produit — français puis anglais, la ligne de langue et son ancre, le projet écrit le fond et l'architecte du site relit la forme, la section Assembly, une liste de sections ouverte, le ton) — 2026-10-20 (ticket #111 : § 7, le manuel d'un produit, `9_Assets/manual/` ; § 6, le bloc Install dans l'onglet Setup ; § 5, `manual/` dans `9_Assets/`) — 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-20 (ticket #115 : § 2, le bloc de pied de page des README produit, `footer.md`, collé une fois à la fin à la place de la signature écrite à la main) — 2026-10-20 (ticket #113 : § 2, la norme du README produit — français puis anglais, la ligne de langue et son ancre, le projet écrit le fond et l'architecte du site relit la forme, la section Assembly, une liste de sections ouverte, le ton) — 2026-10-20 (ticket #111 : § 7, le manuel d'un produit, `9_Assets/manual/` ; § 6, le bloc Install dans l'onglet Setup ; § 5, `manual/` dans `9_Assets/`) — 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
-Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
+Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), footerBegin / footerEnd (kit.yml, footer), plateUrl (la plaque émaillée du pied de page), signatureUrl (la signature du pied de page, dessinée depuis site.yml), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
 ---
 
 # Kit README — mode d'emploi
@@ -43,7 +43,7 @@ du produit sur le site (`{{{siteUrl}}}/<produit>/`). Le petit badge **GitHub** p
 lui seul, mène au dépôt du produit. Dans une section, le produit dont la release
 est la plus récente vient en tête ; les produits sans release suivent, par ordre alphabétique.
 
-## 2. En-tête de README de chaque produit
+## 2. En-tête et pied de page de README de chaque produit
 
 Pour chaque produit, copie le bloc de `repos/<produit>.md` (ce dossier) **en tête** du `README.md`
 de son dépôt, **une seule fois**. Le bloc va du commentaire `<!-- {{{begin}}} … -->` au commentaire
@@ -78,6 +78,26 @@ fois**, marqueurs compris, pour recevoir les deux badges de licence. Un dépôt 
 ancien en-tête (nom, slogan, badges de licence, phrase de licence) : remplace-le de même, une
 dernière fois, par ce bloc.
 
+**Le pied de page**, le même pour tous les produits. Copie le bloc de `footer.md` (ce dossier :
+[`zUrp-Astronomics/.github` → `readme-kit/footer.md`]({{{orgUrl}}}/.github/blob/main/readme-kit/footer.md))
+**à la fin** du `README.md` de chaque dépôt, après les deux parties de langue, **une seule fois**. Le
+bloc va du commentaire `<!-- {{{footerBegin}}} … -->` au commentaire `<!-- {{{footerEnd}}} -->`, tous
+deux inclus. Il **remplace la signature écrite à la main** : un README n'a pas d'autre signature.
+Comme l'en-tête, il ne contient que des adresses, et il **se met à jour seul** : ne le recolle pas,
+ne le modifie pas. Dans l'ordre :
+
+- **La plaque émaillée** zUrp Astronomics, {{{plateUrl}}}, la photo de l'en-tête du site. Elle mène
+  au site.
+- **La signature**, {{{signatureUrl}}}, une image que le site dessine à chaque build depuis ses
+  textes (`content/site.yml` du dépôt du site : `signature` et `header.subtitle`) : changer la
+  signature, c'est changer ce fichier, et tous les README suivent au build suivant (après le cache de
+  GitHub, quelques minutes). Elle se lit sur le fond clair comme sur le fond sombre de GitHub.
+- **Les liens** vers le site et vers l'organisation GitHub, en texte.
+
+**Un README qui porte encore une signature écrite à la main** (`<p align="center"><sub><a
+href="{{{siteUrl}}}/">zUrp Astronomics</a> — a subsidiary of zUrp Industries. …</sub></p>`, ou toute
+autre) : remplace-la par ce bloc, une dernière fois.
+
 **La norme du README produit** (décisions de l'humain, 2026-10-10 et 2026-10-20). Elle vaut pour
 tous les produits. Le README de [Basilisk]({{{orgUrl}}}/Basilisk) est le premier à la suivre : il
 sert de modèle, la norme reste générique.
@@ -87,7 +107,7 @@ sert de modèle, la norme reste générique.
 cette norme, les blocs communs, et une relecture de forme avant la première publication du README et
 avant chaque release. Le projet lui envoie ses fichiers ; l'architecte du site renvoie des
 corrections de forme, jamais une réécriture du fond. En cas de désaccord, l'humain tranche. Le bloc
-d'en-tête n'est ni écrit ni modifié par le projet (ci-dessus).
+d'en-tête et le bloc de pied de page ne sont ni écrits ni modifiés par le projet (ci-dessus).
 
 **Deux langues : le français, puis l'anglais.** Les deux parties portent les mêmes sections, dans le
 même ordre. De haut en bas :
@@ -100,7 +120,8 @@ même ordre. De haut en bas :
 3. **La partie française**, de `## Pourquoi <Nom> ?` à `## Licence`.
 4. **La partie anglaise**, de `## Why <Nom>?` à `## License`. Elle commence par ce titre, et c'est
    son ancre que vise la ligne de langue.
-5. **La signature**, une seule fois, qui ferme le fichier.
+5. **Le bloc de pied de page**, une seule fois, qui ferme le fichier : il porte la signature (ci-dessus),
+   à la place de toute signature écrite à la main.
 
 Le squelette, sur l'exemple de Basilisk (`…` : ce que le projet écrit) :
 
@@ -133,7 +154,9 @@ Le squelette, sur l'exemple de Basilisk (`…` : ce que le projet écrit) :
 
 ---
 
-<p align="center"><sub>… la signature …</sub></p>
+<!-- {{{footerBegin}}} … -->
+… le bloc de pied de page de footer.md, collé une fois …
+<!-- {{{footerEnd}}} -->
 ```
 
 **L'ancre de la ligne de langue** est celle que GitHub donne au titre `## Why <Nom>?` : le texte du

@@ -21,6 +21,9 @@
 //   Launchpad TOML URL and link are gone)
 // REVISED: 2026-10-10 (ticket #92) — every product has its repository: no « product without a
 //   repository » any more (`hasRepo`, `noRepo` gone, the templates show the repository of each)
+// REVISED: 2026-10-20 (ticket #115) — readme-kit/footer.md, the footer block of every product
+//   README, pasted ONCE at its end in place of the hand-written signature: the enamel plate and the
+//   signature the site draws (URLs only), the links to the site and to the organisation
 //
 // Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
 //   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
@@ -33,6 +36,9 @@
 //   readme-kit/repos/<slug>.md         the header block of each product repository's README, pasted
 //                                      ONCE: it holds only URLs whose content is served and kept up
 //                                      to date elsewhere (ticket #53, see repoHeader below)
+//   readme-kit/footer.md               the footer block of every product repository's README, the
+//                                      same for all, pasted ONCE at its end (ticket #115, see
+//                                      repoFooter below)
 //
 // WHY NOT COMMITTED ANY MORE. Part of the catalog is read on GitHub at build time (the product
 // repositories' sheets and releases): a file committed here could not be the truth of the org
@@ -65,6 +71,7 @@ import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
 import { escapeHtml, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
 import { shieldsEndpoint, statusBadgePath } from '../src/lib/status-badge.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
+import { SIGNATURE_PATH } from '../src/lib/signature-image.mjs';
 import { ESP_CHIP_FAMILIES, ESP_MANIFEST, ESP_WEB_TOOLS_VERSION } from '../src/lib/catalog/install.mjs';
 
 const arg = (name) => {
@@ -100,6 +107,10 @@ const pageUrl = (p) => `${SITE}/${p.slug}/`;
 const statusJsonUrl = (p) => `${SITE}/${statusBadgePath(p.slug)}`;
 // Licence badges of a product (src/lib/license-badge.mjs, published by src/pages/brand/badges/[slug]/[kind].svg.ts).
 const licenseBadgeUrl = (p, kind) => `${SITE}/${licenseBadgePath(p.slug, kind)}`;
+// README footer (ticket #115): the enamel plate (src/lib/brand-images.ts, BRAND_PLATE_PATH) and the
+// signature drawn from content/site.yml (src/lib/signature-image.mjs).
+const plateUrl = `${SITE}/brand/zurp-plate.webp`;
+const signatureUrl = `${SITE}/${SIGNATURE_PATH}`;
 const siteHost = SITE.replace(/^https?:\/\//, '');
 
 /** `zUrp-Astronomics/Basilisk` for https://github.com/zUrp-Astronomics/Basilisk. */
@@ -200,6 +211,19 @@ function repoHeader(p) {
   });
 }
 
+// --- 2b. Product README footer (end of every product repository's README.md) ------------------------
+//
+// PASTED ONCE (ticket #115, the human's request: « automatiquement à jour »), like the header, and
+// the same for every product: no product name in it. It replaces the signature each README used to
+// carry, written by hand. What may change is served by the site at stable URLs: the enamel plate
+// (/brand/zurp-plate.webp) and the signature (/brand/signature.png, drawn at each build from
+// content/site.yml's `signature` and `header.subtitle`). The links, to the site and to the
+// organisation, are text: they are stable. Its texts come from content/readme-kit/kit.yml (`footer`).
+
+function repoFooter() {
+  return render('product-footer', { footer: kit.footer, siteUrl: SITE, orgUrl: ORG_URL, plateUrl, signatureUrl });
+}
+
 // --- 3. User guide (French: the human is a French speaker) -------------------------------------------
 
 function guide() {
@@ -207,6 +231,10 @@ function guide() {
     ...common,
     begin: kit.header.begin,
     end: kit.header.end,
+    footerBegin: kit.footer.begin,
+    footerEnd: kit.footer.end,
+    plateUrl,
+    signatureUrl,
     statusJsonUrl: `${SITE}/${statusBadgePath('<produit>')}`,
     softwareBadgeUrl: `${SITE}/${licenseBadgePath('<produit>', 'software')}`,
     hardwareBadgeUrl: `${SITE}/${licenseBadgePath('<produit>', 'hardware')}`,
@@ -233,6 +261,7 @@ function guide() {
 const files = new Map([
   ['profile/README.md', orgReadme()],
   ['readme-kit/README.md', guide()],
+  ['readme-kit/footer.md', repoFooter()],
   ...products.map((p) => [`readme-kit/repos/${p.slug}.md`, repoHeader(p)]),
 ]);
 

@@ -23,4 +23,23 @@ jobs:
           writeFileSync('/tmp/sig.png', png);
           JS
           cp /tmp/sig.mjs ./sig-trial.mjs && node ./sig-trial.mjs
-          echo BEGIN64; base64 -w 120 /tmp/sig.png; echo END64
+          cat > ./ascii-trial.mjs <<'JS'
+          import sharp from 'sharp';
+          const ramp = ' .:-=+*#%@';
+          async function show(input, cols, rows, region) {
+            let img = sharp(input);
+            if (region) img = img.extract(region);
+            const { data } = await img.resize(cols, rows, { fit: 'fill' }).greyscale().raw().toBuffer({ resolveWithObject: true });
+            for (let y = 0; y < rows; y++) {
+              let line = '';
+              for (let x = 0; x < cols; x++) line += ramp[Math.min(9, Math.floor(data[y * cols + x] / 25.6))];
+              console.log('|' + line + '|');
+            }
+          }
+          await show('/tmp/sig.png', 160, 20);
+          console.log('--- left half, zoomed');
+          await show('/tmp/sig.png', 200, 30, { left: 0, top: 0, width: 400, height: 114 });
+          console.log('--- right half, zoomed');
+          await show('/tmp/sig.png', 200, 30, { left: 400, top: 0, width: 400, height: 114 });
+          JS
+          node ./ascii-trial.mjs

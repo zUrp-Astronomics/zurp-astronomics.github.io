@@ -111,12 +111,14 @@ export async function signaturePng({ signature, subtitle }, { fontFile = resolve
   ${ruleR.w > 0 ? `<rect x="${ruleR.x}" y="${ruleY}" width="${ruleR.w}" height="4" fill="${RED}"/>` : ''}
 </svg>`);
 
-  return sharp(wall)
+  // Two passes: sharp composites AFTER every other operation of a pipeline, so a flatten in the same
+  // pipeline would run before the texts are laid on and leave an alpha channel.
+  const composed = await sharp(wall)
     .composite([
       { input: sign.data, left: centreX(sign.width), top: signY },
       { input: sub.data, left: subX, top: subY },
     ])
-    .flatten({ background: SOOT })
-    .png({ compressionLevel: 9 })
+    .png()
     .toBuffer();
+  return sharp(composed).flatten({ background: SOOT }).png({ compressionLevel: 9 }).toBuffer();
 }

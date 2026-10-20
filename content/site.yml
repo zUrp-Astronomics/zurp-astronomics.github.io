@@ -9,6 +9,7 @@
 #   name ESP Launchpad shows for a firmware
 # REVISED: 2026-10-12 (ticket #101) — `product.flash` is gone with ESP Launchpad: `product.install`, the
 #   #install block (ESP Web Tools button, .hex and .img.xz links with their notice)
+# REVISED: 2026-10-20 (ticket #111) — `product.manual`: the tabs of a product's manual (their titles)
 #
 # Edit the texts freely: the code only places them. `{{product}}` / `{{basedOn}}` are markers the code
 # fills (the product's name, its upstream project). Prose (several sentences) is in the .md files of
@@ -57,6 +58,17 @@ product:
   aboutTitle: About
   sourceTitle: Source
   sourceArrow: ⟶
+  # The manual of a product (ticket #111), on the page of a product whose repository writes one
+  # (9_Assets/manual/): one tab per file, in this order, under these titles — the site's words, the
+  # same on every page, never the product's. The Install block below is in the Setup tab. `label`
+  # names the row of tabs for screen readers ({{product}}: the product's name).
+  manual:
+    label: '{{product}} manual'
+    tabs:
+      overview: Overview
+      assembly: Assembly
+      setup: Setup
+      usage: Usage
   # The #install block (ticket #101), on the page of a product whose latest release carrying an
   # installable file (manifest.json, .hex, .img.xz) publishes one. `{{tag}}` is the tag of that
   # release (it may be older than the version stamp).

@@ -19,7 +19,10 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   `allow="serial"` de la page) ;
   ses `.hex` et `.img.xz` sont liés là où GitHub les sert, jamais téléchargés (norme au § 6 de
   `content/readme-kit/guide.md`). Une page par produit ; le lien « Source » d'un produit est son
-  dépôt.
+  dépôt. Le manuel d'un produit, `9_Assets/manual/{overview,assembly,setup,usage}.{en,fr}.md` et
+  les images qu'il montre (`src/lib/catalog/manual.mjs`), fait de sa page des onglets, le bloc
+  Install dans Setup (norme au § 7 du guide) ; ses images sont réencodées et servies par Pages
+  (`<slug>/manual/<id>.webp`).
 - La source du catalogue est toujours nommée par `ZURP_CATALOG` : `github` (déploiement) ou
   `simulator` (`catalog-simulator/`, hors ligne — voir son `README.md`).
 - Le kit README de l'organisation est généré au déploiement depuis ce même catalogue, par les
@@ -32,7 +35,7 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
 - `ZURP_CATALOG=simulator npm run build` — build du site dans `dist/` ; `ZURP_CATALOG=github` lit
   l'organisation sur GitHub (jeton facultatif dans `ZURP_GITHUB_TOKEN`).
 - `node scripts/check-dist.mjs` — après un build : contrôle `dist/` (poids des images, une page par
-  produit, cartes d'aperçu).
+  produit, cartes d'aperçu, bloc Install, onglets du manuel).
 - `npm run readme-kit` — après un build : écrit le kit README dans `.zurp-catalog/readme-kit/`
   depuis le catalogue construit et les gabarits de `content/readme-kit/`.
 - `npm test` — tests du code de lecture du catalogue et de `content/` (`test/`) ; un seul test :
@@ -66,5 +69,5 @@ npm ci && ZURP_CATALOG=simulator npm run build && node scripts/check-dist.mjs &&
 ## Harness
 
 ```
-scripts/check-dist.mjs test/catalog.test.mjs test/install.test.mjs
+scripts/check-dist.mjs scripts/lib/check-manual.mjs test/catalog.test.mjs test/install.test.mjs test/manual.test.mjs
 ```

@@ -4,6 +4,7 @@
 // STATUS: active — ticket #101 (replaces scripts/lib/check-firmware.mjs, the ESP Launchpad checks of ticket #96)
 // REVISED: 2026-10-16 (ticket #107) — the web bench: its button, dialog frame and « new tab » link in
 //   the #install block, its file in dist/<slug>/bench/, none of them without a bench
+// REVISED: 2026-10-20 (ticket #111) — textOf and attributesOf exported, for scripts/lib/check-manual.mjs
 //
 // Pure checks, called by scripts/check-dist.mjs on every product of the built catalog and tested by
 // test/install.test.mjs against pages and folders that pass and that do not. Each returns the list of
@@ -52,7 +53,7 @@ const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
 const DEFINES_BUTTON = /customElements\.define\(\s*["'`]esp-web-install-button["'`]/;
 
 /** The text of an HTML fragment: tags dropped, entities decoded, white space collapsed. */
-function textOf(html) {
+export function textOf(html) {
   return html
     .replace(/<[^>]*>/g, '')
     .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
@@ -62,7 +63,7 @@ function textOf(html) {
 }
 
 /** The attributes of an opening tag's attribute text, values decoded. */
-function attributesOf(text) {
+export function attributesOf(text) {
   const out = {};
   for (const [, name, , dq, sq, bare] of text.matchAll(/([^\s=/>]+)(\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)) {
     out[name.toLowerCase()] = textOf(dq ?? sq ?? bare ?? '');

@@ -1,0 +1,245 @@
+---
+// SOURCE: zurp-astronomics-site — the manual of a product page in tabs (Overview, Assembly, Setup, Usage), the Install block in the Setup tab; nothing but its slot without a manual
+// AUTHOR: engineer
+// DATE: 2026-10-20
+// STATUS: active — ticket #111
+//
+// Used by src/pages/[slug]/index.astro around its #install block (the default slot):
+//   - WITHOUT a manual (`tabs` null), it renders its slot and nothing else: the page of a product
+//     without a manual is the page it had before ticket #111, its #install block in its place (the
+//     slot's markup is the page's, with the page's scoped styles);
+//   - WITH a manual, the tabs of src/lib/manual.mjs (manualTabs): a tab list and one panel per tab,
+//     the first one shown; the slot (the #install block) in the Setup panel, after the project's text.
+// The WAI-ARIA tabs pattern: role tablist / tab / tabpanel, aria-selected, aria-controls,
+// aria-labelledby, one tab in the Tab order (tabindex 0, the others -1). The behaviour — the click,
+// the arrow, Home and End keys, the anchors (`#overview`…, `#install` opening Setup) — is in the
+// script of the page, which every product page already loads: a script here would add a tag to the
+// pages without a manual.
+//
+// The panels' text is the manual's Markdown, rendered by src/lib/catalog/manual.mjs (raw HTML
+// escaped, images and links rewritten), set as HTML: its elements carry no scope attribute, hence
+// the :global() of the styles below. `lang` is the language of the file shown (`fr` when the `.en.md`
+// is missing). The titles are the site's (content/site.yml, `product.manual`).
+import { fill } from '../../lib/content.mjs';
+
+interface Props {
+  tabs: Array<{ id: string; lang: string | null; html: string | null; install: boolean }> | null;
+  texts: { label: string; tabs: Record<string, string> } | null;
+  product: string;
+}
+
+const { tabs, texts, product } = Astro.props;
+---
+
+{
+  tabs && texts ? (
+    <div class="manual" data-manual>
+      <div class="manual-tabs" role="tablist" aria-label={fill(texts.label, { product })}>
+        {tabs.map((t, i) => (
+          <button
+            type="button"
+            class="manual-tab"
+            role="tab"
+            id={`tab-${t.id}`}
+            aria-controls={t.id}
+            aria-selected={i === 0 ? 'true' : 'false'}
+            tabindex={i === 0 ? '0' : '-1'}
+            data-tab={t.id}
+          >
+            {texts.tabs[t.id]}
+          </button>
+        ))}
+      </div>
+      {tabs.map((t, i) => (
+        <div class="manual-panel" role="tabpanel" id={t.id} aria-labelledby={`tab-${t.id}`} tabindex="0" hidden={i !== 0} data-tab-panel={t.id}>
+          {t.html !== null && <div class="manual-text" lang={t.lang ?? undefined} data-manual-text set:html={t.html} />}
+          {t.install && <slot />}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <slot />
+  )
+}
+
+<style>
+  .manual {
+    padding: 2.5rem 0 1rem;
+    border-top: 2px dashed rgba(74, 64, 51, 0.55);
+    /* Under the sticky header of product pages when an anchor scrolls to it. */
+    scroll-margin-top: 7rem;
+  }
+
+  /* Index tabs of a worn binder: soot tags, the open one inked in the product's accent. */
+  .manual-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 4px solid var(--z2-soot-deep);
+  }
+
+  .manual-tab {
+    cursor: pointer;
+    border: 2px solid var(--z2-soot-deep);
+    border-radius: 4px 4px 0 0;
+    padding: 0.7rem 1.2rem 0.55rem;
+    background: rgba(16, 15, 14, 0.82);
+    color: var(--z2-cream);
+    font-family: var(--z2-font-type);
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transform: rotate(-0.6deg);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .manual-tab:nth-child(even) {
+    transform: rotate(0.5deg);
+  }
+
+  .manual-tab:hover {
+    transform: translate(-1px, -2px);
+  }
+
+  .manual-tab[aria-selected='true'] {
+    background: var(--z2-accent);
+    color: var(--z2-on-accent);
+    box-shadow: 5px 5px 0 rgba(29, 26, 22, 0.35);
+    transform: translateY(-3px);
+  }
+
+  .manual-tab:focus-visible,
+  .manual-panel:focus-visible {
+    outline: 3px dashed var(--z2-ink);
+    outline-offset: 3px;
+  }
+
+  .manual-panel {
+    padding-top: 2rem;
+  }
+
+  /* The install block after the project's text, apart from it. */
+  .manual-text + :global(section) {
+    margin-top: 2rem;
+    border-top: 2px dashed rgba(74, 64, 51, 0.55);
+  }
+
+  .manual-panel > :global(section:first-child) {
+    padding-top: 0.5rem;
+  }
+
+  .manual-text {
+    color: var(--z2-ink);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    max-width: 680px;
+  }
+
+  .manual-text :global(:where(p, ul, ol, pre, blockquote, table, hr)) {
+    margin: 0 0 1.2rem;
+  }
+
+  .manual-text :global(:where(ul, ol)) {
+    padding-left: 1.6rem;
+  }
+
+  .manual-text :global(li + li) {
+    margin-top: 0.35rem;
+  }
+
+  /* The sections of a manual start at ## (§ 7 of the guide): the plate's band, like the page's own titles. */
+  .manual-text :global(h2) {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 2.2rem 0 1.3rem -0.15rem;
+    padding: 0.35em 0.7em 0.25em;
+    background:
+      var(--z2-halftone),
+      linear-gradient(var(--z2-soot-deep), var(--z2-soot-deep));
+    color: var(--z2-red);
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    text-shadow:
+      -2px 1px 0 rgba(236, 223, 191, 0.18),
+      2px -1px 0 rgba(0, 0, 0, 0.6);
+    transform: rotate(-1.6deg);
+    clip-path: polygon(0 6%, 9% 0, 31% 4%, 54% 1%, 78% 5%, 100% 0, 99% 47%, 100% 94%, 72% 100%, 47% 95%, 22% 100%, 1% 96%, 0 52%);
+    overflow-wrap: anywhere;
+  }
+
+  .manual-text > :global(h2:first-child) {
+    margin-top: 0;
+  }
+
+  .manual-text :global(:where(h1, h3, h4, h5, h6)) {
+    margin: 1.8rem 0 0.9rem;
+    color: var(--z2-ink);
+    font-size: 1.3rem;
+  }
+
+  .manual-text :global(h1) {
+    font-size: 1.9rem;
+  }
+
+  .manual-text :global(img) {
+    display: block;
+    margin: 1.2rem 0;
+    border: 3px solid var(--z2-soot-deep);
+    border-radius: 4px;
+    box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.35);
+  }
+
+  .manual-text :global(code) {
+    padding: 0.05em 0.3em;
+    background: rgba(29, 26, 22, 0.1);
+    border-radius: 3px;
+    font-size: 0.95em;
+  }
+
+  .manual-text :global(pre) {
+    overflow-x: auto;
+    padding: 1rem 1.2rem;
+    background: var(--z2-soot-deep);
+    color: var(--z2-cream);
+    border-radius: 4px;
+    line-height: 1.5;
+  }
+
+  .manual-text :global(pre code) {
+    padding: 0;
+    background: none;
+  }
+
+  .manual-text :global(blockquote) {
+    padding: 0.2rem 0 0.2rem 1rem;
+    border-left: 6px solid var(--z2-accent);
+  }
+
+  .manual-text :global(table) {
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  .manual-text :global(:where(th, td)) {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid rgba(74, 64, 51, 0.55);
+    text-align: left;
+  }
+
+  .manual-text :global(hr) {
+    border: 0;
+    border-top: 2px dashed rgba(74, 64, 51, 0.55);
+  }
+
+  @media (max-width: 640px) {
+    .manual {
+      padding-top: 2rem;
+    }
+    .manual-tab {
+      padding: 0.6rem 0.9rem 0.45rem;
+      font-size: 0.95rem;
+    }
+  }
+</style>

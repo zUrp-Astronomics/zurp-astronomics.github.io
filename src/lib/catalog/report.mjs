@@ -9,6 +9,11 @@
 // REVISED: 2026-10-16 (ticket #107) — the web bench: per product, its bench or that it is not
 //   published; the benches not published (`benchProblems`) in their own warnings, count and section,
 //   apart from the ESP manifests rejected (whose labels are unchanged)
+// REVISED: 2026-10-20 (ticket #111) — the manual: per product, the tabs published and the language
+//   of each (« no manual »); every problem of a manual (an image left out, an H1, a file unreadable)
+//   one warning of its own, naming the repository and the file, counted and listed in a section —
+//   apart from the other labels, which are unchanged (the manual's state is written BEFORE the
+//   install's on a line, and in the last column of the table: the install labels keep their place)
 //
 // WHY (ticket #72). The site publishes what it discovers: a repository whose sheet or poster is
 // invalid is skipped, not fatal. Nothing fails any more, so it must be SEEN: each build writes, at
@@ -25,6 +30,7 @@
 // These are build messages, for the maintainer: not a text of the site (content/ holds those).
 
 import { appendFileSync } from 'node:fs';
+import { manualTabs } from '../manual.mjs';
 
 /**
  * What the report says a product publishes to install.
@@ -46,29 +52,44 @@ function installState(product, rejected, benchProblems) {
 }
 
 /**
+ * What the report says a product publishes of its manual: each tab of its page and the language of
+ * its file (`setup install only` for a Setup tab that only carries the Install block), or « no manual ».
+ * @param {{ manual?: null | { tabs: Array<{ id: string, lang: string, html: string }> }, install?: unknown }} product
+ */
+function manualState(product) {
+  const tabs = manualTabs(product);
+  if (!tabs) return 'no manual';
+  return `manual ${tabs.map((t) => `${t.id} ${t.lang ?? 'install only'}`).join(', ')}`;
+}
+
+/**
  * The report of a built catalog.
- * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string, install?: any }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }>, installRejected?: Array<{ origin: string, problems: string[] }>, benchProblems?: Array<{ origin: string, problems: string[] }> }} catalog
+ * @param {{ read: string, products: Array<{ slug: string, name: string, origin: string, repo: string, install?: any }>, skipped: Array<{ problems: string[] }>, ignoredReleases: Array<{ message: string }>, installRejected?: Array<{ origin: string, problems: string[] }>, benchProblems?: Array<{ origin: string, problems: string[] }>, manualProblems?: Array<{ origin: string, problems: string[] }> }} catalog
  * @returns {{ lines: string[], warnings: string[], markdown: string }}
  */
-export function catalogReport({ read, products, skipped, ignoredReleases, installRejected = [], benchProblems = [] }) {
+export function catalogReport({ read, products, skipped, ignoredReleases, installRejected = [], benchProblems = [], manualProblems = [] }) {
+  const manualIssues = manualProblems.flatMap((r) => r.problems);
   const warnings = [
     ...skipped.map((s) => `product skipped — ${s.problems.join('; ')}`),
     ...ignoredReleases.map((r) => r.message),
     ...installRejected.map((r) => `ESP manifest rejected — ${r.problems.join('; ')}`),
     ...benchProblems.map((r) => `bench not published — ${r.problems.join('; ')}`),
+    ...manualIssues.map((p) => `manual problem (product published) — ${p}`),
   ];
   const withInstall = products.filter((p) => p.install).length;
   const withBench = products.filter((p) => p.install?.bench).length;
-  // The bench counts before the install counts: the ESP labels end the line, as they did (test 3b).
+  const withManual = products.filter((p) => manualTabs(p)).length;
+  // The manual and bench counts before the install counts: the ESP labels end the line, as they did (test 3b).
   const counts =
     `${products.length} product(s) published, ${skipped.length} skipped, ${ignoredReleases.length} release(s) ignored, ` +
+    `${withManual} with a manual, ${manualIssues.length} manual problem(s), ` +
     `${withBench} bench(es) published, ${benchProblems.length} bench(es) not published, ` +
     `${withInstall} with something to install, ${installRejected.length} ESP manifest(s) rejected`;
   const install = (p) => installState(p, installRejected, benchProblems);
   const width = (key) => Math.max(0, ...products.map((p) => p[key].length));
   const lines = [
     `catalog of this build — source: ${read} — ${counts}`,
-    ...products.map((p) => `  ${p.slug.padEnd(width('slug'))}  ${p.origin.padEnd(width('origin'))}  ${p.repo}  ${install(p)}`),
+    ...products.map((p) => `  ${p.slug.padEnd(width('slug'))}  ${p.origin.padEnd(width('origin'))}  ${p.repo}  ${manualState(p)}  ${install(p)}`),
     ...warnings.map((w) => `  ${w}`),
   ];
 
@@ -78,9 +99,9 @@ export function catalogReport({ read, products, skipped, ignoredReleases, instal
     '',
     `Source: ${cell(read)} — ${counts}.`,
     '',
-    '| Product | Slug | Origin | Source link | Install |',
-    '| --- | --- | --- | --- | --- |',
-    ...products.map((p) => `| ${cell(p.name)} | \`${cell(p.slug)}\` | ${cell(p.origin)} | ${cell(p.repo)} | ${cell(install(p))} |`),
+    '| Product | Slug | Origin | Source link | Install | Manual |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...products.map((p) => `| ${cell(p.name)} | \`${cell(p.slug)}\` | ${cell(p.origin)} | ${cell(p.repo)} | ${cell(install(p))} | ${cell(manualState(p))} |`),
     '',
   ];
   const section = (title, items) => (items.length ? [`### ${title}`, '', ...items.map((i) => `- ${cell(i)}`), ''] : []);
@@ -89,6 +110,7 @@ export function catalogReport({ read, products, skipped, ignoredReleases, instal
     ...section('Releases ignored', ignoredReleases.map((r) => r.message)),
     ...section('ESP manifests rejected (ESP install not published)', installRejected.flatMap((r) => r.problems)),
     ...section('Benches not published', benchProblems.flatMap((r) => r.problems)),
+    ...section('Manual problems (the product is published)', manualIssues),
   );
   return { lines, warnings, markdown: md.join('\n') + '\n' };
 }

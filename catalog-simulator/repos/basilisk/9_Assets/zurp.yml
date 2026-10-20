@@ -7,8 +7,11 @@
 # ce que GitHub sait du dépôt (releases). Le README et la doc du dépôt ne sont jamais lus.
 #
 # Déduit, donc absent d'ici : le slug (nom du dépôt en minuscules → /basilisk/), le lien vers le
-# dépôt, le statut « released » et la version (tag de la dernière release GitHub), le rang dans sa
-# section (release la plus récente en haut).
+# dépôt, la version (tag de la dernière release GitHub), le rang dans sa section (release la plus
+# récente en haut). Le statut, lui, n'est pas déduit : il est écrit ci-dessous.
+#
+# REVISED: 2026-10-20 (ticket #111) — le commentaire de `status:` : le statut est écrit dans la fiche
+#   par décision de l'humain depuis #62. Le manuel de démonstration est dans 9_Assets/manual/.
 
 name: Basilisk
 tagline: >-
@@ -17,7 +20,7 @@ tagline: >-
 slogan: Bend the glass to your will
 category: Adapter
 section: gadgets          # mounts | cameras | gadgets | future
-status: wip               # wip | future — devient « released » dès qu'une release existe sur GitHub
+status: wip               # wip | future | released — écrit ici par décision de l'humain, jamais déduit d'une release (ticket #62)
 basedOn: Pinefeat
 
 description:

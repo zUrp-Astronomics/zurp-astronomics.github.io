@@ -1,6 +1,6 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-20 (ticket #111 : § 7, le manuel d'un produit, `9_Assets/manual/` ; § 6, le bloc Install dans l'onglet Setup ; § 5, `manual/` dans `9_Assets/`) — 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
 Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
@@ -9,7 +9,7 @@ Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, hea
 # Kit README — mode d'emploi
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-12
+**Dernière révision** : 2026-10-20
 **Statut** : généré par `scripts/readme-kit.mjs` (dépôt du site) à chaque déploiement — ne pas éditer à la main
 **Référencé par** : `.github/workflows/deploy.yml` du site (job « README de l'org »), `readme-kit/README.md` du site
 
@@ -133,7 +133,7 @@ fichier de plus de 100 Mo.
 | `6_Driver/` | drivers (INDI, ASCOM…) | Les drivers. |
 | `7_Docs/` | documentation du projet : protocole, notes de conception | La documentation du projet ; le README racine reste la porte d'entrée. |
 | `8_References/` | documents de référence externes (normes, projets amont) | Ce que le projet consulte, pas ce qu'il produit. |
-| `9_Assets/` | images des README et de la doc ; vitrine du site (`zurp.yml` + affiche) | Les ressources pour l'extérieur, et la vitrine lue par le site. |
+| `9_Assets/` | images des README et de la doc ; vitrine du site (`zurp.yml` + affiche) ; manuel du produit, publié par le site (`manual/`, § 7) | Les ressources pour l'extérieur, et la vitrine lue par le site. |
 
 ### Fichiers de carte (`1_Board/`)
 
@@ -187,7 +187,8 @@ POINTS D'ATTENTION
 
 Un produit publie le logiciel de sa carte dans une release GitHub, construite par GitHub Actions. Le
 site la lit et, sur la page du produit, dans son bloc **Install** (ancre `#install`), propose de
-l'installer. Une seule façon de faire pour tous les produits, avec l'outil habituel de chaque
+l'installer. Quand le produit a un manuel (§ 7), ce bloc est dans l'onglet **Setup** de sa page ;
+sans manuel, il est dans la page, sous la présentation du produit. Une seule façon de faire pour tous les produits, avec l'outil habituel de chaque
 famille : ESP Web Tools pour un ESP, un `.hex` pour un STM32, une image `.img.xz` pour un Raspberry
 Pi. Ce qui suit est le contrat entre le site et les produits ; le site le vérifie à chaque build.
 
@@ -331,3 +332,78 @@ produits), `<slug>` remplacé par le slug du produit :
 Le signal à la main, avec `gh` connecté sous un compte qui peut écrire dans le dépôt du site :
 `gh api repos/{{{siteRepo}}}/dispatches -f event_type=zurp-catalog` — ou, dans l'onglet **Actions**
 du site, « Deploy to GitHub Pages » → **Run workflow**.
+
+## 7. Le manuel d'un produit
+
+La page d'un produit sur le site est son **manuel d'assemblage et d'utilisation**, en onglets ; son
+README présente le projet et le contenu du dépôt. Le projet écrit le fond du manuel ; le site en
+tient la forme : mêmes onglets, mêmes titres, même style sur toutes les pages. Ce qui s'écarte de
+cette norme est signalé au build, jamais corrigé en silence.
+
+### Les fichiers
+
+Quatre onglets, dans cet ordre, chacun un fichier facultatif de `9_Assets/manual/`, au nom fixe :
+
+| onglet | fichier | ce qu'il porte |
+|---|---|---|
+| Overview | `overview.en.md` | la vitrine du produit : ce qu'il est, ce qu'il fait |
+| Assembly | `assembly.en.md` | l'assemblage : souder, imprimer, monter |
+| Setup | `setup.en.md` | la configuration ; le bloc Install du site y est ajouté |
+| Usage | `usage.en.md` | l'utilisation |
+
+- **Aucun autre nom n'est lu** : le site demande ces fichiers par leur nom, il ne liste pas le
+  dossier. `Overview.md`, `setup.md` ou `notes.en.md` ne sont jamais publiés.
+- **Les titres des onglets sont ceux du site**, pas ceux du projet : le fichier n'en porte pas.
+- **Un onglet sans fichier n'apparaît pas.** Un produit sans aucun fichier de manuel garde sa page
+  sans onglets : la présentation de sa fiche (`description` de `zurp.yml`), puis son bloc Install.
+
+### La langue
+
+Chaque fichier existe en anglais, `<onglet>.en.md`, et en français, `<onglet>.fr.md`. La page montre
+l'anglais ; quand il manque (ou qu'il est illisible), elle montre le français à sa place, marqué
+comme tel. Le site est en anglais : un `.fr.md` seul est un repli, pas une traduction.
+
+### Le Markdown
+
+- **Un en-tête facultatif** entre deux lignes `---`, en tête du fichier (date, statut…) : il n'est
+  jamais affiché.
+- **Pas de titre de niveau 1** (`# …`) : le site pose le nom du produit et le titre de l'onglet. Les
+  sections commencent à `##`. Un `#` est affiché tel quel, et signalé.
+- **Pas de HTML** : une balise écrite dans un manuel s'affiche en texte, elle n'est pas interprétée.
+  Tout ce qui se met en forme passe par le Markdown.
+- **Les liens** : un lien vers un autre fichier du manuel (`[Setup](setup.en.md)`) mène à son onglet
+  sur la page ; un lien relatif vers un autre fichier du dépôt (`[schéma](../../1_Board/…pdf)`, relatif
+  au fichier `.md`) mène à ce fichier sur GitHub ; un lien absolu (`https://…`) est inchangé.
+
+### Les images
+
+- **Relatives au fichier `.md`** (`![légende](images/vue.png)`, depuis `9_Assets/manual/`), et
+  **seulement sous `9_Assets/`** : une image ailleurs dans le dépôt, ou en ligne, n'est pas affichée.
+- **PNG, JPEG, WebP ou AVIF.** Le site les décode et les sert lui-même, réencodées en WebP : aucune
+  image de plus de 600 Ko dans le site construit. Une source plus lourde passe, mais elle alourdit le
+  dépôt : vise moins de 1 Mo, 1600 px de large au plus (le site ne sert pas plus large).
+- **Une image absente, hors de `9_Assets/` ou illisible n'est pas affichée**, et elle est signalée.
+  Le reste du manuel est publié.
+
+### Le bloc Install dans Setup
+
+Quand le produit a quelque chose à installer (§ 6), le bloc **Install** du site (bouton ESP,
+téléchargements, banc) est dans l'onglet **Setup**, après le texte du projet, et dans aucun autre.
+Un produit qui a un manuel et quelque chose à installer a un onglet Setup même sans `setup.*.md` :
+il ne porte alors que le bloc Install. L'ancre `#install` de la page ouvre l'onglet Setup.
+
+Chaque onglet a son ancre, stable : `{{{siteUrl}}}/<slug>/#overview`, `#assembly`, `#setup`,
+`#usage`. Sans ancre, la page s'ouvre sur son premier onglet.
+
+### Ce que le site signale
+
+Le rapport du catalogue (résumé du job `build` du déploiement du site, onglet **Actions**) dit, par
+produit, quels onglets ont été publiés et dans quelle langue, puis chaque problème de manuel, en
+nommant le dépôt et le fichier :
+
+- une image écartée : absente, hors de `9_Assets/`, d'un autre format ou illisible ;
+- un titre de niveau 1 (`# …`) ;
+- un fichier illisible (pas du texte UTF-8).
+
+Aucun de ces problèmes ne retire le produit du site ni n'interrompt le build : le site publie, le
+rapport signale, et la correction se fait dans le dépôt du produit.

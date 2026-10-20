@@ -14,6 +14,9 @@
 //   .img.xz), `installRejected` replaces `firmwareRejected`; firmware/ holds the manifest and its files
 // REVISED: 2026-10-16 (ticket #107) — firmware/ holds the web bench too; `benchProblems` (a bench not
 //   published) kept in the snapshot, required by readSnapshot, warned at the build
+// REVISED: 2026-10-20 (ticket #111) — the manual: its images written under manual/, each product's
+//   `manual` (tabs rendered, images) and `manualProblems` kept in the snapshot, required by
+//   readSnapshot, warned at the build one by one
 //
 // Declared in src/content.config.ts. At each build (and `astro dev`/`astro sync`) it:
 //   1. reads the source named by ZURP_CATALOG (source.mjs) — the build fails without it;
@@ -30,6 +33,9 @@
 //                               its bytes; published by src/pages/[slug]/firmware/ and
 //                               src/pages/[slug]/bench/ (src/lib/install.mjs) — their bytes never
 //                               go in the snapshot;
+//        manual/<sha256>        each image of a product's manual, as served (re-encoded WebP,
+//                               ticket #111), named after the SHA-256 of those bytes; published by
+//                               src/pages/[slug]/manual/ (src/lib/manual.mjs) — never in the snapshot;
 //        remote.json            the snapshot of what was read (no image bytes): the scripts that run
 //                               after the build (scripts/check-dist.mjs, scripts/readme-kit.mjs)
 //                               read THIS, so they see the catalog that was built — the source is
@@ -39,8 +45,9 @@
 //                               see the same ones), it keeps what was left out: `skipped` (the
 //                               repositories whose product is invalid, with the problems),
 //                               `ignoredReleases`, `installRejected` (the ESP manifests rejected,
-//                               with the problems) and `benchProblems` (the benches not published,
-//                               with the reason): src/lib/catalog/report.mjs prints them;
+//                               with the problems), `benchProblems` (the benches not published,
+//                               with the reason) and `manualProblems` (what is wrong in a manual,
+//                               file by file): src/lib/catalog/report.mjs prints them;
 //   4. stores one entry per product, its `poster` given to the schema's image() as a local file:
 //      Astro imports it like a poster of src/assets/ (same `fsPath`, same variants, no original
 //      copied to dist/ as long as only `fsPath` is read outside <Image>/getImage).
@@ -56,6 +63,8 @@ export const SNAPSHOT_FILE = `${SNAPSHOT_DIR}/remote.json`;
 export const SIMULATOR_DIR = 'catalog-simulator';
 /** Where the build keeps the bytes of an ESP manifest, of a file it names or of a bench, named after its SHA-256. */
 export const firmwareFile = (root, sha256) => join(root, SNAPSHOT_DIR, 'firmware', sha256);
+/** Where the build keeps the bytes of an image of a manual, as served, named after their SHA-256. */
+export const manualFile = (root, sha256) => join(root, SNAPSHOT_DIR, 'manual', sha256);
 
 /**
  * Reads the named source and writes .zurp-catalog/ under `root`. Returns the snapshot.
@@ -70,21 +79,24 @@ export async function readAndSnapshot({ root, env = process.env, sectionIds, bac
   const be =
     backend ??
     (source === 'github' ? githubBackend({ token: env[TOKEN_VAR] || undefined }) : simulatorBackend(join(root, SIMULATOR_DIR)));
-  const { products, skipped, ignoredReleases, installRejected, benchProblems } = await readRepoProducts(be, { sectionIds });
+  const { products, skipped, ignoredReleases, installRejected, benchProblems, manualProblems } = await readRepoProducts(be, { sectionIds });
   mkdirSync(join(outDir, 'posters'), { recursive: true });
   mkdirSync(join(outDir, 'firmware'), { recursive: true });
+  mkdirSync(join(outDir, 'manual'), { recursive: true });
   for (const p of products) {
     writeFileSync(join(outDir, 'posters', p.posterFile), p.posterBytes);
     for (const [sha256, bytes] of p.installFiles) writeFileSync(firmwareFile(root, sha256), bytes);
+    for (const [sha256, bytes] of p.manualFiles) writeFileSync(manualFile(root, sha256), bytes);
   }
   const snapshot = {
     source,
     read: be.describe ?? source,
-    products: products.map(({ posterBytes, installFiles, ...rest }) => rest),
+    products: products.map(({ posterBytes, installFiles, manualFiles, ...rest }) => rest),
     skipped,
     ignoredReleases,
     installRejected,
     benchProblems,
+    manualProblems,
   };
   writeFileSync(join(root, SNAPSHOT_FILE), JSON.stringify(snapshot, null, 2) + '\n');
   return { snapshot, requests: be.requests };
@@ -100,7 +112,7 @@ export function readSnapshot(file) {
     throw new Error(`no catalog snapshot at ${file} — run the build first (ZURP_CATALOG=simulator|github npm run build)`);
   }
   const snapshot = JSON.parse(readFileSync(file, 'utf8'));
-  const lists = ['products', 'skipped', 'ignoredReleases', 'installRejected', 'benchProblems'];
+  const lists = ['products', 'skipped', 'ignoredReleases', 'installRejected', 'benchProblems', 'manualProblems'];
   if (!snapshot || !lists.every((k) => Array.isArray(snapshot[k]))) {
     throw new Error(`${file}: not a catalog snapshot (${lists.join(', ')}) — rebuild`);
   }
@@ -131,6 +143,7 @@ export function repoProductsLoader({ sectionIds }) {
       for (const r of snapshot.ignoredReleases) logger.warn(r.message);
       for (const r of snapshot.installRejected) logger.warn(`ESP install NOT PUBLISHED — ${r.problems.join('; ')}`);
       for (const r of snapshot.benchProblems) logger.warn(`bench NOT PUBLISHED — ${r.problems.join('; ')}`);
+      for (const r of snapshot.manualProblems) for (const problem of r.problems) logger.warn(`manual problem (product published) — ${problem}`);
       logger.info(
         `catalog source: ${snapshot.read} — ${snapshot.products.length} product(s) with a sheet` +
           (snapshot.skipped.length ? `, ${snapshot.skipped.length} skipped` : '') +
@@ -139,6 +152,7 @@ export function repoProductsLoader({ sectionIds }) {
           `; LICENSE-HARDWARE: ${snapshot.products.filter((p) => p.hardwareLicense).map((p) => `${p.slug} « ${p.hardwareLicense.title} »`).join(', ') || 'none'}` +
           `; install: ${snapshot.products.filter((p) => p.install).map((p) => `${p.slug} ${p.install.tag}`).join(', ') || 'none'}` +
           `; bench: ${snapshot.products.filter((p) => p.install?.bench).map((p) => `${p.slug} ${p.install.bench.name}`).join(', ') || 'none'}` +
+          `; manual: ${snapshot.products.filter((p) => p.manual).map((p) => `${p.slug} (${p.manual.tabs.map((t) => `${t.id} ${t.lang}`).join(', ')})`).join(', ') || 'none'}` +
           (requests !== undefined ? `, ${requests} API request(s)` : ''),
       );
     },

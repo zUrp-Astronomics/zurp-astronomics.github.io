@@ -22,11 +22,15 @@
 //   `installRejected`; the second exception below is rewritten
 // REVISED: 2026-10-16 (ticket #107) — the web bench of the release selected (`install.bench`),
 //   downloaded beside an install only; its problems in `benchProblems`, a key of their own
+// REVISED: 2026-10-20 (ticket #111) — the manual: 9_Assets/manual/<tab>.<lang>.md and the images it
+//   shows (manual.mjs), each product's `manual`, its problems in `manualProblems` (never a skip)
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases, plus ONE file
 //     at its root: LICENSE-HARDWARE, its hardware licence (ticket #75 — an exception arbitrated by the
-//     human). Never the README, never the docs, no other file, no other directory;
+//     human). Never the README, never the docs, no other file, no other directory. 9_Assets/manual/
+//     is in 9_Assets/: the manual's 8 files, by their fixed names, and the images they show
+//     (ticket #111, manual.mjs) — no folder is ever listed;
 //   - of the files attached to the releases, it downloads ONLY the ESP Web Tools manifest
 //     `manifest.json` of ONE release — the latest published one carrying an installable file
 //     (manifest.json, *.hex, *.img.xz) — and the files THAT manifest names (the second exception,
@@ -53,6 +57,9 @@
 //                 manifest is reported (`installRejected`), the product is published all the same;
 //                 and its web bench (`bench`, null when there is none), whose problems (two benches,
 //                 or a bench without an install) are reported apart (`benchProblems`)
+//       manual    null, or the product's manual (ticket #111, manual.mjs): its tabs, each rendered
+//                 from its .en.md (or its .fr.md), and the images they show; what is wrong in it is
+//                 reported apart (`manualProblems`), the product is published all the same
 //       hardwareLicense
 //                 the HARDWARE licence: { title }, the first non-empty line of LICENSE-HARDWARE at the
 //                 root of the repository (ticket #75), read through the backend's readFile; null when
@@ -89,6 +96,7 @@
 import yaml from 'js-yaml';
 import sharp from 'sharp';
 import { readInstall } from './install.mjs';
+import { readManual } from './manual.mjs';
 
 /** Where a product repository keeps what the site reads. */
 export const ASSETS_DIR = '9_Assets';
@@ -234,10 +242,11 @@ export async function posterImageProblem(bytes) {
  * (a failed request) is not caught: it throws.
  * Its hardware licence is read (LICENSE-HARDWARE) and its install (install.mjs) once the product is
  * valid; a product whose ESP manifest is invalid is published without its ESP install, the manifest
- * in `installRejected`; a bench of its install release that is not published, in `benchProblems`.
+ * in `installRejected`; a bench of its install release that is not published, in `benchProblems`;
+ * what is wrong in its manual, in `manualProblems`.
  * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, downloadAsset(repo: string, release: any, asset: any): Promise<Buffer>, describe?: string }} backend
  * @param {{ sectionIds: readonly string[] }} options
- * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }>, installRejected: Array<{ repo: string, origin: string, problems: string[] }>, benchProblems: Array<{ repo: string, origin: string, problems: string[] }> }>}
+ * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }>, installRejected: Array<{ repo: string, origin: string, problems: string[] }>, benchProblems: Array<{ repo: string, origin: string, problems: string[] }>, manualProblems: Array<{ repo: string, origin: string, problems: string[] }> }>}
  */
 export async function readRepoProducts(backend, { sectionIds }) {
   const products = [];
@@ -245,6 +254,7 @@ export async function readRepoProducts(backend, { sectionIds }) {
   const ignoredReleases = [];
   const installRejected = [];
   const benchProblems = [];
+  const manualProblems = [];
   for (const { name: repoName, url, license } of await backend.listRepos()) {
     const raw = await backend.readFile(repoName, SHEET_PATH);
     if (raw === null) continue; // no sheet: not in the catalog
@@ -286,6 +296,8 @@ export async function readRepoProducts(backend, { sectionIds }) {
     const { install, rejected, benchProblems: bench, files: installFiles } = await readInstall(backend, repoName, releases);
     if (rejected) installRejected.push({ repo: repoName, origin, problems: rejected });
     if (bench) benchProblems.push({ repo: repoName, origin, problems: bench });
+    const { manual, problems: manualOwn, files: manualFiles } = await readManual(backend, repoName, { slug, repoUrl: url, origin });
+    if (manualOwn.length) manualProblems.push({ repo: repoName, origin, problems: manualOwn });
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({
       slug,
@@ -305,13 +317,16 @@ export async function readRepoProducts(backend, { sectionIds }) {
       license: license ?? null,
       hardwareLicense,
       install,
+      manual,
       // Named after the slug, not after the sheet's file: Astro names the optimised variants after
       // the source file (_astro/<name>.<hash>.webp).
       posterFile: `${slug}${ext}`,
       posterBytes,
       // sha256 → bytes of the ESP manifest, its files and the bench: written next to the posters, never in the snapshot.
       installFiles,
+      // sha256 → bytes of each image of the manual, as served (WebP): written beside the snapshot, never in it.
+      manualFiles,
     });
   }
-  return { products, skipped, ignoredReleases, installRejected, benchProblems };
+  return { products, skipped, ignoredReleases, installRejected, benchProblems, manualProblems };
 }

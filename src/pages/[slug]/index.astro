@@ -21,6 +21,10 @@
 //   one: a button opening a near full-screen <dialog> on an <iframe allow="serial">, its `src` set
 //   only when the dialog opens, and an « open in a new tab » link to the same URL (texts:
 //   content/site.yml, `product.install.bench`)
+// REVISED: 2026-10-20 (ticket #111) — the manual: when the product's repository writes one
+//   (9_Assets/manual/), its tabs (src/components/v2/ManualTabs.astro, src/lib/manual.mjs), the
+//   #install block in the Setup tab, « About » replaced by the Overview tab when there is one; the
+//   tabs' behaviour in the page's script. Without a manual, the page is unchanged
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
 // software and hardware licences, each when there is one, based on), About, Source + repo link,
@@ -50,6 +54,8 @@ import { catalogContent, fill, licenseContent, siteContent } from '../../lib/con
 import { licenseStamps } from '../../lib/license-stamp.mjs';
 import { benchUrlPath, espManifestUrlPath } from '../../lib/install.mjs';
 import EspInstallButton from '../../components/v2/EspInstallButton.astro';
+import ManualTabs from '../../components/v2/ManualTabs.astro';
+import { manualTabs, manualTexts } from '../../lib/manual.mjs';
 
 export async function getStaticPaths() {
   return (await getCatalog()).map((p) => ({
@@ -87,6 +93,13 @@ const install = product.install && {
     }))
     .filter((g) => g.links.length),
 };
+
+// The manual (ticket #111): its tabs in order (null without a manual: the page as it was), the
+// #install block given to ManualTabs, which places it in the Setup tab — or, without a manual, right
+// where it was. The Overview tab replaces « About ».
+const tabs = manualTabs(product);
+const manual = tabs && manualTexts(site);
+const about = !tabs?.some((t) => t.id === 'overview');
 
 // Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than a flat
 // drawing at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.
@@ -153,11 +166,14 @@ const tint = [
           <p class="pitch">{product.tagline}</p>
         </section>
 
-        <section class="description">
-          <h2 class="z2-band">{site.product.aboutTitle}</h2>
-          {product.description.map((paragraph) => <p>{paragraph}</p>)}
-        </section>
+        {about && (
+          <section class="description">
+            <h2 class="z2-band">{site.product.aboutTitle}</h2>
+            {product.description.map((paragraph) => <p>{paragraph}</p>)}
+          </section>
+        )}
 
+        <ManualTabs tabs={tabs} texts={manual} product={product.name}>
         {install && (
           <section class="install" id="install" data-install>
             <h2 class="z2-band">{texts.title}</h2>
@@ -203,6 +219,7 @@ const tint = [
             )}
           </section>
         )}
+        </ManualTabs>
 
         <section class="repo">
           <h2 class="z2-band">{site.product.sourceTitle}</h2>
@@ -232,6 +249,56 @@ const tint = [
     dialog.addEventListener('close', () => {
       frame.src = 'about:blank';
     });
+  }
+
+  // The manual's tabs (ticket #111, src/components/v2/ManualTabs.astro): the WAI-ARIA tabs pattern
+  // with automatic activation — a click or an arrow key shows its panel; Left / Right move between
+  // the tabs (wrapping), Home / End go to the first / last; only the selected tab is in the Tab order.
+  // An anchor opens the panel that holds it: a tab's own (`#setup`), or anything inside a panel
+  // (`#install`, in Setup), at load and at every change of the anchor (a manual's link to another
+  // tab is one); without one, the first tab. Choosing a tab writes its anchor in the address, without
+  // scrolling, so that it can be shared.
+  for (const manual of document.querySelectorAll<HTMLElement>('[data-manual]')) {
+    const tabs = [...manual.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls') ?? ''));
+    if (!tabs.length || panels.some((p) => !p)) continue;
+    const select = (i: number) =>
+      tabs.forEach((tab, j) => {
+        tab.setAttribute('aria-selected', String(i === j));
+        tab.tabIndex = i === j ? 0 : -1;
+        panels[j]!.hidden = i !== j;
+      });
+    const choose = (i: number) => {
+      select(i);
+      history.replaceState(null, '', `#${panels[i]!.id}`);
+    };
+    const open = (hash: string) => {
+      let id = '';
+      try {
+        id = decodeURIComponent(hash.replace(/^#/, ''));
+      } catch {
+        return false;
+      }
+      const target = id ? document.getElementById(id) : null;
+      const i = target ? panels.findIndex((p) => p!.contains(target)) : -1;
+      if (i < 0) return false;
+      select(i);
+      (target === panels[i] ? manual : target)!.scrollIntoView();
+      return true;
+    };
+    tabs.forEach((tab, i) => tab.addEventListener('click', () => choose(i)));
+    manual.querySelector('[role="tablist"]')?.addEventListener('keydown', (event) => {
+      const e = event as KeyboardEvent;
+      const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
+      const to = ({ ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 } as Record<string, number>)[e.key];
+      if (at < 0 || to === undefined) return;
+      e.preventDefault();
+      const i = (to + tabs.length) % tabs.length;
+      choose(i);
+      tabs[i].focus();
+    });
+    window.addEventListener('hashchange', () => open(location.hash));
+    if (!open(location.hash)) select(0);
   }
 </script>
 
@@ -408,8 +475,14 @@ const tint = [
     padding: 2.5rem 0;
   }
 
-  section + section {
+  section + section,
+  :global(.manual) + section {
     border-top: 2px dashed rgba(74, 64, 51, 0.55);
+  }
+
+  /* An anchor (#install) scrolls it under the sticky header of product pages, not behind it. */
+  .install {
+    scroll-margin-top: 7rem;
   }
 
   section h2 {

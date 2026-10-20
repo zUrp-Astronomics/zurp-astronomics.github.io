@@ -12,6 +12,7 @@
 // REVISED: 2026-10-12 (ticket #101) — `install` replaces `firmware`: what a release of its repository
 //   publishes to install (src/lib/catalog/install.mjs), declared in src/content.config.ts too
 // REVISED: 2026-10-16 (ticket #107) — `install.bench`, the web bench of the release it installs from
+// REVISED: 2026-10-20 (ticket #111) — `manual`, the manual of its repository (src/lib/catalog/manual.mjs)
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog comes
 //   only from the organisation's repositories (the collection `repoProducts`)
 //
@@ -98,6 +99,30 @@ export interface Install {
   bench: (InstallFile & { id: string }) | null;
 }
 
+/** One tab of a product's manual: one file of 9_Assets/manual/, rendered (src/lib/catalog/manual.mjs). */
+export interface ManualTab {
+  id: 'overview' | 'assembly' | 'setup' | 'usage';
+  /** The language of the file shown: `en`, or `fr` when there is no readable `.en.md`. */
+  lang: 'en' | 'fr';
+  /** Its path in the repository. */
+  file: string;
+  /** Its Markdown rendered: raw HTML escaped, links and images rewritten. */
+  html: string;
+}
+
+/** An image of a manual, re-encoded and served by the site under <slug>/manual/ (src/lib/manual.mjs). */
+export interface ManualImage {
+  /** Its published name, `<id>.webp`. */
+  name: string;
+  /** Its path in the repository. */
+  source: string;
+  size: number;
+  /** SHA-256 of the bytes served. */
+  sha256: string;
+  width: number;
+  height: number;
+}
+
 export interface Product {
   slug: string;
   name: string;
@@ -129,6 +154,8 @@ export interface Product {
   hardwareLicense: HardwareLicense | null;
   /** What it publishes to install; null: nothing (no #install block on its page). */
   install: Install | null;
+  /** The manual of its repository (ticket #111); null: no manual file — the page has no tabs. */
+  manual: { tabs: ManualTab[]; images: ManualImage[] } | null;
 }
 
 export interface Release {

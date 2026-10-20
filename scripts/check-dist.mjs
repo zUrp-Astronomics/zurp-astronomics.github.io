@@ -16,6 +16,9 @@
 //   as the catalog says (scripts/lib/check-install.mjs)
 // REVISED: 2026-10-16 (ticket #107) — the web bench: its file in dist/<slug>/bench/ byte for byte
 //   the catalog's, its button, frame and « new tab » link in the #install block; none without one
+// REVISED: 2026-10-20 (ticket #111) — the manual: on every page, its tabs as the built catalog says
+//   (none without a manual), the #install block in the Setup tab, its images in dist/<slug>/manual/
+//   byte for byte (scripts/lib/check-manual.mjs)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -47,7 +50,13 @@
 //     <slug>/bench/<id>/<file> is missing or not the catalog's byte for byte, its folder holds
 //     anything else; the #install block has not exactly one bench button on that file, one « new
 //     tab » link to it, one frame allow="serial" without src. Without a bench: any of these, or any
-//     file of dist/ ending in `_bench.html` that is not a bench of the catalog.
+//     file of dist/ ending in `_bench.html` that is not a bench of the catalog;
+//   - for EVERY product (ticket #111, scripts/lib/check-manual.mjs): its page's manual is not what
+//     the built catalog says — without a manual: any tab, and no « About »; with one: its tabs and
+//     panels in the catalog's order, titled by content/site.yml, the first one shown, each text in
+//     its file's language, the #install block in the Setup tab, « About » only without Overview,
+//     every image of the panels a file of dist/; dist/<slug>/manual/ is not exactly the catalog's
+//     images, byte for byte (no folder without one).
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -55,6 +64,8 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
 import { benchDirProblems, espDirProblems, installBlockProblems, strayBenchProblems } from './lib/check-install.mjs';
+import { manualDirProblems, manualPageProblems } from './lib/check-manual.mjs';
+import { manualTabs, manualTexts } from '../src/lib/manual.mjs';
 import { LICENSE_KINDS, siteContent } from '../src/lib/content.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 import { statusBadgePath } from '../src/lib/status-badge.mjs';
@@ -144,10 +155,22 @@ console.log(
     `ESP Web Tools manifest: ${withEsp.join(', ') || 'none'}; bench: ${withBench.join(', ') || 'none'}`,
 );
 
+// --- 5. The manual of each product: its tabs, the #install block in Setup, its images ---------------
+const manualText = manualTexts(siteContent(repoRoot));
+for (const p of catalog.products) {
+  errors.push(...manualDirProblems(distDir, p));
+  const page = join(distDir, p.slug, 'index.html');
+  if (existsSync(page)) errors.push(...manualPageProblems(readFileSync(page, 'utf8'), p, { texts: manualText, distDir }));
+}
+console.log(
+  `Manual: ${catalog.products.filter((p) => manualTabs(p)).map((p) => `${p.slug} (${manualTabs(p).map((t) => t.id).join(', ')})`).join(', ') || 'none'}; ` +
+    `${catalog.products.reduce((n, p) => n + (p.manual?.images.length ?? 0), 0)} image(s) of manuals`,
+);
+
 // --- Verdict ---------------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every ESP manifest and its files in place, every bench in place, every #install block as the catalog says.');
+console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every ESP manifest and its files in place, every bench in place, every #install block as the catalog says, every manual as the catalog says.');

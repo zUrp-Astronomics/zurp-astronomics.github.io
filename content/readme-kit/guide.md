@@ -1,6 +1,6 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-20 (ticket #111 : § 7, le manuel d'un produit, `9_Assets/manual/` ; § 6, le bloc Install dans l'onglet Setup ; § 5, `manual/` dans `9_Assets/`) — 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-20 (ticket #113 : § 2, la norme du README produit — français puis anglais, la ligne de langue et son ancre, le projet écrit le fond et l'architecte du site relit la forme, la section Assembly, une liste de sections ouverte, le ton) — 2026-10-20 (ticket #111 : § 7, le manuel d'un produit, `9_Assets/manual/` ; § 6, le bloc Install dans l'onglet Setup ; § 5, `manual/` dans `9_Assets/`) — 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
 Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
@@ -78,16 +78,102 @@ fois**, marqueurs compris, pour recevoir les deux badges de licence. Un dépôt 
 ancien en-tête (nom, slogan, badges de licence, phrase de licence) : remplace-le de même, une
 dernière fois, par ce bloc.
 
-**La norme du README produit** (décision de l'humain, 2026-10-10). En anglais. Dans l'ordre : le
-bloc d'en-tête ; le nom en titre centré, le slogan dessous, une barre de liens (site, documentation
-si `7_Docs/` existe, releases, organisation) ; la bannière de statut (`wip` : « Work in progress — do
-not build yet » ; `future` : « Design phase ») ; `## Why <Nom>?`, le paragraphe qui promet de
-ridiculiser l'équivalent du commerce, bâti uniquement sur des faits du dépôt ; `## At a glance`, les
-caractéristiques ; puis, quand le dépôt a de quoi les remplir, `## Hardware`, `## Software`,
-`## Build`, `## Documentation`, `## Status & roadmap`, `## Credits` ; enfin `## Repository layout`,
-`## License` et la signature. Toute image est un chemin relatif vers `9_Assets/`, en WebP à la taille
-d'affichage ; l'original reste là où il est produit. Le détail technique vit dans `7_Docs/`, au
-projet. L'org rédige le README et `9_Assets/` ; le projet tient tout le reste.
+**La norme du README produit** (décisions de l'humain, 2026-10-10 et 2026-10-20). Elle vaut pour
+tous les produits. Le README de [Basilisk]({{{orgUrl}}}/Basilisk) est le premier à la suivre : il
+sert de modèle, la norme reste générique.
+
+**Qui écrit quoi.** Le **projet écrit le fond** de son README, dans les deux langues, et de
+`9_Assets/` : sa fiche, son manuel (§ 7), ses images. **L'architecte du site tient la forme** :
+cette norme, les blocs communs, et une relecture de forme avant la première publication du README et
+avant chaque release. Le projet lui envoie ses fichiers ; l'architecte du site renvoie des
+corrections de forme, jamais une réécriture du fond. En cas de désaccord, l'humain tranche. Le bloc
+d'en-tête n'est ni écrit ni modifié par le projet (ci-dessus).
+
+**Deux langues : le français, puis l'anglais.** Les deux parties portent les mêmes sections, dans le
+même ordre. De haut en bas :
+
+1. **La tête commune**, une seule fois : le bloc d'en-tête ; le nom en titre centré, le slogan
+   dessous ; une barre de liens (site, documentation si `7_Docs/` existe, releases, organisation) ;
+   la bannière de statut quand il y en a une (`wip` : « Work in progress — do not build yet » ;
+   `future` : « Design phase »).
+2. **La ligne de langue**, sous la tête : elle mène à la partie anglaise par une ancre.
+3. **La partie française**, de `## Pourquoi <Nom> ?` à `## Licence`.
+4. **La partie anglaise**, de `## Why <Nom>?` à `## License`. Elle commence par ce titre, et c'est
+   son ancre que vise la ligne de langue.
+5. **La signature**, une seule fois, qui ferme le fichier.
+
+Le squelette, sur l'exemple de Basilisk (`…` : ce que le projet écrit) :
+
+```markdown
+<!-- {{{begin}}} … -->
+… le bloc d'en-tête de repos/<produit>.md, collé une fois …
+<!-- {{{end}}} -->
+
+<h1 align="center">Basilisk</h1>
+
+<p align="center"><strong><em>Bend the glass to your will</em></strong></p>
+
+<p align="center">… la barre de liens …</p>
+
+<p align="center"><strong>Français</strong> · <a href="#why-basilisk"><strong>English below</strong></a></p>
+
+---
+
+## Pourquoi Basilisk ?
+…
+## Licence
+…
+
+---
+
+## Why Basilisk?
+…
+## License
+…
+
+---
+
+<p align="center"><sub>… la signature …</sub></p>
+```
+
+**L'ancre de la ligne de langue** est celle que GitHub donne au titre `## Why <Nom>?` : le texte du
+titre en minuscules, chaque espace remplacé par `-`, la ponctuation retirée (`?`, `.`, `&`… ; les
+`-` et `_` restent). `## Why Basilisk?` donne `#why-basilisk` ; un nom en deux mots, `## Why Iron
+Maiden?`, donne `#why-iron-maiden`.
+
+**Les sections**, dans chaque langue, dans cet ordre :
+
+| partie anglaise | partie française |
+|---|---|
+| `## Why <Nom>?` | `## Pourquoi <Nom> ?` |
+| `## At a glance` | `## En bref` |
+| `## Hardware` | `## Matériel` |
+| `## Assembly` | `## Assemblage` |
+| `## Software` | `## Logiciel` |
+| `## Build` | `## Fabrication` |
+| `## Documentation` | `## La documentation` |
+| `## Status & roadmap` | `## État et feuille de route` |
+| `## Credits` | `## Remerciements` |
+| `## Repository layout` | `## Contenu du dépôt` |
+| `## License` | `## Licence` |
+
+`Why <Nom>?` est le paragraphe qui promet de ridiculiser l'équivalent du commerce, bâti uniquement sur
+des faits du dépôt ; `At a glance`, les caractéristiques. **La liste n'est pas fermée** : un projet
+ajoute la section dont il a besoin, à sa place (Basilisk a une section `Flash`, entre `Software` et
+`Build`). **Une section n'existe que si le dépôt a de quoi la remplir** : un produit qui n'a rien à
+assembler n'a pas de section Assembly.
+
+**Assembly** résume l'assemblage : les pièces, les grandes étapes. Elle vient après Hardware et
+renvoie au détail : l'information brute reste dans les dossiers du dépôt (`1_Board/`, `2_Hardware/`,
+`3_3D-Models/`), le pas-à-pas complet dans l'onglet Assembly du manuel de la page produit (§ 7).
+
+**Le ton**, que relit l'architecte du site : une seule voix, « we » / « nous », comme le manifeste du
+site ; aucun texte qui vieillit (date relative, « cette semaine », numéro de version écrit dans la
+prose) — un état plutôt qu'une date. `Why <Nom>?` reste bâti uniquement sur des faits du dépôt.
+
+**Les images et la documentation.** Toute image est un chemin relatif vers `9_Assets/`, en WebP à la
+taille d'affichage ; l'original reste là où il est produit. Le détail technique vit dans `7_Docs/`,
+au projet.
 
 **Les deux fichiers de licence.** `LICENSE` porte la licence **logicielle** (MIT, GPL…) : c'est
 celle que GitHub reconnaît et affiche dans l'encadré « About » du dépôt. `LICENSE-HARDWARE` porte la

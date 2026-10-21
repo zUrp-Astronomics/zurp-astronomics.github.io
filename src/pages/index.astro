@@ -4,6 +4,9 @@
 // DATE: 2026-10-03
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #49) — every text comes from content/ (site.yml, home/pitch.md, home/manifesto.md, catalog.yml)
+// REVISED: 2026-10-21 (ticket #117) — the « => GitHub » stamp stands straight (and stays so under
+//   prefers-reduced-motion); the poster no longer moves under the pointer. The poster, its tape and
+//   the label keep their tilt: the one crooked gesture of the site, on purpose
 //
 // Content: pitch, catalog, manifesto, footer. The copy began as the v1 home's (v1 deleted in
 // ticket #35) and lives in content/ (src/lib/content.mjs): this page only places it. The catalog
@@ -203,7 +206,6 @@ const shelves = sections
       0 1px 2px rgba(0, 0, 0, 0.6),
       0 12px 16px -8px rgba(0, 0, 0, 0.7),
       16px 24px 38px -10px rgba(0, 0, 0, 0.6);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
 
   .affiche-img {
@@ -289,7 +291,7 @@ const shelves = sections
 
   /* The "=> GitHub" stamp: a separate object pinned under the label, drawn like the product pages'
      licence stamps (.badge + .badge-license in src/pages/[slug]/index.astro — same type, size,
-     tracking, double cream border, translucent soot fill, slight tilt). Kept in sync by hand. */
+     tracking, double cream border, translucent soot fill, straight). Kept in sync by hand. */
   .stamp-hook {
     position: absolute;
     top: 100%;
@@ -311,14 +313,13 @@ const shelves = sections
     background: rgba(16, 15, 14, 0.7);
     border: 4px double currentColor;
     border-radius: 4px;
-    transform: rotate(-1.5deg);
     text-decoration: none;
-    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Hover / keyboard focus: the stamp straightens, darkens and takes the red underline of the
-     site's links — enough to say "this is a link", nothing louder. The focus ring is the site's
-     dashed cream outline (html.z2 a:focus-visible). */
+  /* Hover / keyboard focus: the stamp darkens and takes the red underline of the site's links —
+     enough to say "this is a link", nothing louder; it does not move (ticket #117). The focus ring
+     is the site's dashed cream outline (html.z2 a:focus-visible). */
   .stamp:hover,
   .stamp:focus-visible {
     background: rgba(16, 15, 14, 0.95);
@@ -327,29 +328,11 @@ const shelves = sections
     text-decoration-color: var(--z2-red);
     text-decoration-thickness: 2px;
     text-underline-offset: 3px;
-    transform: rotate(0deg);
-  }
-
-  /* Hover: the poster straightens a little and comes off the wall. Only for users who accept
-     motion, and only where it hangs crooked (the phone layout hangs it straight). */
-  @media (prefers-reduced-motion: no-preference) and (min-width: 761px) {
-    .affiche:hover {
-      transform: rotate(-0.5deg) translate(-2px, -6px) scale(1.01);
-      box-shadow:
-        0 2px 3px rgba(0, 0, 0, 0.5),
-        0 22px 26px -10px rgba(0, 0, 0, 0.7),
-        26px 38px 54px -12px rgba(0, 0, 0, 0.6);
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .affiche,
     .stamp {
       transition: none;
-    }
-    .stamp:hover,
-    .stamp:focus-visible {
-      transform: rotate(-1.5deg);
     }
   }
 

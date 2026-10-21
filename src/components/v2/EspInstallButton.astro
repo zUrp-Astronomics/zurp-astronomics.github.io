@@ -3,6 +3,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-12
 // STATUS: active — ticket #101
+// REVISED: 2026-10-21 (ticket #117) — the button no longer lifts under the pointer (its shadow at
+//   rest and its focus outline stay)
 //
 // <esp-web-install-button manifest="…"> of ESP Web Tools (esphome/esp-web-tools), loaded at EXACTLY
 // the version package.json pins (10.4.0, src/lib/catalog/install.mjs ESP_WEB_TOOLS_VERSION): the npm
@@ -53,12 +55,6 @@ const { manifest, label } = Astro.props;
     font-size: 1.05rem;
     letter-spacing: 0.04em;
     box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .esp-install:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 8px 8px 0 rgba(29, 26, 22, 0.45);
   }
 
   .esp-install:focus-visible {

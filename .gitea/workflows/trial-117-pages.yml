@@ -1,0 +1,19 @@
+name: trial-117-pages
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: shell
+    container: catthehacker/ubuntu:act-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci && ZURP_CATALOG=simulator npm run build > /tmp/build.log 2>&1 || (tail -60 /tmp/build.log; exit 1)
+      - run: node scripts/check-dist.mjs
+      - run: npm test 2>&1 | grep -E "^# (tests|pass|fail)|^not ok|failed|Error" | head -40
+      - run: |
+          for s in basilisk kaiju cyclops; do echo "== $s"; grep -o '.\{0,500\}data-repo-link.\{0,200\}' dist/$s/index.html | head -2; done
+          echo "== bench"; grep -o '.\{0,200\}data-bench-tab.\{0,200\}' dist/*/index.html | head -2
+          echo "== css rotate"; cat dist/_astro/*.css | grep -o '[^}]\{0,120\}rotate([^)]*)' | head -30
+          echo "== inline rotate"; grep -ho '[^}]\{0,120\}rotate([^)]*)' dist/index.html dist/*/index.html | sort -u | head -30

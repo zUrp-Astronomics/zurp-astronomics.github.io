@@ -3,6 +3,8 @@
 // AUTHOR: engineer
 // DATE: 2026-10-03
 // STATUS: active
+// REVISED: 2026-10-21 (ticket #117) — a tile no longer moves under the pointer: the accent ring
+//   around its poster (hover, focus) and the dashed focus outline say it
 //
 // `data-catalog-tile` on the <Image> is what scripts/check-dist.mjs keys its 600 px tile rule on.
 import { Image } from 'astro:assets';
@@ -50,7 +52,6 @@ const { name, tagline, href, poster, posterAlt, accent } = Astro.props;
     height: 100%;
     color: var(--z2-cream);
     text-decoration: none;
-    transition: transform 0.2s ease;
   }
 
   .poster {
@@ -108,11 +109,6 @@ const { name, tagline, href, poster, posterAlt, accent } = Astro.props;
     font-size: 0.93rem;
     line-height: 1.45;
     color: var(--z2-cream-dim);
-  }
-
-  .tile:hover,
-  .tile:focus-visible {
-    transform: translateY(-4px) rotate(-0.6deg);
   }
 
   .tile:hover .poster,

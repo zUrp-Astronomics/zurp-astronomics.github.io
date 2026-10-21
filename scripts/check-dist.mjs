@@ -21,6 +21,10 @@
 //   byte for byte (scripts/lib/check-manual.mjs)
 // REVISED: 2026-10-20 (ticket #115) — the two stable URLs of the product READMEs' footer block:
 //   brand/zurp-plate.webp (the enamel plate) and brand/signature.png (the signature)
+// REVISED: 2026-10-21 (ticket #117) — the GitHub link of every product page, on the row of its
+//   manual's tabs (scripts/lib/check-manual.mjs); the site's styles straight but for three chosen
+//   exceptions, still under the pointer but for the footer's signature, ↗ on every link opening a new
+//   tab (scripts/lib/check-style.mjs)
 // STATUS: active
 //
 // Usage: node scripts/check-dist.mjs [distDir]   (default: dist/ at the repo root)
@@ -59,7 +63,15 @@
 //     panels in the catalog's order, titled by content/site.yml, the first one shown, each text in
 //     its file's language, the #install block in the Setup tab, « About » only without Overview,
 //     every image of the panels a file of dist/; dist/<slug>/manual/ is not exactly the catalog's
-//     images, byte for byte (no folder without one).
+//     images, byte for byte (no folder without one);
+//   - for EVERY product (ticket #117, scripts/lib/check-manual.mjs): its page has not exactly one
+//     GitHub link to its repository, « GitHub ↗ » (content/site.yml) in a new tab, on the row of the
+//     manual's tabs after the tab list — without a manual, under the pitch, before « About »;
+//   - (ticket #117, scripts/lib/check-style.mjs) a rule of the site's CSS (dist/_astro/*.css, the
+//     <style> and style="" of the pages) tilts anything but the home page's poster, its tape and its
+//     label, and the footer's signature, or moves anything under the pointer (:hover) but that
+//     signature; a link of a page opens a new tab without ↗, or shows ↗ without opening one. The
+//     benches (*_bench.html) are the product repositories' pages, served as they are: not read.
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -67,7 +79,8 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
 import { benchDirProblems, espDirProblems, installBlockProblems, strayBenchProblems } from './lib/check-install.mjs';
-import { manualDirProblems, manualPageProblems } from './lib/check-manual.mjs';
+import { manualDirProblems, manualPageProblems, repoLinkProblems } from './lib/check-manual.mjs';
+import { inlineStyles, newTabProblems, styleProblems } from './lib/check-style.mjs';
 import { manualTabs, manualTexts } from '../src/lib/manual.mjs';
 import { LICENSE_KINDS, siteContent } from '../src/lib/content.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
@@ -174,10 +187,29 @@ console.log(
     `${catalog.products.reduce((n, p) => n + (p.manual?.images.length ?? 0), 0)} image(s) of manuals`,
 );
 
+// --- 6. The GitHub link of each product page, on the row of its tabs ------------------------------
+const productTexts = siteContent(repoRoot).product;
+for (const p of catalog.products) {
+  const page = join(distDir, p.slug, 'index.html');
+  if (existsSync(page)) errors.push(...repoLinkProblems(readFileSync(page, 'utf8'), p, { texts: productTexts }));
+}
+console.log(`GitHub link: checked on ${catalog.products.length} product page(s)`);
+
+// --- 7. The styles: straight but for the chosen exceptions, still under the pointer, ↗ for a new tab --
+const sheets = files.filter((f) => f.rel.startsWith('_astro/') && f.rel.endsWith('.css'));
+for (const f of sheets) errors.push(...styleProblems(readFileSync(f.abs, 'utf8'), `dist/${f.rel}`));
+const pages = files.filter((f) => expected.has(f.rel));
+for (const f of pages) {
+  const html = readFileSync(f.abs, 'utf8');
+  errors.push(...styleProblems(inlineStyles(html), `dist/${f.rel} (inline)`));
+  errors.push(...newTabProblems(html, `dist/${f.rel}`, productTexts.newTabArrow));
+}
+console.log(`Styles: ${sheets.length} stylesheet(s) and ${pages.length} page(s) read`);
+
 // --- Verdict ---------------------------------------------------------------------------------------
 if (errors.length) {
   console.error(`\nFAIL: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every ESP manifest and its files in place, every bench in place, every #install block as the catalog says, every manual as the catalog says.');
+console.log('\nOK: every image ≤ 600 KB, one page per product + home page, every stable README URL in place, every ESP manifest and its files in place, every bench in place, every #install block as the catalog says, every manual as the catalog says, every GitHub link on its row, every style straight and still but for the chosen exceptions.');

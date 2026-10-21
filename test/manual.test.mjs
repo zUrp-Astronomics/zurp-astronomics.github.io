@@ -543,7 +543,7 @@ test('10. the vocabulary of content/site.yml is the one source of the tabs (tick
   });
   const ids = manualTabIds(root);
   assert.deepEqual(ids, ['usage', 'overview', 'assembly', 'setup', 'api']);
-  const snapshot = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds, backend: simulatorBackend(sim) });
+  const { snapshot } = await readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds, backend: simulatorBackend(sim) });
   const [p] = snapshot.products;
   assert.deepEqual(p.manual.tabs.map((t) => t.id), ['usage', 'overview', 'api'], 'the new tab published, in the order of the vocabulary');
   assert.deepEqual(snapshot.manualProblems, [], 'nothing reported any more');

@@ -152,13 +152,13 @@ export function manualContentOf(site) {
   else {
     const seen = new Set();
     tabs.forEach((t, i) => {
-      const at = `\`product.manual.tabs[${i}]\``;
-      if (!t || typeof t !== 'object' || Array.isArray(t)) return problems.push(`${at} is not { id, title, holds }`);
-      if (typeof t.id !== 'string' || !MANUAL_TAB_ID.test(t.id)) problems.push(`${at}.id ${JSON.stringify(t.id ?? null)} is not an id (lower case letters, digits and -, starting with a letter)`);
-      else if (MANUAL_RESERVED_IDS.has(t.id)) problems.push(`${at}.id ${JSON.stringify(t.id)} is reserved (an anchor of the product page)`);
-      else if (seen.has(t.id)) problems.push(`${at}.id ${JSON.stringify(t.id)} is listed twice`);
+      const at = (key) => `\`product.manual.tabs[${i}]${key ? `.${key}` : ''}\``;
+      if (!t || typeof t !== 'object' || Array.isArray(t)) return problems.push(`${at()} is not { id, title, holds }`);
+      if (typeof t.id !== 'string' || !MANUAL_TAB_ID.test(t.id)) problems.push(`${at('id')} ${JSON.stringify(t.id ?? null)} is not an id (lower case letters, digits and -, starting with a letter)`);
+      else if (MANUAL_RESERVED_IDS.has(t.id)) problems.push(`${at('id')} ${JSON.stringify(t.id)} is reserved (an anchor of the product page)`);
+      else if (seen.has(t.id)) problems.push(`${at('id')} ${JSON.stringify(t.id)} is listed twice`);
       else seen.add(t.id);
-      for (const key of ['title', 'holds']) if (!text(t[key])) problems.push(`${at}.${key} missing`);
+      for (const key of ['title', 'holds']) if (!text(t[key])) problems.push(`${at(key)} missing`);
     });
     if (!problems.length && !seen.has(MANUAL_INSTALL_TAB)) problems.push(`\`product.manual.tabs\` has no \`${MANUAL_INSTALL_TAB}\` tab: the Install block is in it`);
   }

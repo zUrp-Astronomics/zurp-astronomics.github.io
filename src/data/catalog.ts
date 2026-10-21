@@ -13,6 +13,8 @@
 //   publishes to install (src/lib/catalog/install.mjs), declared in src/content.config.ts too
 // REVISED: 2026-10-16 (ticket #107) — `install.bench`, the web bench of the release it installs from
 // REVISED: 2026-10-20 (ticket #111) — `manual`, the manual of its repository (src/lib/catalog/manual.mjs)
+// REVISED: 2026-10-21 (ticket #119) — a tab's `id` is a string: the tabs are the vocabulary of
+//   content/site.yml, data
 // REVISED: 2026-10-10 (ticket #92) — the products folder of content/ is gone: the catalog comes
 //   only from the organisation's repositories (the collection `repoProducts`)
 //
@@ -101,7 +103,8 @@ export interface Install {
 
 /** One tab of a product's manual: one file of 9_Assets/manual/, rendered (src/lib/catalog/manual.mjs). */
 export interface ManualTab {
-  id: 'overview' | 'assembly' | 'setup' | 'usage';
+  /** A tab of the vocabulary of content/site.yml (`product.manual.tabs`, ticket #119): data, not a type. */
+  id: string;
   /** The language of the file shown: `en`, or `fr` when there is no readable `.en.md`. */
   lang: 'en' | 'fr';
   /** Its path in the repository. */

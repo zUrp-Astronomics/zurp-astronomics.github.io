@@ -6,6 +6,10 @@
 //   page: on the row of the manual's tabs, beside the tab list and never in it; without a manual, the
 //   same row with the link alone, under the pitch. The guard of a page without a manual is unchanged:
 //   the link is no tab, its row no [data-manual]
+// REVISED: 2026-10-21 (ticket #119) — the Setup tab is MANUAL_INSTALL_TAB (src/lib/content.mjs), the
+//   tabs and their titles those of the vocabulary of content/site.yml, the tab that replaces « About »
+//   the one it marks `replacesAbout` (`texts.aboutTab`); unpublishedProblems: no file of dist/ holds
+//   the marker of the simulator's manual files that must not be published
 //
 // Pure checks, called by scripts/check-dist.mjs on every product of the built catalog and tested by
 // test/manual.test.mjs. Each returns the list of its problems, empty when the product is as the
@@ -37,6 +41,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { manualImagePath, manualTabs } from '../../src/lib/manual.mjs';
+import { MANUAL_INSTALL_TAB } from '../../src/lib/content.mjs';
 import { attributesOf, textOf } from './check-install.mjs';
 
 /** Every opening tag `tag` of a page carrying `role="<role>"`: its attributes, its offset, and (for a button) its text. */
@@ -54,7 +59,7 @@ const markedAt = (html, marker) =>
  * The problems of the manual on the page of `product`.
  * @param {string} html the page, dist/<slug>/index.html
  * @param {{ slug: string, install?: unknown, manual?: null | { tabs: Array<{ id: string, lang: string }>, images: Array<{ name: string }> } }} product from the built catalog
- * @param {{ texts: { tabs: Record<string, string> }, distDir: string }} options `texts`: src/lib/manual.mjs manualTexts(content/site.yml)
+ * @param {{ texts: { tabs: Record<string, string>, aboutTab: string | null }, distDir: string }} options `texts`: src/lib/manual.mjs manualTexts(content/site.yml)
  * @returns {string[]}
  */
 export function manualPageProblems(html, product, { texts, distDir }) {
@@ -104,7 +109,7 @@ export function manualPageProblems(html, product, { texts, distDir }) {
   // The Install block, in the Setup panel and in no other.
   const install = markedAt(html, 'data-install');
   if (product.install) {
-    const s = ids.indexOf('setup');
+    const s = ids.indexOf(MANUAL_INSTALL_TAB);
     const start = panels[s]?.at;
     const end = panels[s + 1]?.at ?? html.length;
     if (s < 0) problems.push(`${where}: no Setup tab, the product has something to install`);
@@ -113,9 +118,10 @@ export function manualPageProblems(html, product, { texts, distDir }) {
     }
   }
 
-  const overview = ids.includes('overview');
-  if (overview && about) problems.push(`${where}: an « About » section beside the Overview tab, which replaces it`);
-  if (!overview && !about) problems.push(`${where}: no « About » section, and no Overview tab to replace it`);
+  const replaced = texts.aboutTab !== null && texts.aboutTab !== undefined && ids.includes(texts.aboutTab);
+  const aboutTitle = texts.tabs[texts.aboutTab] ?? 'replacesAbout';
+  if (replaced && about) problems.push(`${where}: an « About » section beside the ${aboutTitle} tab, which replaces it`);
+  if (!replaced && !about) problems.push(`${where}: no « About » section, and no ${aboutTitle} tab to replace it`);
 
   // Every image of the panels (and of what follows them on the page), served from dist/.
   for (const [, attrs] of html.slice(panels[0].at).matchAll(/<img\b([^>]*)>/gi)) {
@@ -200,4 +206,26 @@ export function manualDirProblems(distDir, product) {
     else if (createHash('sha256').update(bytes).digest('hex') !== image.sha256) problems.push(`dist/${rel} is not the image of the catalog byte for byte`);
   }
   return problems;
+}
+
+/**
+ * The marker every file of the simulator's demo manuals that the site must NOT publish carries
+ * (ticket #119: Basilisk's api.en.md, Overview.md, notes.en.md — outside the vocabulary — and
+ * drafts/assembly.en.md — in a sub-folder; catalog-simulator/README.md). Never in a page of the
+ * site: on a build of the organisation it is simply never there.
+ */
+export const UNPUBLISHED_MARKER = 'ZURP-NOT-PUBLISHED';
+/** The text files of dist/ the marker is looked for in. */
+const TEXT_EXT = /\.(html|js|mjs|css|json|md|txt|xml|svg)$/i;
+
+/**
+ * The files of dist/ that hold UNPUBLISHED_MARKER: a file of a manual the site reports, or does not
+ * walk, published all the same.
+ * @param {Array<{ rel: string, abs: string }>} files every file of dist/
+ * @returns {string[]}
+ */
+export function unpublishedProblems(files) {
+  return files
+    .filter((f) => TEXT_EXT.test(f.rel) && readFileSync(f.abs, 'utf8').includes(UNPUBLISHED_MARKER))
+    .map((f) => `dist/${f.rel} holds ${UNPUBLISHED_MARKER}: a file of a manual outside the vocabulary, or in a sub-folder of manual/, is published`);
 }

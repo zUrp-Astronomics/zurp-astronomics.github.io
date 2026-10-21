@@ -18,6 +18,8 @@
 //   `published_at`, so the `draft` flag alone is what leaves it out
 // REVISED: 2026-10-13 (ticket #102) — test 7: the ESP README sentence names Firefox, Chrome and Edge
 //   (ESP Web Tools' browsers), and no « (Chrome or Edge) » is left in the rendered guide
+// REVISED: 2026-10-21 (ticket #119) — test 7: the guide's § 7 table of the manual's tabs and their
+//   anchors, from the vocabulary of content/site.yml
 // REVISED: 2026-10-20 (ticket #115) — test 7: the footer block readme-kit/footer.md, byte for byte,
 //   and the guide naming it; test 9: the signature image follows content/site.yml
 // STATUS: active
@@ -38,7 +40,7 @@ import sharp from 'sharp';
 import { catalogSource, githubBackend, simulatorBackend } from '../src/lib/catalog/source.mjs';
 import { readRepoProducts } from '../src/lib/catalog/read.mjs';
 import { readAndSnapshot } from '../src/lib/catalog/loader.mjs';
-import { catalogContent, licenseContent, siteContent } from '../src/lib/content.mjs';
+import { catalogContent, licenseContent, manualContent, siteContent } from '../src/lib/content.mjs';
 import { licenseStamps } from '../src/lib/license-stamp.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
 import { SIGNATURE_WIDTH, signaturePng, signatureTexts } from '../src/lib/signature-image.mjs';
@@ -288,6 +290,16 @@ test('7. the README kit is generated from the built catalog: one header per prod
   assert.ok(guide.includes('Install it from your browser on the [product page](https://zurp-astronomics.github.io/<slug>/).\n'));
   assert.ok(guide.includes('## 6. Publier un logiciel'));
   assert.doesNotMatch(guide, /launchpad|zurp-firmware|flashConfigURL/i);
+  // Ticket #119: § 7's table of the tabs and their anchors come from the vocabulary of
+  // content/site.yml, in its order; the template lists no tab by hand; asking for a tab is said.
+  const { tabs } = manualContent(ROOT);
+  const rows = tabs.map((t) => `| ${t.title} | \`${t.id}.en.md\` | ${t.holds} |`).join('\n');
+  assert.ok(guide.includes(`| onglet | fichier | ce qu'il porte |\n|---|---|---|\n${rows}\n\n`), 'the table of § 7, row by row from the vocabulary');
+  assert.ok(guide.includes(`: ${tabs.map((t) => `\`https://zurp-astronomics.github.io/<slug>/#${t.id}\``).join(', ')}.\n`), 'the anchors of § 7');
+  assert.ok(guide.includes('### Demander un onglet') && guide.includes("à l'architecte du site"), 'how to ask for a tab');
+  assert.ok(guide.includes('**signalé\n  au build**'), 'a name outside the vocabulary is reported');
+  const template = readFileSync(join(ROOT, 'content', 'readme-kit', 'guide.md'), 'utf8');
+  for (const t of tabs) assert.ok(!template.includes(`\`${t.id}.en.md\``) && !template.includes(`#${t.id}\``), `${t.id}: not written by hand in the template`);
   const org = readFileSync(join(out, 'profile', 'README.md'), 'utf8');
   for (const p of products) assert.ok(org.includes(`>${p.name}</a>`), `${p.name} in the organisation README`);
   // Every product has its repository (ticket #92): its GitHub badge links it, none is left without.

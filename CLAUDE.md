@@ -19,9 +19,11 @@ Astro, publié sur GitHub Pages par `.github/workflows/deploy.yml`.
   `allow="serial"` de la page) ;
   ses `.hex` et `.img.xz` sont liés là où GitHub les sert, jamais téléchargés (norme au § 6 de
   `content/readme-kit/guide.md`). Une page par produit ; le lien « Source » d'un produit est son
-  dépôt. Le manuel d'un produit, `9_Assets/manual/{overview,assembly,setup,usage}.{en,fr}.md` et
-  les images qu'il montre (`src/lib/catalog/manual.mjs`), fait de sa page des onglets, le bloc
-  Install dans Setup (norme au § 7 du guide) ; ses images sont réencodées et servies par Pages
+  dépôt. Le manuel d'un produit, `9_Assets/manual/<onglet>.{en,fr}.md` et les images qu'il montre
+  (`src/lib/catalog/manual.mjs`), fait de sa page des onglets, le bloc Install dans Setup (norme au
+  § 7 du guide) ; les onglets possibles sont le vocabulaire de `content/site.yml`
+  (`product.manual.tabs`), leur seule source, et un `.md` hors vocabulaire est signalé au rapport du
+  catalogue, jamais publié ; ses images sont réencodées et servies par Pages
   (`<slug>/manual/<id>.webp`).
 - La source du catalogue est toujours nommée par `ZURP_CATALOG` : `github` (déploiement) ou
   `simulator` (`catalog-simulator/`, hors ligne — voir son `README.md`).
@@ -69,5 +71,5 @@ npm ci && ZURP_CATALOG=simulator npm run build && node scripts/check-dist.mjs &&
 ## Harness
 
 ```
-scripts/check-dist.mjs scripts/lib/check-manual.mjs test/catalog.test.mjs test/install.test.mjs test/manual.test.mjs
+scripts/check-dist.mjs scripts/lib/check-manual.mjs scripts/lib/check-style.mjs test/catalog.test.mjs test/install.test.mjs test/manual.test.mjs test/style.test.mjs
 ```

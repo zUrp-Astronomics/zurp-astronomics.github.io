@@ -29,6 +29,8 @@
 //   under the pointer; the « Source » section is gone: the product's GitHub link (`data-repo-link`,
 //   « GitHub ↗ », a new tab) at the right end of the row of the manual's tabs — without a manual, the
 //   same row with the link alone, under the pitch; the bench's « new tab » link takes ↗ too
+// REVISED: 2026-10-21 (ticket #119) — the tab that replaces « About » is the one the vocabulary of
+//   content/site.yml marks `replacesAbout` (Overview), no tab named here
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
 // software and hardware licences, each when there is one, based on), the row of the manual's tabs
@@ -100,10 +102,12 @@ const install = product.install && {
 
 // The manual (ticket #111): its tabs in order (null without a manual: the page as it was), the
 // #install block given to ManualTabs, which places it in the Setup tab — or, without a manual, right
-// where it was. The Overview tab replaces « About ».
+// where it was. The tab marked `replacesAbout` in the vocabulary (content/site.yml: Overview)
+// replaces « About ».
 const tabs = manualTabs(product);
-const manual = tabs && manualTexts(site);
-const about = !tabs?.some((t) => t.id === 'overview');
+const manualSite = manualTexts(site);
+const manual = tabs && manualSite;
+const about = !tabs?.some((t) => t.id === manualSite.aboutTab);
 
 // Social cards: the series 2 poster as a JPEG. The grainy, worn print weighs more than a flat
 // drawing at the same settings, hence 1000 px / q78 to stay well under the 600 KB per-image ceiling.

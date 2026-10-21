@@ -24,6 +24,9 @@
 //   downloaded beside an install only; its problems in `benchProblems`, a key of their own
 // REVISED: 2026-10-20 (ticket #111) — the manual: 9_Assets/manual/<tab>.<lang>.md and the images it
 //   shows (manual.mjs), each product's `manual`, its problems in `manualProblems` (never a skip)
+// REVISED: 2026-10-21 (ticket #119) — <tab> is a tab of the vocabulary (content/site.yml,
+//   `manualTabIds`); 9_Assets/manual/ is listed (the backend's listDir), a .md outside the
+//   vocabulary is in `manualProblems`
 //
 // THE RULES (the human's, 2026-10-06 — see the workshop's plans/catalogue-dynamique.md):
 //   - the site reads ONLY 9_Assets/ of a product repository, plus its GitHub releases, plus ONE file
@@ -244,11 +247,12 @@ export async function posterImageProblem(bytes) {
  * valid; a product whose ESP manifest is invalid is published without its ESP install, the manifest
  * in `installRejected`; a bench of its install release that is not published, in `benchProblems`;
  * what is wrong in its manual, in `manualProblems`.
- * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listReleases(repo: string): Promise<any[]>, downloadAsset(repo: string, release: any, asset: any): Promise<Buffer>, describe?: string }} backend
- * @param {{ sectionIds: readonly string[] }} options
+ * @param {{ listRepos(): Promise<Array<{name: string, url: string, license?: { spdx_id: string | null, name: string | null } | null}>>, readFile(repo: string, path: string): Promise<Buffer | null>, listDir(repo: string, path: string): Promise<null | Array<{ name: string, type: string }>>, listReleases(repo: string): Promise<any[]>, downloadAsset(repo: string, release: any, asset: any): Promise<Buffer>, describe?: string }} backend
+ * @param {{ sectionIds: readonly string[], manualTabIds?: readonly string[] }} options `manualTabIds`: the
+ *   vocabulary of the manuals (default: content/site.yml's, src/lib/content.mjs manualTabIds)
  * @returns {Promise<{ products: any[], skipped: Array<{ repo: string, origin: string, problems: string[] }>, ignoredReleases: Array<{ repo: string, origin: string, message: string }>, installRejected: Array<{ repo: string, origin: string, problems: string[] }>, benchProblems: Array<{ repo: string, origin: string, problems: string[] }>, manualProblems: Array<{ repo: string, origin: string, problems: string[] }> }>}
  */
-export async function readRepoProducts(backend, { sectionIds }) {
+export async function readRepoProducts(backend, { sectionIds, manualTabIds }) {
   const products = [];
   const skipped = [];
   const ignoredReleases = [];
@@ -296,7 +300,7 @@ export async function readRepoProducts(backend, { sectionIds }) {
     const { install, rejected, benchProblems: bench, files: installFiles } = await readInstall(backend, repoName, releases);
     if (rejected) installRejected.push({ repo: repoName, origin, problems: rejected });
     if (bench) benchProblems.push({ repo: repoName, origin, problems: bench });
-    const { manual, problems: manualOwn, files: manualFiles } = await readManual(backend, repoName, { slug, repoUrl: url, origin });
+    const { manual, problems: manualOwn, files: manualFiles } = await readManual(backend, repoName, { slug, repoUrl: url, origin }, manualTabIds ? { tabIds: manualTabIds } : {});
     if (manualOwn.length) manualProblems.push({ repo: repoName, origin, problems: manualOwn });
     const ext = sheet.poster.match(POSTER_EXT)[0].toLowerCase();
     products.push({

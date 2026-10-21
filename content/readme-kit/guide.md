@@ -1,15 +1,15 @@
 ---
 Date: 2026-10-06
-Dernière révision: 2026-10-20 (ticket #115 : § 2, le bloc de pied de page des README produit, `footer.md`, collé une fois à la fin à la place de la signature écrite à la main) — 2026-10-20 (ticket #113 : § 2, la norme du README produit — français puis anglais, la ligne de langue et son ancre, le projet écrit le fond et l'architecte du site relit la forme, la section Assembly, une liste de sections ouverte, le ton) — 2026-10-20 (ticket #111 : § 7, le manuel d'un produit, `9_Assets/manual/` ; § 6, le bloc Install dans l'onglet Setup ; § 5, `manual/` dans `9_Assets/`) — 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
+Dernière révision: 2026-10-21 (ticket #119 : § 7, la table des onglets tirée du vocabulaire de `site.yml`, un nom hors vocabulaire signalé au build et non publié, demander un onglet à l'architecte du site) — 2026-10-20 (ticket #115 : § 2, le bloc de pied de page des README produit, `footer.md`, collé une fois à la fin à la place de la signature écrite à la main) — 2026-10-20 (ticket #113 : § 2, la norme du README produit — français puis anglais, la ligne de langue et son ancre, le projet écrit le fond et l'architecte du site relit la forme, la section Assembly, une liste de sections ouverte, le ton) — 2026-10-20 (ticket #111 : § 7, le manuel d'un produit, `9_Assets/manual/` ; § 6, le bloc Install dans l'onglet Setup ; § 5, `manual/` dans `9_Assets/`) — 2026-10-16 (ticket #107 : § 6, le banc web d'un produit, `<produit>_<version>_bench.html`) — 2026-10-13 (ticket #102 : § 6, la phrase de README ESP nomme Firefox, Chrome et Edge, les navigateurs d'ESP Web Tools ; ticket #101 : § 6 réécrit, « Publier un logiciel » — ESP Web Tools, `.hex`, `.img.xz`, ESP Launchpad abandonné ; ticket #98 : § 6, le nom réel du secret du signal ; ticket #96 : § 6, publier un firmware flashable par ESP Launchpad)
 Statut: actif — gabarit du mode d'emploi du kit (zUrp-Astronomics/.github → readme-kit/README.md), en français
 Référencé par: scripts/readme-kit.mjs
-Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), footerBegin / footerEnd (kit.yml, footer), plateUrl (la plaque émaillée du pied de page), signatureUrl (la signature du pied de page, dessinée depuis site.yml), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
+Marqueurs: siteUrl, orgUrl, orgSettingsUrl, avatarUrl, begin / end (kit.yml, header), footerBegin / footerEnd (kit.yml, footer), plateUrl (la plaque émaillée du pied de page), signatureUrl (la signature du pied de page, dessinée depuis site.yml), statusJsonUrl (l'adresse du JSON de statut, `<produit>` à la place du slug), softwareBadgeUrl / hardwareBadgeUrl (les adresses des badges de licence, idem) ; products (name, slug, repo, repoPath, socialUrl) ; espManifest (le nom exact du manifeste ESP), espWebToolsVersion (la version d'ESP Web Tools que charge le site), espChipFamilies (ses familles de puces, séparées par des virgules), siteRepo (le dépôt du site, `owner/nom`, à qui envoyer le signal) ; manualTabs (le vocabulaire des onglets du manuel, `site.yml` `product.manual.tabs`, dans l'ordre de la page : id, title, holds, last pour le dernier), manualLangs (les langues d'un fichier de manuel, séparées par des virgules). Le § 6 change de délimiteurs (`<% %>`) le temps d'un extrait de workflow, dont les `${{ … }}` ne sont pas des marqueurs
 ---
 
 # Kit README — mode d'emploi
 
 **Date** : 2026-10-03
-**Dernière révision** : 2026-10-20
+**Dernière révision** : 2026-10-21
 **Statut** : généré par `scripts/readme-kit.mjs` (dépôt du site) à chaque déploiement — ne pas éditer à la main
 **Référencé par** : `.github/workflows/deploy.yml` du site (job « README de l'org »), `readme-kit/README.md` du site
 
@@ -451,17 +451,21 @@ cette norme est signalé au build, jamais corrigé en silence.
 
 ### Les fichiers
 
-Quatre onglets, dans cet ordre, chacun un fichier facultatif de `9_Assets/manual/`, au nom fixe :
+Les onglets forment un **vocabulaire commun**, tenu par l'agence (l'architecte du site) et le même
+pour tous les produits. Le voici, dans l'ordre de la page ; chaque onglet est un fichier facultatif
+de `9_Assets/manual/`, au nom fixe :
 
 | onglet | fichier | ce qu'il porte |
 |---|---|---|
-| Overview | `overview.en.md` | la vitrine du produit : ce qu'il est, ce qu'il fait |
-| Assembly | `assembly.en.md` | l'assemblage : souder, imprimer, monter |
-| Setup | `setup.en.md` | la configuration ; le bloc Install du site y est ajouté |
-| Usage | `usage.en.md` | l'utilisation |
+{{#manualTabs}}
+| {{{title}}} | `{{{id}}}.en.md` | {{{holds}}} |
+{{/manualTabs}}
 
-- **Aucun autre nom n'est lu** : le site demande ces fichiers par leur nom, il ne liste pas le
-  dossier. `Overview.md`, `setup.md` ou `notes.en.md` ne sont jamais publiés.
+- **Aucun autre nom n'est publié.** Un fichier `.md` de `9_Assets/manual/` dont le nom n'est pas
+  `<onglet>.<langue>.md`, avec un onglet de ce vocabulaire et une langue parmi {{{manualLangs}}}
+  (`api.en.md`, `Overview.md`, `setup.md`, `notes.en.md`…), n'est pas publié, et il est **signalé
+  au build** (voir plus bas). Les images du manuel, et ce qui est rangé dans un sous-dossier, ne
+  sont pas concernés.
 - **Les titres des onglets sont ceux du site**, pas ceux du projet : le fichier n'en porte pas.
 - **Un onglet sans fichier n'apparaît pas.** Un produit sans aucun fichier de manuel garde sa page
   sans onglets : la présentation de sa fiche (`description` de `zurp.yml`), puis son bloc Install.
@@ -501,8 +505,19 @@ téléchargements, banc) est dans l'onglet **Setup**, après le texte du projet,
 Un produit qui a un manuel et quelque chose à installer a un onglet Setup même sans `setup.*.md` :
 il ne porte alors que le bloc Install. L'ancre `#install` de la page ouvre l'onglet Setup.
 
-Chaque onglet a son ancre, stable : `{{{siteUrl}}}/<slug>/#overview`, `#assembly`, `#setup`,
-`#usage`. Sans ancre, la page s'ouvre sur son premier onglet.
+Chaque onglet a son ancre, stable, son nom de fichier sans la langue : {{#manualTabs}}`{{{siteUrl}}}/<slug>/#{{{id}}}`{{^last}}, {{/last}}{{/manualTabs}}.
+Sans ancre, la page s'ouvre sur son premier onglet.
+
+### Demander un onglet
+
+Un manuel qui a besoin d'un onglet absent du vocabulaire ne l'invente pas : son projet le demande
+à l'architecte du site, en disant ce que l'onglet porterait. L'architecte l'ajoute au vocabulaire
+s'il n'existe pas déjà sous un autre nom, et s'il peut servir à d'autres produits que celui qui le
+demande. L'onglet sert alors à tous les produits, avec le même titre sur toutes les pages : le
+projet écrit son fichier, et le site le publie au build suivant.
+
+Tant que l'onglet n'existe pas, son fichier est signalé au build et n'est pas publié : le reste
+du manuel l'est.
 
 ### Ce que le site signale
 
@@ -510,6 +525,8 @@ Le rapport du catalogue (résumé du job `build` du déploiement du site, onglet
 produit, quels onglets ont été publiés et dans quelle langue, puis chaque problème de manuel, en
 nommant le dépôt et le fichier :
 
+- un fichier hors vocabulaire : un `.md` de `9_Assets/manual/` dont le nom n'est pas celui d'un
+  onglet (voir « Demander un onglet ») ;
 - une image écartée : absente, hors de `9_Assets/`, d'un autre format ou illisible ;
 - un titre de niveau 1 (`# …`) ;
 - un fichier illisible (pas du texte UTF-8).

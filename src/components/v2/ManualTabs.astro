@@ -3,13 +3,18 @@
 // AUTHOR: engineer
 // DATE: 2026-10-20
 // STATUS: active — ticket #111
+// REVISED: 2026-10-21 (ticket #117) — the tabs and the manual's titles stand straight, a tab no longer
+//   moves under the pointer (the selected one stays raised: a state); the tab list in the row
+//   `.z2-tabrow` (src/layouts/V2Layout.astro), the page's GitHub link (the `link` slot) at its right
+//   end — a link beside the tab list, never in it: out of the arrow keys, in the Tab order
 //
 // Used by src/pages/[slug]/index.astro around its #install block (the default slot):
-//   - WITHOUT a manual (`tabs` null), it renders its slot and nothing else: the page of a product
-//     without a manual is the page it had before ticket #111, its #install block in its place (the
-//     slot's markup is the page's, with the page's scoped styles);
-//   - WITH a manual, the tabs of src/lib/manual.mjs (manualTabs): a tab list and one panel per tab,
-//     the first one shown; the slot (the #install block) in the Setup panel, after the project's text.
+//   - WITHOUT a manual (`tabs` null), it renders its default slot and nothing else: the #install
+//     block in its place (the slot's markup is the page's, with the page's scoped styles); the page
+//     draws the row of its GitHub link itself, under the pitch;
+//   - WITH a manual, the tabs of src/lib/manual.mjs (manualTabs): a row holding the tab list and the
+//     `link` slot (the page's GitHub link), then one panel per tab, the first one shown; the default
+//     slot (the #install block) in the Setup panel, after the project's text.
 // The WAI-ARIA tabs pattern: role tablist / tab / tabpanel, aria-selected, aria-controls,
 // aria-labelledby, one tab in the Tab order (tabindex 0, the others -1). The behaviour — the click,
 // the arrow, Home and End keys, the anchors (`#overview`…, `#install` opening Setup) — is in the
@@ -34,21 +39,24 @@ const { tabs, texts, product } = Astro.props;
 {
   tabs && texts ? (
     <div class="manual" data-manual>
-      <div class="manual-tabs" role="tablist" aria-label={fill(texts.label, { product })}>
-        {tabs.map((t, i) => (
-          <button
-            type="button"
-            class="manual-tab"
-            role="tab"
-            id={`tab-${t.id}`}
-            aria-controls={t.id}
-            aria-selected={i === 0 ? 'true' : 'false'}
-            tabindex={i === 0 ? '0' : '-1'}
-            data-tab={t.id}
-          >
-            {texts.tabs[t.id]}
-          </button>
-        ))}
+      <div class="z2-tabrow">
+        <div class="manual-tabs" role="tablist" aria-label={fill(texts.label, { product })}>
+          {tabs.map((t, i) => (
+            <button
+              type="button"
+              class="manual-tab"
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-controls={t.id}
+              aria-selected={i === 0 ? 'true' : 'false'}
+              tabindex={i === 0 ? '0' : '-1'}
+              data-tab={t.id}
+            >
+              {texts.tabs[t.id]}
+            </button>
+          ))}
+        </div>
+        <slot name="link" />
       </div>
       {tabs.map((t, i) => (
         <div class="manual-panel" role="tabpanel" id={t.id} aria-labelledby={`tab-${t.id}`} tabindex="0" hidden={i !== 0} data-tab-panel={t.id}>
@@ -70,13 +78,12 @@ const { tabs, texts, product } = Astro.props;
     scroll-margin-top: 7rem;
   }
 
-  /* Index tabs of a worn binder: soot tags, the open one inked in the product's accent. */
+  /* Index tabs of a worn binder: soot tags, the open one inked in the product's accent. The rule
+     under them is the row's (.z2-tabrow). */
   .manual-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 0.6rem;
-    padding-bottom: 0.9rem;
-    border-bottom: 4px solid var(--z2-soot-deep);
   }
 
   .manual-tab {
@@ -90,16 +97,7 @@ const { tabs, texts, product } = Astro.props;
     font-size: 1.05rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    transform: rotate(-0.6deg);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .manual-tab:nth-child(even) {
-    transform: rotate(0.5deg);
-  }
-
-  .manual-tab:hover {
-    transform: translate(-1px, -2px);
   }
 
   .manual-tab[aria-selected='true'] {
@@ -163,7 +161,6 @@ const { tabs, texts, product } = Astro.props;
     text-shadow:
       -2px 1px 0 rgba(236, 223, 191, 0.18),
       2px -1px 0 rgba(0, 0, 0, 0.6);
-    transform: rotate(-1.6deg);
     clip-path: polygon(0 6%, 9% 0, 31% 4%, 54% 1%, 78% 5%, 100% 0, 99% 47%, 100% 94%, 72% 100%, 47% 95%, 22% 100%, 1% 96%, 0 52%);
     overflow-wrap: anywhere;
   }

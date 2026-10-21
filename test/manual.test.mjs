@@ -2,6 +2,7 @@
 // AUTHOR: engineer
 // DATE: 2026-10-20
 // STATUS: active
+// REVISED: 2026-10-21 (ticket #117) — test 9: the guard of the GitHub link, on the row of the tabs
 //
 // Run with `npm test` (needs `npm ci`). The convention is the agency's (§ 7 of
 // content/readme-kit/guide.md): a project builds its manual on it, so every rule of it is tested
@@ -24,7 +25,7 @@ import { catalogReport } from '../src/lib/catalog/report.mjs';
 import { manualImageUrlPath, manualTabs, manualTexts } from '../src/lib/manual.mjs';
 import { catalogContent, siteContent } from '../src/lib/content.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
-import { manualDirProblems, manualPageProblems } from '../scripts/lib/check-manual.mjs';
+import { manualDirProblems, manualPageProblems, repoLinkProblems } from '../scripts/lib/check-manual.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SIM = join(ROOT, 'catalog-simulator');
@@ -409,4 +410,30 @@ test('8. the guard of the pages (scripts/check-manual.mjs): tabs as the catalog 
   assert.match(manualPageProblems(page(), plain, { texts, distDir }).join('\n'), /manual block \[data-manual\]\(s\), the catalog holds no manual/);
   assert.match(manualDirProblems(distDir, plain).join('\n'), /exists, the catalog holds no image/);
   rmSync(distDir, { recursive: true, force: true });
+});
+
+test('9. the guard of the GitHub link (scripts/check-manual.mjs, ticket #117): one link to the repository, « GitHub ↗ » in a new tab, on the row of the tabs beside the tab list — without a manual, alone under the pitch', () => {
+  const texts = siteContent(ROOT).product;
+  const repo = 'https://github.com/zUrp-Astronomics/gizmo';
+  const link = (attrs = '') => `<a class="repo-tab" href="${repo}" target="_blank" rel="noopener" data-repo-link${attrs}>${texts.repoLink} <span aria-hidden="true">${texts.newTabArrow}</span></a>`;
+  const tab = '<button type="button" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true" tabindex="0">Overview</button>';
+  const withManual = (row = `<div role="tablist">${tab}</div>${link()}`) =>
+    `<main><section class="lead"></section><div class="manual" data-manual><div class="z2-tabrow">${row}</div><div role="tabpanel" id="overview"></div></div></main>`;
+  const product = { slug: 'gizmo', repo, manual: { tabs: [{ id: 'overview', lang: 'en', file: 'o', html: '' }], images: [] } };
+  assert.deepEqual(repoLinkProblems(withManual(), product, { texts }), []);
+  assert.match(repoLinkProblems(withManual(`<div role="tablist">${tab}${link()}</div>`), product, { texts }).join('\n'), /not on the row of the tabs/);
+  assert.match(repoLinkProblems(withManual().replace('</div></main>', `${link()}</div></main>`), product, { texts }).join('\n'), /2 GitHub link\(s\)/);
+  assert.match(repoLinkProblems(withManual(`<div role="tablist">${tab}</div>${link(' role="tab"')}`), product, { texts }).join('\n'), /role="tab", it is a link/);
+  assert.match(repoLinkProblems(withManual().replace(' target="_blank"', ''), product, { texts }).join('\n'), /does not open a new tab/);
+  assert.match(repoLinkProblems(withManual().replace(texts.newTabArrow, '⟶'), product, { texts }).join('\n'), /says "GitHub ⟶"/);
+  assert.match(repoLinkProblems(withManual().replace(`href="${repo}"`, 'href="https://github.com/x"'), product, { texts }).join('\n'), /the product's repository is/);
+  // Without a manual: the same row, the link alone, under the pitch and before « About » / #install —
+  // and the guard of a page without a manual still finds nothing of one on it.
+  const plain = { slug: 'gizmo', repo, manual: null, install: null };
+  const install = '<section class="install" id="install" data-install></section>';
+  const page = (row = `<div class="z2-tabrow">${link()}</div>`) => `<main><section class="lead"></section>${row}<section class="description"></section>${install}</main>`;
+  assert.deepEqual(repoLinkProblems(page(), plain, { texts }), []);
+  assert.deepEqual(manualPageProblems(page(), plain, { texts: manualTexts(siteContent(ROOT)), distDir: tmpdir() }), []);
+  assert.match(repoLinkProblems(page('') + link(), plain, { texts }).join('\n'), /not under the pitch/);
+  assert.match(repoLinkProblems(page(''), plain, { texts }).join('\n'), /0 GitHub link\(s\)/);
 });

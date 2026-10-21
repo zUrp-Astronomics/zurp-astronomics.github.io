@@ -4,6 +4,8 @@
 // DATE: 2026-10-03
 // STATUS: active
 // REVISED: 2026-10-06 (ticket #49) — default description and og:site_name from content/site.yml
+// REVISED: 2026-10-21 (ticket #117) — the title bands stand straight (the torn edge, the screen and the
+//   offset ghost stay); `.z2-tabrow`, the row of a product page's manual tabs and its GitHub link
 //
 // The site's only layout since the v1 archive (/alternate/, V1Layout.astro) was deleted (ticket #35).
 // Head contract: noindex, OG/Twitter, icons (favicon + apple-touch-icon, src/lib/site-icons.ts), build stamp. Every global rule below is scoped under
@@ -259,7 +261,8 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
   }
 
   /*
-   * The red name block on a black band, cut on the bias — the posters' signature move.
+   * The red name block on a black band, its edges torn — the posters' signature move. Straight
+   * (ticket #117: the site measures, a crooked page says otherwise).
    * Red letters on black: large display text only (≈ 4.5:1), with a misregistered cream ghost.
    */
   html.z2 .z2-band {
@@ -275,9 +278,22 @@ const buildDate = import.meta.env.PUBLIC_BUILD_DATE;
     text-shadow:
       -2px 1px 0 rgba(236, 223, 191, 0.18),
       2px -1px 0 rgba(0, 0, 0, 0.6);
-    transform: rotate(-2.2deg);
     clip-path: polygon(0 6%, 9% 0, 31% 4%, 54% 1%, 78% 5%, 100% 0, 99% 47%, 100% 94%, 72% 100%, 47% 95%, 22% 100%, 1% 96%, 0 52%);
     overflow-wrap: anywhere;
+  }
+
+  /*
+   * The row of a product page (ticket #117): the manual's tabs (src/components/v2/ManualTabs.astro),
+   * then the product's GitHub link at its right end — last when the row wraps. A page without a
+   * manual draws the same row with the link alone, so that it sits at the same place on every page.
+   */
+  html.z2 .z2-tabrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 4px solid var(--z2-soot-deep);
   }
 
   /* The slogan line: cream capitals, very wide tracking, black band. */

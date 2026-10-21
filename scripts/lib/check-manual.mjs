@@ -2,14 +2,19 @@
 // AUTHOR: engineer
 // DATE: 2026-10-20
 // STATUS: active — ticket #111
+// REVISED: 2026-10-21 (ticket #117) — the product's GitHub link (repoLinkProblems), on every product
+//   page: on the row of the manual's tabs, beside the tab list and never in it; without a manual, the
+//   same row with the link alone, under the pitch. The guard of a page without a manual is unchanged:
+//   the link is no tab, its row no [data-manual]
 //
 // Pure checks, called by scripts/check-dist.mjs on every product of the built catalog and tested by
 // test/manual.test.mjs. Each returns the list of its problems, empty when the product is as the
 // catalog says (src/lib/manual.mjs, manualTabs).
 //
 // THE PAGE (src/pages/[slug]/index.astro, src/components/v2/ManualTabs.astro):
-//   - a product WITHOUT a manual: no [data-manual], no role="tab", no role="tabpanel" — its page is
-//     the page it had before ticket #111 (« About », then the #install block when it has one);
+//   - a product WITHOUT a manual: no [data-manual], no role="tab", no role="tabpanel" — « About »,
+//     then the #install block when it has one, as before ticket #111 (the GitHub link's row above
+//     them, ticket #117, is neither a tab nor a manual);
 //   - a product WITH a manual: exactly one [data-manual]; its tabs (role="tab") are the catalog's, in
 //     order, each `id="tab-<tab>"`, `aria-controls="<tab>"`, titled with content/site.yml
 //     `product.manual.tabs`; the first one selected (aria-selected="true", tabindex 0), the others
@@ -18,6 +23,11 @@
 //     ([data-manual-text]) in the file's language (`lang`); the Install block ([data-install]),
 //     when the product has one, inside the Setup panel; no « About » section when there is an
 //     Overview tab, one when there is none; every image of a panel served from dist/;
+//   - THE GITHUB LINK (ticket #117), on every product page: exactly one <a data-repo-link> to the
+//     product's repository, in a new tab (target="_blank", rel="noopener"), saying content/site.yml
+//     `product.repoLink` then `product.newTabArrow`, no role; with a manual, after the tab list
+//     (out of it: not a tab, out of the arrow keys) and before the first panel; without one, after
+//     the pitch (the « lead » section), before « About » and the #install block;
 //   - THE manual/ FOLDER (dist/<slug>/manual/): exactly the images of the catalog, each at the size
 //     it gives, byte for byte (SHA-256); no folder without one.
 // The weight of every image of dist/ (600 KB) is checked by scripts/check-dist.mjs, on every image.
@@ -112,6 +122,43 @@ export function manualPageProblems(html, product, { texts, distDir }) {
     const src = attributesOf(attrs).src ?? '';
     const file = src.startsWith('/') ? join(distDir, decodeURIComponent(src.slice(1).split(/[?#]/)[0])) : null;
     if (!file || !existsSync(file)) problems.push(`${where}: an image of the manual, ${JSON.stringify(src)}, is not a file of dist/`);
+  }
+  return problems;
+}
+
+/**
+ * The problems of the GitHub link on the page of `product` (ticket #117).
+ * @param {string} html the page, dist/<slug>/index.html
+ * @param {{ slug: string, repo: string, manual?: unknown }} product from the built catalog
+ * @param {{ texts: { repoLink: string, newTabArrow: string } }} options content/site.yml `product`
+ * @returns {string[]}
+ */
+export function repoLinkProblems(html, product, { texts }) {
+  const where = `dist/${product.slug}/index.html`;
+  const links = [...html.matchAll(/<a\b([^>]*)>/gi)]
+    .map((m) => ({ attrs: attributesOf(m[1]), at: m.index, end: m.index + m[0].length }))
+    .filter(({ attrs }) => 'data-repo-link' in attrs);
+  if (links.length !== 1) return [`${where}: ${links.length} GitHub link(s) [data-repo-link], expected 1`];
+  const [link] = links;
+  const problems = [];
+  const text = textOf(html.slice(link.end, html.indexOf('</a>', link.end)));
+  const want = textOf(`${texts.repoLink} ${texts.newTabArrow}`);
+  if (link.attrs.href !== product.repo) problems.push(`${where}: the GitHub link goes to ${JSON.stringify(link.attrs.href ?? null)}, the product's repository is ${JSON.stringify(product.repo)}`);
+  if (link.attrs.target !== '_blank' || !/(^|\s)noopener(\s|$)/.test(link.attrs.rel ?? '')) problems.push(`${where}: the GitHub link does not open a new tab (target="_blank" rel="noopener")`);
+  if (text !== want) problems.push(`${where}: the GitHub link says ${JSON.stringify(text)}, expected ${JSON.stringify(want)} (content/site.yml)`);
+  if ('role' in link.attrs) problems.push(`${where}: the GitHub link has role=${JSON.stringify(link.attrs.role)}, it is a link`);
+
+  if (manualTabs(product)) {
+    const list = byRole(html, 'div', 'tablist');
+    const tabs = byRole(html, 'button', 'tab');
+    const panels = byRole(html, 'div', 'tabpanel');
+    const listEnd = tabs.length ? html.indexOf('</div>', html.indexOf('</button>', tabs.at(-1).end)) : -1;
+    if (list.length !== 1 || !panels.length || listEnd < 0) problems.push(`${where}: no tab list to put the GitHub link beside`);
+    else if (!(link.at > listEnd && link.at < panels[0].at)) problems.push(`${where}: the GitHub link is not on the row of the tabs, after the tab list and before the panels`);
+  } else {
+    const lead = html.search(/<section\b[^>]*\bclass="[^"]*\blead\b/i);
+    const after = [html.search(/<section\b[^>]*\bclass="[^"]*\bdescription\b/i), ...markedAt(html, 'data-install').map((m) => m.at)].filter((n) => n >= 0);
+    if (lead < 0 || link.at < lead || after.some((n) => link.at > n)) problems.push(`${where}: the GitHub link is not under the pitch, before « About » and the #install block`);
   }
   return problems;
 }

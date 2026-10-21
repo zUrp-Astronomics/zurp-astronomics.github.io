@@ -25,10 +25,14 @@
 //   (9_Assets/manual/), its tabs (src/components/v2/ManualTabs.astro, src/lib/manual.mjs), the
 //   #install block in the Setup tab, « About » replaced by the Overview tab when there is one; the
 //   tabs' behaviour in the page's script. Without a manual, the page is unchanged
+// REVISED: 2026-10-21 (ticket #117) — the stamps stand straight, the buttons and links no longer lift
+//   under the pointer; the « Source » section is gone: the product's GitHub link (`data-repo-link`,
+//   « GitHub ↗ », a new tab) at the right end of the row of the manual's tabs — without a manual, the
+//   same row with the link alone, under the pitch; the bench's « new tab » link takes ↗ too
 //
 // Content: tagline, category, badges (status, version of the latest release when there is one,
-// software and hardware licences, each when there is one, based on), About, Source + repo link,
-// footer. Copy from the catalog
+// software and hardware licences, each when there is one, based on), the row of the manual's tabs
+// and the GitHub link, About, footer. Copy from the catalog
 // (src/data/catalog.ts: the product's sheet, 9_Assets/zurp.yml of its repository), word for word (it began as the v1 page's, deleted with the v1 archive in
 // ticket #35); the page's own words from content/site.yml and content/catalog.yml.
 //
@@ -38,7 +42,7 @@
 // content/licences.yml: « Software · <label> », « Hardware · <label> », each only when its licence
 // exists. Both keep exactly the `.badge-license` style (the « => GitHub » stamp of the home page
 // copies it): they differ by an attribute, `data-licence`, which scripts/check-dist.mjs reads — no CSS
-// rule of their own. A <span>, not a link: the repository is linked in the Source section, and a link
+// rule of their own. A <span>, not a link: the repository is linked on the row of the tabs, and a link
 // would take the underline of the global link style. scripts/check-dist.mjs checks both stamps
 // against the catalog of the build.
 //
@@ -166,6 +170,16 @@ const tint = [
           <p class="pitch">{product.tagline}</p>
         </section>
 
+        {/* Without a manual, the row of its tabs with the GitHub link alone, where the tabs would be
+             (ticket #117): the link at the same place on every product page. */}
+        {!tabs && (
+          <div class="repo-row">
+            <div class="z2-tabrow">
+              <a class="repo-tab" href={product.repo} target="_blank" rel="noopener" data-repo-link>{site.product.repoLink} <span aria-hidden="true">{site.product.newTabArrow}</span></a>
+            </div>
+          </div>
+        )}
+
         {about && (
           <section class="description">
             <h2 class="z2-band">{site.product.aboutTitle}</h2>
@@ -174,6 +188,7 @@ const tint = [
         )}
 
         <ManualTabs tabs={tabs} texts={manual} product={product.name}>
+        <a slot="link" class="repo-tab" href={product.repo} target="_blank" rel="noopener" data-repo-link>{site.product.repoLink} <span aria-hidden="true">{site.product.newTabArrow}</span></a>
         {install && (
           <section class="install" id="install" data-install>
             <h2 class="z2-band">{texts.title}</h2>
@@ -190,7 +205,7 @@ const tint = [
                   {g.links.map((l) => (
                     <li>
                       <a class="repo-link" href={l.href} data-download={g.kind}>
-                        <span class="repo-icon" aria-hidden="true">{site.product.sourceArrow}</span>
+                        <span class="repo-icon" aria-hidden="true">{site.product.downloadArrow}</span>
                         <span class="repo-url">{l.text}</span>
                       </a>
                     </li>
@@ -205,7 +220,7 @@ const tint = [
                 <div class="bench-actions">
                   <button type="button" class="bench-open" data-bench={install.bench} aria-haspopup="dialog">{texts.bench.button}</button>
                   <a class="repo-link" href={install.bench} target="_blank" rel="noopener" data-bench-tab>
-                    <span class="repo-icon" aria-hidden="true">{site.product.sourceArrow}</span>
+                    <span class="repo-icon" aria-hidden="true">{site.product.newTabArrow}</span>
                     <span class="repo-url">{texts.bench.tab}</span>
                   </a>
                 </div>
@@ -220,14 +235,6 @@ const tint = [
           </section>
         )}
         </ManualTabs>
-
-        <section class="repo">
-          <h2 class="z2-band">{site.product.sourceTitle}</h2>
-          <a class="repo-link" href={product.repo}>
-            <span class="repo-icon" aria-hidden="true">{site.product.sourceArrow}</span>
-            <span class="repo-url">{product.repo.replace('https://github.com/', 'github.com/')}</span>
-          </a>
-        </section>
       </div>
     </main>
   </div>
@@ -387,7 +394,7 @@ const tint = [
     justify-content: center;
   }
 
-  /* Rubber stamps: slightly crooked, inked unevenly. */
+  /* Rubber stamps, inked unevenly; straight (ticket #117). */
   .badge {
     position: relative;
     font-family: var(--z2-font-type);
@@ -397,19 +404,6 @@ const tint = [
     text-transform: uppercase;
     border: 2px solid currentColor;
     border-radius: 4px;
-    transform: rotate(-1.5deg);
-  }
-
-  .badge:nth-child(2) {
-    transform: rotate(1deg);
-  }
-
-  .badge:nth-child(3) {
-    transform: rotate(-0.5deg);
-  }
-
-  .badge:nth-child(4) {
-    transform: rotate(0.8deg);
   }
 
   /* Fill and text from accessibleFill() (≥ 4.5:1); the outer ring keeps the true accent. */
@@ -478,6 +472,25 @@ const tint = [
   section + section,
   :global(.manual) + section {
     border-top: 2px dashed rgba(74, 64, 51, 0.55);
+  }
+
+  /* The row of the GitHub link on a page without a manual: where the manual's would be, apart from
+     the pitch like it (ManualTabs.astro, .manual). */
+  .repo-row {
+    padding-top: 2.5rem;
+    border-top: 2px dashed rgba(74, 64, 51, 0.55);
+  }
+
+  /* The GitHub link, at the right end of the row of tabs: a link, not a tab — no tag, no box, the
+     site's underlined link in the tabs' type. */
+  .repo-tab {
+    margin-left: auto;
+    padding: 0.7rem 0.1rem 0.55rem;
+    color: var(--z2-ink);
+    font-family: var(--z2-font-type);
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
   }
 
   /* An anchor (#install) scrolls it under the sticky header of product pages, not behind it. */
@@ -561,12 +574,6 @@ const tint = [
     padding: 0.95rem 1.6rem 0.85rem;
     font-size: 1.05rem;
     box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .bench-open:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 8px 8px 0 rgba(29, 26, 22, 0.45);
   }
 
   .bench-open:focus-visible,
@@ -633,7 +640,6 @@ const tint = [
     text-decoration: none;
     overflow-wrap: anywhere;
     box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.35);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .repo-icon {
@@ -649,11 +655,6 @@ const tint = [
     padding: 0.95rem 1.3rem 0.85rem;
     font-size: 1rem;
     letter-spacing: 0.03em;
-  }
-
-  .repo-link:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 8px 8px 0 rgba(29, 26, 22, 0.45);
   }
 
   .repo-link:focus-visible {
@@ -692,6 +693,13 @@ const tint = [
     }
     .lead .pitch {
       font-size: 1.12rem;
+    }
+    .repo-row {
+      padding-top: 2rem;
+    }
+    .repo-tab {
+      padding: 0.6rem 0.1rem 0.45rem;
+      font-size: 0.95rem;
     }
   }
 </style>

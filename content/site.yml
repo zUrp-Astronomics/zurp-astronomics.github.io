@@ -15,6 +15,8 @@
 # REVISED: 2026-10-21 (ticket #117) — the « Source » section is gone (`sourceTitle`): `product.repoLink`,
 #   the product's GitHub link on the row of its manual's tabs; `product.newTabArrow` for every link
 #   opening a new tab, `product.downloadArrow` (was `sourceArrow`) for the others
+# REVISED: 2026-10-21 (ticket #119) — `product.manual.tabs` is the VOCABULARY of the manuals, the one
+#   source of the tabs: a list of { id, title, holds } (was a map of titles)
 #
 # Edit the texts freely: the code only places them. `{{product}}` / `{{basedOn}}` are markers the code
 # fills (the product's name, its upstream project). Prose (several sentences) is in the .md files of
@@ -76,11 +78,30 @@ product:
   # names the row of tabs for screen readers ({{product}}: the product's name).
   manual:
     label: '{{product}} manual'
+    # THE VOCABULARY of the manuals (ticket #119): the tabs a product's manual may have, held by the
+    # agency, here and nowhere else — the site reads it for the files of 9_Assets/manual/, the order
+    # and the titles of the tabs, the schema of the catalog, and the table of § 7 of the README kit
+    # guide. Adding, removing or reordering a tab, for every product, is an edit of this list.
+    #   id      the file's name (`<id>.en.md`, `<id>.fr.md`) and the tab's anchor (`#<id>`): lower
+    #           case letters, digits and `-`, starting with a letter; never `install` (the anchor of
+    #           the Install block). `setup` must stay: the Install block is in its tab
+    #   title   the tab's title on the page
+    #   holds   what the tab carries, in French: one line of the guide's table, for the projects
+    # A file of 9_Assets/manual/ whose name is not `<id>.<lang>.md` with an id of this list is
+    # reported by the build and not published. A malformed entry here fails the build.
     tabs:
-      overview: Overview
-      assembly: Assembly
-      setup: Setup
-      usage: Usage
+      - id: overview
+        title: Overview
+        holds: "la vitrine du produit : ce qu'il est, ce qu'il fait"
+      - id: assembly
+        title: Assembly
+        holds: "l'assemblage : souder, imprimer, monter"
+      - id: setup
+        title: Setup
+        holds: 'la configuration ; le bloc Install du site y est ajouté'
+      - id: usage
+        title: Usage
+        holds: "l'utilisation"
   # The #install block (ticket #101), on the page of a product whose latest release carrying an
   # installable file (manifest.json, .hex, .img.xz) publishes one. `{{tag}}` is the tag of that
   # release (it may be older than the version stamp).

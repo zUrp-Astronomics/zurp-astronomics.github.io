@@ -24,6 +24,9 @@
 // REVISED: 2026-10-20 (ticket #115) — readme-kit/footer.md, the footer block of every product
 //   README, pasted ONCE at its end in place of the hand-written signature: the enamel plate and the
 //   signature the site draws (URLs only), the links to the site and to the organisation
+// REVISED: 2026-10-21 (ticket #119) — the guide's § 7: its table of the manual's tabs and their
+//   anchors come from the vocabulary of content/site.yml (`product.manual.tabs`), no list of tabs
+//   written by hand any more
 //
 // Usage (after the build, which writes the catalog snapshot .zurp-catalog/remote.json):
 //   npm run readme-kit                     writes the kit into .zurp-catalog/readme-kit/ (git-ignored)
@@ -68,7 +71,8 @@ import { dirname, join, resolve } from 'node:path';
 import Mustache from 'mustache';
 import { loadBuiltCatalog, repoRoot, siteUrl } from './lib/catalog.mjs';
 import { SNAPSHOT_DIR } from '../src/lib/catalog/loader.mjs';
-import { escapeHtml, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
+import { escapeHtml, manualContent, readMarkdown, readYaml, siteContent } from '../src/lib/content.mjs';
+import { MANUAL_LANGS } from '../src/lib/catalog/manual.mjs';
 import { shieldsEndpoint, statusBadgePath } from '../src/lib/status-badge.mjs';
 import { licenseBadgePath } from '../src/lib/license-badge.mjs';
 import { SIGNATURE_PATH } from '../src/lib/signature-image.mjs';
@@ -246,6 +250,10 @@ function guide() {
     espChipFamilies: ESP_CHIP_FAMILIES.map((f) => `\`${f}\``).join(', '),
     // The organisation's Pages site is the repository named after its host (GitHub's rule).
     siteRepo: `${ORG_URL.replace(/^https:\/\/github\.com\//, '')}/${siteHost}`,
+    // § 7, the manual (ticket #119): the vocabulary of its tabs, in the order of the page, and the
+    // languages of a file — the same source as the site's (content/site.yml).
+    manualTabs: manualContent(repoRoot).tabs.map((t, i, all) => ({ ...t, last: i === all.length - 1 })),
+    manualLangs: MANUAL_LANGS.map((l) => `\`${l}\``).join(', '),
     products: products.map((p) => ({
       name: p.name,
       slug: p.slug,

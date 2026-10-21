@@ -17,6 +17,8 @@
 // REVISED: 2026-10-20 (ticket #111) — the manual: its images written under manual/, each product's
 //   `manual` (tabs rendered, images) and `manualProblems` kept in the snapshot, required by
 //   readSnapshot, warned at the build one by one
+// REVISED: 2026-10-21 (ticket #119) — the vocabulary of the manuals (content/site.yml under `root`)
+//   given to readRepoProducts
 //
 // Declared in src/content.config.ts. At each build (and `astro dev`/`astro sync`) it:
 //   1. reads the source named by ZURP_CATALOG (source.mjs) — the build fails without it;
@@ -57,6 +59,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { catalogSource, githubBackend, simulatorBackend, TOKEN_VAR } from './source.mjs';
 import { readRepoProducts } from './read.mjs';
+import { manualTabIds } from '../content.mjs';
 
 export const SNAPSHOT_DIR = '.zurp-catalog';
 export const SNAPSHOT_FILE = `${SNAPSHOT_DIR}/remote.json`;
@@ -79,7 +82,7 @@ export async function readAndSnapshot({ root, env = process.env, sectionIds, bac
   const be =
     backend ??
     (source === 'github' ? githubBackend({ token: env[TOKEN_VAR] || undefined }) : simulatorBackend(join(root, SIMULATOR_DIR)));
-  const { products, skipped, ignoredReleases, installRejected, benchProblems, manualProblems } = await readRepoProducts(be, { sectionIds });
+  const { products, skipped, ignoredReleases, installRejected, benchProblems, manualProblems } = await readRepoProducts(be, { sectionIds, manualTabIds: manualTabIds(root) });
   mkdirSync(join(outDir, 'posters'), { recursive: true });
   mkdirSync(join(outDir, 'firmware'), { recursive: true });
   mkdirSync(join(outDir, 'manual'), { recursive: true });

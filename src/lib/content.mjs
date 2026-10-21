@@ -122,6 +122,57 @@ export function siteContent(root) {
 export const siteView = (site) => ({ name: site.name, affiliation: site.affiliation });
 
 /**
+ * The one tab the code knows by name (ticket #119): the Install block of a product page is in it.
+ * The vocabulary must hold it.
+ */
+export const MANUAL_INSTALL_TAB = 'setup';
+/** An id of the vocabulary: a file name and an anchor — lower case letters, digits and `-`. */
+const MANUAL_TAB_ID = /^[a-z][a-z0-9-]*$/;
+/** Anchors of a product page that a tab may not take: `#install` opens the Setup tab. */
+const MANUAL_RESERVED_IDS = new Set(['install']);
+
+/**
+ * The manual's texts and its VOCABULARY (ticket #119), from a parsed content/site.yml
+ * `product.manual`: `label` (the tab list's name for screen readers) and `tabs`, the tabs a manual
+ * may have, in the order of the page — each `{ id, title, holds }`. The ONE source of the tabs:
+ * the files read in 9_Assets/manual/ (src/lib/catalog/manual.mjs), the order and titles of the
+ * page (src/lib/manual.mjs), the schema of the catalog (src/content.config.ts) and the table of § 7
+ * of the README kit guide (scripts/readme-kit.mjs) all come from it.
+ * A malformed vocabulary is the site's fault, not a project's: it fails, with the key named.
+ * @param {unknown} site content/site.yml, parsed
+ * @returns {{ label: string, tabs: Array<{ id: string, title: string, holds: string }> }}
+ */
+export function manualContentOf(site) {
+  const m = site?.product?.manual;
+  const text = (v) => typeof v === 'string' && v.trim() !== '';
+  const problems = [];
+  if (!text(m?.label)) problems.push('`product.manual.label` missing');
+  const tabs = m?.tabs;
+  if (!Array.isArray(tabs) || !tabs.length) problems.push('`product.manual.tabs` must be a non-empty list of { id, title, holds }');
+  else {
+    const seen = new Set();
+    tabs.forEach((t, i) => {
+      const at = `\`product.manual.tabs[${i}]\``;
+      if (!t || typeof t !== 'object' || Array.isArray(t)) return problems.push(`${at} is not { id, title, holds }`);
+      if (typeof t.id !== 'string' || !MANUAL_TAB_ID.test(t.id)) problems.push(`${at}.id ${JSON.stringify(t.id ?? null)} is not an id (lower case letters, digits and -, starting with a letter)`);
+      else if (MANUAL_RESERVED_IDS.has(t.id)) problems.push(`${at}.id ${JSON.stringify(t.id)} is reserved (an anchor of the product page)`);
+      else if (seen.has(t.id)) problems.push(`${at}.id ${JSON.stringify(t.id)} is listed twice`);
+      else seen.add(t.id);
+      for (const key of ['title', 'holds']) if (!text(t[key])) problems.push(`${at}.${key} missing`);
+    });
+    if (!problems.length && !seen.has(MANUAL_INSTALL_TAB)) problems.push(`\`product.manual.tabs\` has no \`${MANUAL_INSTALL_TAB}\` tab: the Install block is in it`);
+  }
+  if (problems.length) throw new Error(`content: ${CONTENT_DIR}/site.yml: ${problems.join('; ')}`);
+  return { label: m.label.trim(), tabs: tabs.map((t) => ({ id: t.id, title: t.title.trim(), holds: t.holds.trim() })) };
+}
+
+/** The manual's texts and vocabulary of content/site.yml under `root` (manualContentOf). */
+export const manualContent = (root) => manualContentOf(readYaml('site.yml', root));
+
+/** The ids of the vocabulary, in the order of the page. */
+export const manualTabIds = (root) => manualContent(root).tabs.map((t) => t.id);
+
+/**
  * content/catalog.yml: the sections (display order, titles), the status labels and badge colours,
  * the texts of the status badge JSON (src/lib/status-badge.mjs).
  */

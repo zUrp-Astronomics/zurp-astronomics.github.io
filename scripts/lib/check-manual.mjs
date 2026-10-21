@@ -6,6 +6,8 @@
 //   page: on the row of the manual's tabs, beside the tab list and never in it; without a manual, the
 //   same row with the link alone, under the pitch. The guard of a page without a manual is unchanged:
 //   the link is no tab, its row no [data-manual]
+// REVISED: 2026-10-21 (ticket #119) — the Setup tab is MANUAL_INSTALL_TAB (src/lib/content.mjs), the
+//   tabs and their titles those of the vocabulary of content/site.yml
 //
 // Pure checks, called by scripts/check-dist.mjs on every product of the built catalog and tested by
 // test/manual.test.mjs. Each returns the list of its problems, empty when the product is as the
@@ -37,6 +39,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { manualImagePath, manualTabs } from '../../src/lib/manual.mjs';
+import { MANUAL_INSTALL_TAB } from '../../src/lib/content.mjs';
 import { attributesOf, textOf } from './check-install.mjs';
 
 /** Every opening tag `tag` of a page carrying `role="<role>"`: its attributes, its offset, and (for a button) its text. */
@@ -104,7 +107,7 @@ export function manualPageProblems(html, product, { texts, distDir }) {
   // The Install block, in the Setup panel and in no other.
   const install = markedAt(html, 'data-install');
   if (product.install) {
-    const s = ids.indexOf('setup');
+    const s = ids.indexOf(MANUAL_INSTALL_TAB);
     const start = panels[s]?.at;
     const end = panels[s + 1]?.at ?? html.length;
     if (s < 0) problems.push(`${where}: no Setup tab, the product has something to install`);

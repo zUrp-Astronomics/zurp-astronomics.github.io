@@ -8,6 +8,8 @@
 // REVISED: 2026-10-12 (ticket #101) — every asset carries `browser_download_url` in both backends
 //   (the page links the .hex and .img.xz there, src/lib/catalog/install.mjs); the simulator builds it
 //   as GitHub does
+// REVISED: 2026-10-21 (ticket #119) — listDir(): the entries of a folder of the default branch (the
+//   manual's, 9_Assets/manual/: read.mjs reads the files of the vocabulary and reports the others)
 //
 // THE SOURCE IS ALWAYS NAMED. The environment variable ZURP_CATALOG says where the build reads the
 // product repositories: `github` (the organisation on GitHub, what is deployed) or `simulator`
@@ -26,6 +28,10 @@
 //                               `license` is the licence GitHub detects in the repository's LICENSE
 //                               (repoLicense below), null when there is none
 //   readFile(repo, path)      → Buffer | null    a file of the default branch, null when absent
+//   listDir(repo, path)       → [{ name, type }] | null  the entries right under a folder of the
+//                               default branch, by name; `type` is `file`, `dir` or `other` (a
+//                               symbolic link, a submodule: neither read nor walked). null when the
+//                               folder is absent (a 404) or is not a folder; any other failure throws
 //   listReleases(repo)        → [{ tag_name, published_at, draft, prerelease, assets }]  (GitHub's
 //                               objects; `assets`: the files attached, [{ id, name, size,
 //                               browser_download_url }] — the last one GitHub's public download URL,
@@ -137,6 +143,15 @@ export function simulatorBackend(dir, { org = ORG } = {}) {
       if (!p.startsWith(base + sep)) throw new Error(`catalog (simulator): path outside the repository: ${repo}/${path}`);
       return existsSync(p) && statSync(p).isFile() ? readFileSync(p) : null;
     },
+    async listDir(repo, path) {
+      const base = repoDir(repo);
+      const p = resolve(base, path);
+      if (!p.startsWith(base + sep)) throw new Error(`catalog (simulator): path outside the repository: ${repo}/${path}`);
+      if (!existsSync(p) || !statSync(p).isDirectory()) return null;
+      return readdirSync(p, { withFileTypes: true })
+        .map((e) => ({ name: e.name, type: e.isFile() ? 'file' : e.isDirectory() ? 'dir' : 'other' }))
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    },
     async listReleases(repo) {
       repoDir(repo);
       const p = join(root, 'releases', `${repo}.json`);
@@ -235,6 +250,23 @@ export function githubBackend({ token, org = ORG, fetchImpl = globalThis.fetch, 
       const encoded = path.split('/').map(encodeURIComponent).join('/');
       const res = await get(`${repoPath(repo)}/contents/${encoded}`, { accept: 'application/vnd.github.raw+json', allow404: true });
       return res ? Buffer.from(await res.arrayBuffer()) : null;
+    },
+    // The contents endpoint lists a folder as an array (up to 1,000 entries, no pagination: far more
+    // than a manual holds); a file there is an object: not a folder. GitHub's types: file, dir,
+    // symlink, submodule.
+    async listDir(repo, path) {
+      const encoded = path.split('/').map(encodeURIComponent).join('/');
+      const url = `${repoPath(repo)}/contents/${encoded}`;
+      const res = await get(url, { allow404: true });
+      if (!res) return null;
+      const list = await res.json();
+      if (!Array.isArray(list)) return null;
+      return list
+        .map((e) => {
+          if (!e || typeof e.name !== 'string') throw new Error(`catalog (github): GET ${url} listed an entry without a name`);
+          return { name: e.name, type: e.type === 'file' ? 'file' : e.type === 'dir' ? 'dir' : 'other' };
+        })
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     },
     async listReleases(repo) {
       return getAll(`${repoPath(repo)}/releases?per_page=100`);

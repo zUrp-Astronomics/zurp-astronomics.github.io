@@ -86,10 +86,11 @@ sans rien à installer n'a pas de bloc, ni de banc.
 Le manuel d'un produit est écrit par son projet, dans son dépôt : `9_Assets/manual/`, un fichier
 Markdown par onglet et par langue (la norme : § 7 de `readme-kit/guide.md`). Sa page porte alors des
 onglets, dans l'ordre du vocabulaire — chacun seulement quand son fichier existe ; le bloc
-« Install » est dans l'onglet Setup, et l'onglet Overview remplace la section « About ». Ici vit le
+« Install » est dans l'onglet Setup, et l'onglet marqué `replacesAbout` (Overview) remplace la section « About ». Ici vit le
 **vocabulaire des onglets** (`site.yml`, `product.manual.tabs`), le même pour tous les produits et
 sa seule source : pour chaque onglet, son identifiant (le nom de son fichier et son ancre), son
-titre et une ligne en français qui dit ce qu'il porte (la table du § 7 du guide) ; ajouter, retirer
+titre et une ligne en français qui dit ce qu'il porte (la table du § 7 du guide), et, sur un seul
+onglet au plus, `replacesAbout: true` (cet onglet remplace « About ») ; ajouter, retirer
 ou réordonner un onglet, c'est éditer cette liste. Un `.md` de `9_Assets/manual/` hors du
 vocabulaire est signalé au build et n'est pas publié ; une entrée mal formée de la liste fait
 échouer le build. Ici vit aussi le nom de la rangée d'onglets pour les lecteurs d'écran

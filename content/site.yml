@@ -87,11 +87,15 @@ product:
     #           the Install block). `setup` must stay: the Install block is in its tab
     #   title   the tab's title on the page
     #   holds   what the tab carries, in French: one line of the guide's table, for the projects
+    #   replacesAbout
+    #           optional, `true` on one tab at most: when the page has that tab, it replaces the
+    #           « About » section (the sheet's `description`)
     # A file of 9_Assets/manual/ whose name is not `<id>.<lang>.md` with an id of this list is
     # reported by the build and not published. A malformed entry here fails the build.
     tabs:
       - id: overview
         title: Overview
+        replacesAbout: true
         holds: "la vitrine du produit : ce qu'il est, ce qu'il fait"
       - id: assembly
         title: Assembly

@@ -134,13 +134,15 @@ const MANUAL_RESERVED_IDS = new Set(['install']);
 /**
  * The manual's texts and its VOCABULARY (ticket #119), from a parsed content/site.yml
  * `product.manual`: `label` (the tab list's name for screen readers) and `tabs`, the tabs a manual
- * may have, in the order of the page — each `{ id, title, holds }`. The ONE source of the tabs:
+ * may have, in the order of the page — each `{ id, title, holds }` — and `aboutTab`, the id of the
+ * tab marked `replacesAbout: true` (at most one; null when none), which replaces the « About »
+ * section of a page that has it. The ONE source of the tabs:
  * the files read in 9_Assets/manual/ (src/lib/catalog/manual.mjs), the order and titles of the
  * page (src/lib/manual.mjs), the schema of the catalog (src/content.config.ts) and the table of § 7
  * of the README kit guide (scripts/readme-kit.mjs) all come from it.
  * A malformed vocabulary is the site's fault, not a project's: it fails, with the key named.
  * @param {unknown} site content/site.yml, parsed
- * @returns {{ label: string, tabs: Array<{ id: string, title: string, holds: string }> }}
+ * @returns {{ label: string, tabs: Array<{ id: string, title: string, holds: string }>, aboutTab: string | null }}
  */
 export function manualContentOf(site) {
   const m = site?.product?.manual;
@@ -159,11 +161,17 @@ export function manualContentOf(site) {
       else if (seen.has(t.id)) problems.push(`${at('id')} ${JSON.stringify(t.id)} is listed twice`);
       else seen.add(t.id);
       for (const key of ['title', 'holds']) if (!text(t[key])) problems.push(`${at(key)} missing`);
+      if (t.replacesAbout !== undefined && typeof t.replacesAbout !== 'boolean') problems.push(`${at('replacesAbout')} is not true or false`);
     });
+    if (tabs.filter((t) => t?.replacesAbout === true).length > 1) problems.push('`product.manual.tabs`: `replacesAbout` on more than one tab');
     if (!problems.length && !seen.has(MANUAL_INSTALL_TAB)) problems.push(`\`product.manual.tabs\` has no \`${MANUAL_INSTALL_TAB}\` tab: the Install block is in it`);
   }
   if (problems.length) throw new Error(`content: ${CONTENT_DIR}/site.yml: ${problems.join('; ')}`);
-  return { label: m.label.trim(), tabs: tabs.map((t) => ({ id: t.id, title: t.title.trim(), holds: t.holds.trim() })) };
+  return {
+    label: m.label.trim(),
+    tabs: tabs.map((t) => ({ id: t.id, title: t.title.trim(), holds: t.holds.trim() })),
+    aboutTab: tabs.find((t) => t.replacesAbout === true)?.id ?? null,
+  };
 }
 
 /** The manual's texts and vocabulary of content/site.yml under `root` (manualContentOf). */

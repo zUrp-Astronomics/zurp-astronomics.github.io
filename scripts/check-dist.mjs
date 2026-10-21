@@ -18,6 +18,8 @@
 //   the catalog's, its button, frame and « new tab » link in the #install block; none without one
 // REVISED: 2026-10-20 (ticket #111) — the manual: on every page, its tabs as the built catalog says
 //   (none without a manual), the #install block in the Setup tab, its images in dist/<slug>/manual/
+// REVISED: 2026-10-21 (ticket #119) — no file of dist/ holds the marker of the simulator's manual
+//   files that must not be published; « About » only without the tab that replaces it (site.yml)
 //   byte for byte (scripts/lib/check-manual.mjs)
 // REVISED: 2026-10-20 (ticket #115) — the two stable URLs of the product READMEs' footer block:
 //   brand/zurp-plate.webp (the enamel plate) and brand/signature.png (the signature)
@@ -61,9 +63,13 @@
 //   - for EVERY product (ticket #111, scripts/lib/check-manual.mjs): its page's manual is not what
 //     the built catalog says — without a manual: any tab, and no « About »; with one: its tabs and
 //     panels in the catalog's order, titled by content/site.yml, the first one shown, each text in
-//     its file's language, the #install block in the Setup tab, « About » only without Overview,
+//     its file's language, the #install block in the Setup tab, « About » only without the tab
+//     marked `replacesAbout` in content/site.yml (Overview),
 //     every image of the panels a file of dist/; dist/<slug>/manual/ is not exactly the catalog's
 //     images, byte for byte (no folder without one);
+//   - (ticket #119, scripts/lib/check-manual.mjs) a text file of dist/ holds ZURP-NOT-PUBLISHED, the
+//     marker of the simulator's manual files the site reports (outside the vocabulary) or does not
+//     walk (a sub-folder): one of them was published;
 //   - for EVERY product (ticket #117, scripts/lib/check-manual.mjs): its page has not exactly one
 //     GitHub link to its repository, « GitHub ↗ » (content/site.yml) in a new tab, on the row of the
 //     manual's tabs after the tab list — without a manual, under the pitch, before « About »;
@@ -79,7 +85,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { loadBuiltCatalog } from './lib/catalog.mjs';
 import { benchDirProblems, espDirProblems, installBlockProblems, strayBenchProblems } from './lib/check-install.mjs';
-import { manualDirProblems, manualPageProblems, repoLinkProblems } from './lib/check-manual.mjs';
+import { manualDirProblems, manualPageProblems, repoLinkProblems, unpublishedProblems, UNPUBLISHED_MARKER } from './lib/check-manual.mjs';
 import { inlineStyles, newTabProblems, styleProblems } from './lib/check-style.mjs';
 import { manualTabs, manualTexts } from '../src/lib/manual.mjs';
 import { LICENSE_KINDS, siteContent } from '../src/lib/content.mjs';
@@ -182,6 +188,9 @@ for (const p of catalog.products) {
   const page = join(distDir, p.slug, 'index.html');
   if (existsSync(page)) errors.push(...manualPageProblems(readFileSync(page, 'utf8'), p, { texts: manualText, distDir }));
 }
+const unpublished = unpublishedProblems(files);
+errors.push(...unpublished);
+console.log(`Manual files not published: ${unpublished.length ? `${unpublished.length} file(s) of dist/` : 'no file of dist/'} hold ${UNPUBLISHED_MARKER}`);
 console.log(
   `Manual: ${catalog.products.filter((p) => manualTabs(p)).map((p) => `${p.slug} (${manualTabs(p).map((t) => t.id).join(', ')})`).join(', ') || 'none'}; ` +
     `${catalog.products.reduce((n, p) => n + (p.manual?.images.length ?? 0), 0)} image(s) of manuals`,

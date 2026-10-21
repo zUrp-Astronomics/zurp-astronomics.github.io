@@ -7,6 +7,10 @@
 //   folder listed in both backends and every .md outside the vocabulary reported, never read; test
 //   5, the titles from the vocabulary; test 7, Basilisk's notes.en.md; tests 10 and 11, the
 //   vocabulary as the one source (a tab added, reordered, as data) and a malformed one failing
+// REVISED: 2026-10-21 (ticket #119, review) — test 7: Basilisk's api.en.md, Overview.md, notes.en.md
+//   (one report line each), its root image and drafts/ (nothing); test 8: the marker check of
+//   dist/; tests 10–11: `replacesAbout`; test 12: the closed schema of the collection; test 13: no
+//   tab named in the code but MANUAL_INSTALL_TAB
 //
 // Run with `npm test` (needs `npm ci`). The convention is the agency's (§ 7 of
 // content/readme-kit/guide.md): a project builds its manual on it, so every rule of it is tested
@@ -15,7 +19,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,7 +34,9 @@ import { catalogReport } from '../src/lib/catalog/report.mjs';
 import { manualImageUrlPath, manualTabs, manualTexts } from '../src/lib/manual.mjs';
 import { catalogContent, manualContent, manualContentOf, manualTabIds, siteContent } from '../src/lib/content.mjs';
 import { loadBuiltCatalog } from '../scripts/lib/catalog.mjs';
-import { manualDirProblems, manualPageProblems, repoLinkProblems } from '../scripts/lib/check-manual.mjs';
+import { manualDirProblems, manualPageProblems, repoLinkProblems, UNPUBLISHED_MARKER, unpublishedProblems } from '../scripts/lib/check-manual.mjs';
+import { manualSchema } from '../src/lib/catalog/manual-schema.mjs';
+import { z } from 'astro/zod';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SIM = join(ROOT, 'catalog-simulator');
@@ -426,9 +432,24 @@ test('7. the simulator: Basilisk’s demo manual (an absent tab, a tab in .fr on
   assert.ok(warnings.some((w) => /^repository basilisk, 9_Assets\/manual\/usage\.en\.md: a level-1 heading/.test(w)));
   assert.ok(warnings.some((w) => /^repository basilisk, 9_Assets\/manual\/usage\.en\.md: image "images\/missing-top-view\.png" .* does not exist/.test(w)));
   assert.ok(warnings.some((w) => /^repository basilisk, 9_Assets\/manual\/usage\.en\.md: image ".*" is not under 9_Assets\//.test(w)));
-  // Ticket #119: notes.en.md, outside the vocabulary — reported, not published.
-  assert.ok(warnings.includes(unknown('basilisk', 'notes.en.md')), 'Basilisk’s notes.en.md is reported');
-  assert.ok(!by.basilisk.manual.tabs.some((t) => t.html.includes('NOTES-OUTSIDE-THE-VOCABULARY')), 'and not published');
+  // Ticket #119, through the real simulator: api.en.md, Overview.md and notes.en.md, outside the
+  // vocabulary — one line of the report each, naming the repository and the file, pointing at § 7;
+  // the image at the root of manual/ and the sub-folder drafts/ — nothing; none of them published.
+  const outside = ['Overview.md', 'api.en.md', 'notes.en.md'];
+  assert.deepEqual(warnings.filter((w) => w.includes(': not a file of the manual')), outside.map((f) => unknown('basilisk', f)), 'one problem per .md outside the vocabulary, and no other');
+  const report = catalogReport(catalog);
+  for (const f of outside) {
+    const lines = report.lines.filter((l) => l.includes(`9_Assets/manual/${f}:`));
+    assert.equal(lines.length, 1, `${f}: one line of the report`);
+    assert.match(lines[0], /^  manual problem \(product published\) — repository basilisk, .* not published\. .*\(§ 7 of the README kit guide\)$/, f);
+  }
+  assert.ok(!report.lines.some((l) => /wiring-diagram|drafts/.test(l)), 'the image and the sub-folder are not reported');
+  for (const f of ['api.en.md', 'Overview.md', 'notes.en.md', 'drafts/assembly.en.md']) {
+    assert.ok(readFileSync(join(SIM, 'repos', 'basilisk', '9_Assets', 'manual', f), 'utf8').includes(UNPUBLISHED_MARKER), `${f} carries the marker check-dist looks for`);
+  }
+  assert.ok(existsSync(join(SIM, 'repos', 'basilisk', '9_Assets', 'manual', 'wiring-diagram.png')));
+  assert.ok(!by.basilisk.manual.tabs.some((t) => t.html.includes(UNPUBLISHED_MARKER)), 'none of them published');
+  assert.ok(!by.basilisk.manual.images.some((i) => /wiring-diagram/.test(i.source)), 'the image no file shows is not served');
   assert.ok(by.basilisk.install, 'Basilisk installs something');
   assert.deepEqual(manualTabs(by.cyclops).map((t) => [t.id, t.lang, t.install]), [
     ['overview', 'en', false],
@@ -477,6 +498,13 @@ test('8. the guard of the pages (scripts/check-manual.mjs): tabs as the catalog 
   assert.deepEqual(manualPageProblems(before, plain, { texts, distDir }), []);
   assert.match(manualPageProblems(page(), plain, { texts, distDir }).join('\n'), /manual block \[data-manual\]\(s\), the catalog holds no manual/);
   assert.match(manualDirProblems(distDir, plain).join('\n'), /exists, the catalog holds no image/);
+  // Ticket #119: the marker of the simulator's files that must not be published, in no file of dist/.
+  const page1 = join(distDir, 'gizmo', 'index.html');
+  writeFileSync(page1, '<p>clean</p>');
+  const listed = [{ rel: 'gizmo/index.html', abs: page1 }, { rel: `gizmo/manual/${image.name}`, abs: join(distDir, 'gizmo', 'manual', image.name) }];
+  assert.deepEqual(unpublishedProblems(listed), []);
+  writeFileSync(page1, `<p>${UNPUBLISHED_MARKER}</p>`);
+  assert.deepEqual(unpublishedProblems(listed), [`dist/gizmo/index.html holds ${UNPUBLISHED_MARKER}: a file of a manual outside the vocabulary, or in a sub-folder of manual/, is published`]);
   rmSync(distDir, { recursive: true, force: true });
 });
 
@@ -522,6 +550,8 @@ test('10. the vocabulary of content/site.yml is the one source of the tabs (tick
   const { tabs } = manualContent(ROOT);
   assert.deepEqual(tabs.map((t) => [t.id, t.title]), [['overview', 'Overview'], ['assembly', 'Assembly'], ['setup', 'Setup'], ['usage', 'Usage']], 'ids, titles and order as before');
   for (const t of tabs) assert.ok(t.holds.length > 0, `${t.id}: what it holds, for the guide`);
+  assert.equal(manualContent(ROOT).aboutTab, 'overview', 'Overview replaces « About », as since ticket #111 — said by the vocabulary');
+  assert.equal(manualTexts(siteContent(ROOT)).aboutTab, 'overview');
 
   const files = {
     '9_Assets/manual/overview.en.md': md('## Overview'),
@@ -571,10 +601,14 @@ test('11. a malformed vocabulary is the site’s fault: it fails the build, nami
     [[], /must be a non-empty list/],
     [{ setup: 'Setup' }, /must be a non-empty list/],
     [['setup'], /`product\.manual\.tabs\[0\]` is not \{ id, title, holds \}/],
+    [[ok('setup'), { ...ok('usage'), replacesAbout: 'yes' }], /`product\.manual\.tabs\[1\]\.replacesAbout` is not true or false/],
+    [[{ ...ok('setup'), replacesAbout: true }, { ...ok('usage'), replacesAbout: true }], /`replacesAbout` on more than one tab/],
   ]) {
     assert.throws(() => manualContentOf(site(tabs)), error, JSON.stringify(tabs));
   }
   assert.throws(() => manualContentOf(site([ok('setup')], '')), /`product\.manual\.label` missing/);
+  assert.equal(manualContentOf(site([ok('setup')])).aboutTab, null, 'no tab replaces « About »: it stays');
+  assert.equal(manualContentOf(site([ok('setup'), { ...ok('usage'), replacesAbout: true }])).aboutTab, 'usage');
   // Through the chain of the build: the read of the catalog fails.
   const root = rootWithSite((s) => {
     delete s.product.manual.tabs[1].title;
@@ -582,4 +616,41 @@ test('11. a malformed vocabulary is the site’s fault: it fails the build, nami
   const sim = makeSim({ alpha: repo() });
   await assert.rejects(readAndSnapshot({ root, env: { ZURP_CATALOG: 'simulator' }, sectionIds, backend: simulatorBackend(sim) }), /content\/site\.yml: `product\.manual\.tabs\[1\]\.title` missing/);
   rmSync(root, { recursive: true, force: true });
+});
+
+// 12 ------------------------------------------------------------------------------------------------
+test('12. the schema of the collection (src/content.config.ts → src/lib/catalog/manual-schema.mjs) is closed: a tab id is one of the vocabulary, never any string', () => {
+  const config = readFileSync(join(ROOT, 'src', 'content.config.ts'), 'utf8');
+  assert.match(config, /import \{ manualSchema \} from '\.\/lib\/catalog\/manual-schema\.mjs';/);
+  assert.match(config, /\n {6}manual: manualSchema\(z, tabIds\),\n/, 'the collection’s `manual` is this schema');
+  assert.match(config, /\nconst tabIds = manualTabIds\(\);\n/, 'on the vocabulary of content/site.yml');
+  const manual = (id, lang = 'en') => ({ tabs: [{ id, lang, file: `9_Assets/manual/${id}.${lang}.md`, html: '<p>x</p>' }], images: [] });
+  const schema = manualSchema(z, manualTabIds(ROOT));
+  for (const id of TABS) assert.ok(schema.safeParse(manual(id)).success, `${id}: accepted`);
+  assert.ok(schema.safeParse(null).success, 'no manual');
+  for (const id of ['api', 'notes', 'Overview', '', 'install']) assert.equal(schema.safeParse(manual(id)).success, false, `${JSON.stringify(id)}: refused, not a tab of the vocabulary`);
+  assert.equal(schema.safeParse(manual('usage', 'de')).success, false, 'a language other than en, fr: refused');
+  // A tab added to the vocabulary is accepted with no code change.
+  const wider = manualSchema(z, [...TABS, 'api']);
+  assert.ok(wider.safeParse(manual('api')).success);
+  assert.equal(wider.safeParse(manual('notes')).success, false);
+});
+
+// 13 ------------------------------------------------------------------------------------------------
+test('13. no tab of the vocabulary is named in the code (src/, scripts/) but the Install tab, MANUAL_INSTALL_TAB: the tabs are data', () => {
+  const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
+  const code = [...walk(join(ROOT, 'src')), ...walk(join(ROOT, 'scripts'))].filter((f) => /\.(mjs|js|ts|astro)$/.test(f));
+  assert.ok(code.length > 20, `${code.length} files of code read`);
+  const found = [];
+  for (const file of code) {
+    readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
+      for (const id of TABS) {
+        if (!new RegExp(`(['"])${id}\\1`).test(line)) continue;
+        if (file.endsWith(join('src', 'lib', 'content.mjs')) && line === `export const MANUAL_INSTALL_TAB = '${id}';`) continue;
+        found.push(`${file.slice(ROOT.length + 1)}:${i + 1}: ${line.trim()}`);
+      }
+    });
+  }
+  assert.deepEqual(found, [], 'a tab named in the code');
+  assert.ok(TABS.includes('setup'), 'the Install tab is in the vocabulary');
 });

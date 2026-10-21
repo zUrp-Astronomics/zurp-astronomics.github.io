@@ -4,7 +4,8 @@
 // STATUS: active — ticket #111
 // REVISED: 2026-10-21 (ticket #119) — the tabs, their order and their titles come from the
 //   vocabulary of content/site.yml `product.manual.tabs` (src/lib/content.mjs, manualContentOf):
-//   no list of tabs in the code; the Setup tab is MANUAL_INSTALL_TAB
+//   no list of tabs in the code; the Setup tab is MANUAL_INSTALL_TAB, the tab that replaces « About »
+//   the one marked `replacesAbout` there (manualTexts: `aboutTab`)
 //
 // What the site publishes of the manual read by src/lib/catalog/manual.mjs. Plain JavaScript, so that
 // the page (src/pages/[slug]/…), the catalog report, the post-build guard (scripts/check-dist.mjs)
@@ -20,8 +21,8 @@
 //     the Setup tab. Without an anchor, the page opens on its first tab;
 //   - the titles of the tabs are the site's (content/site.yml, `product.manual.tabs[].title`), never the
 //     product's: the same words on every page;
-//   - when the Overview tab exists, it replaces the « About » section (the sheet's `description`,
-//     which stays required in the sheet).
+//   - when the tab marked `replacesAbout` in the vocabulary (Overview) exists, it replaces the
+//     « About » section (the sheet's `description`, which stays required in the sheet).
 //
 // PATHS IN dist/: <slug>/manual/<id>.webp, each image of the manual as served (re-encoded, under
 // the 600 KB ceiling); <id> is the start of the SHA-256 of those bytes: it changes as soon as they
@@ -56,12 +57,13 @@ export function manualTabs(product, order) {
 
 /**
  * The texts of the tabs, from content/site.yml `product.manual`: `label` (the tab list's name for
- * screen readers, `{{product}}` the product's name) and `tabs`, each tab's title by its id. Fails
+ * screen readers, `{{product}}` the product's name), `tabs`, each tab's title by its id, and
+ * `aboutTab`, the id of the tab that replaces « About » (null: none). Fails
  * with the key named when the vocabulary is malformed (src/lib/content.mjs, manualContentOf).
  * @param {unknown} site content/site.yml, parsed
- * @returns {{ label: string, tabs: Record<string, string> }}
+ * @returns {{ label: string, tabs: Record<string, string>, aboutTab: string | null }}
  */
 export function manualTexts(site) {
-  const { label, tabs } = manualContentOf(site);
-  return { label, tabs: Object.fromEntries(tabs.map((t) => [t.id, t.title])) };
+  const { label, tabs, aboutTab } = manualContentOf(site);
+  return { label, tabs: Object.fromEntries(tabs.map((t) => [t.id, t.title])), aboutTab };
 }

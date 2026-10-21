@@ -17,7 +17,8 @@
 //   rendered, and the images they show); declared here, or zod drops it and the page has no tabs
 // REVISED: 2026-10-21 (ticket #119) — a tab's `id` is one of the vocabulary of content/site.yml
 //   (`product.manual.tabs`, src/lib/content.mjs manualTabIds), read when the config loads, like the
-//   section ids: the enum stays closed, and a tab added there is accepted here without a code change
+//   section ids: the enum stays closed, and a tab added there is accepted here without a code change.
+//   The schema of `manual` is src/lib/catalog/manual-schema.mjs, a module node --test can load
 //
 // The loader (src/lib/catalog/loader.mjs) reads the source named by ZURP_CATALOG (simulator |
 // github, no default) and validates every sheet with messages naming the repository and the field
@@ -27,7 +28,7 @@
 import { defineCollection } from 'astro:content';
 import { z } from 'astro/zod';
 import { repoProductsLoader } from './lib/catalog/loader.mjs';
-import { MANUAL_LANGS } from './lib/catalog/manual.mjs';
+import { manualSchema } from './lib/catalog/manual-schema.mjs';
 import { catalogContent, manualTabIds } from './lib/content.mjs';
 
 const sectionIds = catalogContent().sections.map((s) => s.id);
@@ -72,21 +73,7 @@ const repoProducts = defineCollection({
           bench: z.object({ id: z.string(), name: z.string(), size: z.number(), sha256: z.string() }).nullable(),
         })
         .nullable(),
-      manual: z
-        .object({
-          tabs: z.array(
-            z.object({
-              id: z.enum(tabIds as [string, ...string[]]),
-              lang: z.enum(MANUAL_LANGS as unknown as [string, ...string[]]),
-              file: z.string(),
-              html: z.string(),
-            }),
-          ),
-          images: z.array(
-            z.object({ name: z.string(), source: z.string(), size: z.number(), sha256: z.string(), width: z.number(), height: z.number() }),
-          ),
-        })
-        .nullable(),
+      manual: manualSchema(z, tabIds),
     }),
 });
 

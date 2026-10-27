@@ -171,12 +171,12 @@ test('5. licences: a recognised spdx_id gives its stamp, NOASSERTION the generic
   );
   const { products } = await readSim(sim);
   const stamps = Object.fromEntries(products.map((p) => [p.slug, { p, ...licenseStamps(p, texts) }]));
-  assert.equal(stamps.alpha.software.text, 'Software · GPL-3.0');
+  assert.equal(stamps.alpha.software.text, 'Logiciel · GPL-3.0');
   assert.equal(stamps.bravo.software.label, texts.software.unrecognised);
   assert.equal(stamps.charlie.p.license, null);
   assert.equal(stamps.charlie.software, null);
   assert.deepEqual(stamps.alpha.p.hardwareLicense, { title: 'Open Community License (OCL v1.1)' });
-  assert.equal(stamps.alpha.hardware.text, 'Hardware · OCL v1.1');
+  assert.equal(stamps.alpha.hardware.text, 'Matériel · OCL v1.1');
   assert.equal(stamps.bravo.p.hardwareLicense, null, 'no LICENSE-HARDWARE: no hardware licence');
   assert.equal(stamps.bravo.hardware, null);
 });
@@ -334,7 +334,7 @@ test('9. the signature image of the README footer is drawn from content/site.yml
     return root;
   };
   const site = siteContent(ROOT);
-  assert.deepEqual(signatureTexts(site), { signature: 'zUrp Astronomics — a subsidiary of zUrp Industries.', subtitle: 'Because buying is cheating.' });
+  assert.deepEqual(signatureTexts(site), { signature: 'zUrp Astronomics — une filiale de zUrp Industries.', subtitle: 'Parce qu’acheter, c’est tricher.' });
   const original = await image(ROOT);
   assert.ok(original.equals(await image(tempRoot())), 'the same texts draw the same bytes');
   const meta = await sharp(original).metadata();
@@ -343,9 +343,9 @@ test('9. the signature image of the README footer is drawn from content/site.yml
   // Opaque: its own soot background carries the contrast on GitHub's light and dark backgrounds.
   assert.equal(meta.hasAlpha, false, 'no transparency');
   for (const [from, to] of [
-    ['affiliation: a subsidiary of zUrp Industries', 'affiliation: a subsidiary of zUrp Holdings'],
+    ['affiliation: une filiale de zUrp Industries', 'affiliation: une filiale de zUrp Holdings'],
     ['name: zUrp Astronomics', 'name: zUrp Optics'],
-    ['subtitle: Because buying is cheating.', 'subtitle: Because buying is for quitters.'],
+    ['subtitle: Parce qu’acheter, c’est tricher.', 'subtitle: Parce qu’acheter, c’est pour les lâcheurs.'],
   ]) {
     assert.ok(!original.equals(await image(editedSite(from, to))), `${to}: the image changes`);
   }

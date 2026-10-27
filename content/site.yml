@@ -27,11 +27,11 @@
 name: zUrp Astronomics
 
 # The tagline: home page (exhibition label), default meta description of every page, org README.
-tagline: Low-tech, DIY, amateur astronomy hardware.
+tagline: Matériel astro sorti de l'atelier.
 
 # Who owns us, written ONCE: the signature just below and the footer's product line (`productLine`)
 # both take it through their `{{affiliation}}` marker.
-affiliation: a subsidiary of zUrp Industries
+affiliation: une filiale de zUrp Industries
 
 # The signature: footer of the home page, foot of the org README, and the signature image of the
 # product READMEs' footer block (/brand/signature.png, with `header.subtitle`: ticket #115). `{{name}}` / `{{affiliation}}` are
@@ -47,28 +47,28 @@ org:
 # on the signature image of the product READMEs' footer, /brand/signature.png).
 header:
   plateAlt: zUrp Astronomics
-  homeLabel: zUrp Astronomics — home
-  subtitle: Because buying is cheating.
+  homeLabel: zUrp Astronomics — accueil
+  subtitle: Parce qu’acheter, c’est tricher.
 
 # Home page.
 home:
   posterAlt: >-
-    Worn, creased poster reading “Low-Tech & DIY”: a riveted Nyan Cat trailing a pixel rainbow in
-    front of a moon, on a blueprint with red rays.
+    Affiche usée Low-Tech & DIY : un Nyan Cat riveté devant la Lune, sur fond de plans et de rayons
+    rouges.
   stampArrow: '=>'
   stampLabel: GitHub
-  catalogTitle: Catalog
-  manifestoTitle: Manifesto
+  catalogTitle: Les machines
+  manifestoTitle: Sortie d’atelier
 
 # Product pages. The licence stamps are in licences.yml (ticket #75).
 product:
   title: '{{product}} — zUrp Astronomics'
-  basedOn: 'based on {{basedOn}}'
-  aboutTitle: About
+  basedOn: 'à partir de {{basedOn}}'
+  aboutTitle: La bête
   # The product's repository, at the right end of the row of its manual's tabs — on every product
   # page, with or without a manual. It opens a new tab: followed by `newTabArrow`.
   repoLink: GitHub
-  # After a link that opens a new tab (the repository, the bench's « open in a new tab »)…
+  # After a link that opens a new tab (the repository, the bench's « ouvrir dans un nouvel onglet »)…
   newTabArrow: ↗
   # …and before one that does not (the downloads).
   downloadArrow: ⟶
@@ -77,7 +77,7 @@ product:
   # same on every page, never the product's. The Install block below is in the Setup tab. `label`
   # names the row of tabs for screen readers ({{product}}: the product's name).
   manual:
-    label: '{{product}} manual'
+    label: 'Manuel {{product}}'
     # THE VOCABULARY of the manuals (ticket #119): the tabs a product's manual may have, held by the
     # agency, here and nowhere else — the site reads it for the files of 9_Assets/manual/, the order
     # and the titles of the tabs, the schema of the catalog, and the table of § 7 of the README kit
@@ -94,55 +94,54 @@ product:
     # reported by the build and not published. A malformed entry here fails the build.
     tabs:
       - id: overview
-        title: Overview
+        title: La bête
         replacesAbout: true
         holds: "la vitrine du produit : ce qu'il est, ce qu'il fait"
       - id: assembly
-        title: Assembly
+        title: Assemblage
         holds: "l'assemblage : souder, imprimer, monter"
       - id: setup
-        title: Setup
+        title: Installation
         holds: 'la configuration ; le bloc Install du site y est ajouté'
       - id: usage
-        title: Usage
+        title: Utilisation
         holds: "l'utilisation"
   # The #install block (ticket #101), on the page of a product whose latest release carrying an
   # installable file (manifest.json, .hex, .img.xz) publishes one. `{{tag}}` is the tag of that
   # release (it may be older than the version stamp).
   install:
-    title: Install
+    title: Installer
     version: 'Version {{tag}}'
     # ESP: the ESP Web Tools button, which finds the chip plugged in and picks its build. No text on
     # browsers here: when a browser cannot install, ESP Web Tools says so itself (the human's rule).
     esp:
-      intro: Plug the board in over USB, then press the button.
-      button: Install
+      intro: Brancher la carte en USB, puis appuyer sur le bouton.
+      button: Installer
     # The files linked where GitHub serves them, by kind, each list followed by its notice. `{{file}}`
     # is the file's name. What is proper to a product (where its SWD pads are…) is in its README.
-    download: 'Download {{file}}'
+    download: 'Télécharger {{file}}'
     hex: >-
-      STM32: connect an ST-Link to the board’s SWD pins, open the .hex in STM32CubeProgrammer, then
-      press Download.
+      STM32 : relier un ST-Link aux pastilles SWD de la carte, ouvrir le .hex dans STM32CubeProgrammer
+      et lancer Download.
     img: >-
-      Raspberry Pi: write the image to a microSD card with Raspberry Pi Imager (“Use custom”) or with
-      Etcher.
+      Raspberry Pi : écrire l’image sur une microSD avec Raspberry Pi Imager (« Utiliser une image
+      personnalisée ») ou Etcher.
     # The web bench (ticket #107), when the same release attaches one: a page that drives the board
     # over USB, speaking the firmware of that version. `button` opens it over the page, `tab` in a new
     # tab, `close` closes it; `frame` names it for screen readers ({{product}}: the product's name).
     bench:
-      intro: Plug the board in over USB, then drive it from its bench, made for this version.
-      button: Bench
-      tab: Open in a new tab
-      close: Close
-      frame: '{{product}} bench'
+      intro: Brancher la carte en USB, puis la piloter avec le banc de cette version.
+      button: Banc
+      tab: Ouvrir dans un nouvel onglet
+      close: Fermer
+      frame: 'Banc {{product}}'
 
 # Footer of every page. `productLine` replaces the signature on a product page: `{{product}}` is the
 # product's name, `{{name}}` / `{{affiliation}}` the texts at the top of this file.
 footer:
   orgLabel: GitHub ·
-  productLine: '{{product}} — a product of {{name}}, {{affiliation}}.'
-  backToTop: Back to top
+  productLine: '{{product}} — un projet {{name}}, {{affiliation}}.'
+  backToTop: Retour en haut
   panelAlt: >-
-    Small worn, creased “Low-Tech & DIY” panel: a riveted Nyan Cat trailing a pixel rainbow in front
-    of a moon, on a blueprint with red rays.
+    Plaque Low-Tech & DIY usée : un Nyan Cat riveté devant la Lune, sur fond de plans.
   panelTitle: Low-Tech & DIY — culture zUrp

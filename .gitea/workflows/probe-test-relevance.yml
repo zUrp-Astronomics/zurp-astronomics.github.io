@@ -1,7 +1,8 @@
 name: probe-test-relevance
 
-# LA SONDE DE PERTINENCE — posée par le scaffold, comme `ci.yml`, et servie par la même source unique
-# (`priv/catalogue/project_template/main/`).
+# LA SONDE DE PERTINENCE — posée par le scaffold, comme `ci.yml`, depuis la même source unique
+# (`priv/catalogue/project_template/main/`), puis adaptée à ce site : l'image et le Node du job
+# `build` de `ci.yml` (voir plus bas).
 #
 # ELLE NE JUGE RIEN. Elle répond à UNE question, mécaniquement : « si on remet le code de cette
 # livraison à son état de base en gardant sa suite de tests, la suite s'en aperçoit-elle ? » Une
@@ -36,13 +37,14 @@ name: probe-test-relevance
 # ═══ TU RÉÉCRIS `ci.yml` ? ALORS RÉÉCRIS CELUI-CI DANS LE MÊME GESTE ═══
 #
 # Ce fichier REJOUE la commande de ta suite. Il doit donc tourner dans un environnement qui sait la
-# jouer. Le label `shell` est mappé sur `alpine:3.20` dans le déploiement de référence : un `sh`
-# POSIX, `git` ajouté ci-dessous, et RIEN D'AUTRE — pas de python, pas de node, pas de mix.
+# jouer : le MÊME que le job `build` de `ci.yml`. Ici, `container: catthehacker/ubuntu:act-latest`
+# (l'image de référence de gitea/act : node, bash, git, les outils courants) et Node 24 posé par
+# `actions/setup-node`, comme `build`. Le label `shell` seul ne garantit rien de ce qu'il y a
+# derrière : c'est `container:` qui fixe l'image.
 #
-# Le jour où ton projet pose sa vraie suite, il donne à `ci.yml` une image qui la fait tourner
-# (`container: <image>` sur le job). **Donne la même à celui-ci.** Deux environnements différents
-# font deux verts qui ne se prédisent pas, et cette sonde deviendrait un générateur d'« inapplicable »
-# que personne ne relierait à l'image.
+# Le jour où `ci.yml` change d'image ou de Node, **donne les mêmes à celui-ci**. Deux environnements
+# différents font deux verts qui ne se prédisent pas, et cette sonde deviendrait un générateur
+# d'« inapplicable » que personne ne relierait à l'image.
 #
 # ═══ POURQUOI DEUX EXÉCUTIONS ET PAS UNE ═══
 #
@@ -54,8 +56,8 @@ name: probe-test-relevance
 #   2. MESURE — arbre de BASE, plus le harnais rapatrié de la tête. Rouge ⟹ `relevant`,
 #      vert ⟹ `blind`.
 #
-# Ça double le temps (≈ 3 s par exécution, mesuré) et c'est la différence entre une mesure et un
-# tirage au sort.
+# Ça double le temps (sur ce site, deux fois `npm ci` + build + tests) et c'est la différence entre
+# une mesure et un tirage au sort.
 
 on:
   workflow_dispatch:
@@ -80,21 +82,21 @@ jobs:
     container: catthehacker/ubuntu:act-latest
     # ⚠ LE PLAFOND PROTÈGE TON PROJET, PAS LA FLOTTE. La sonde joue TA suite, deux fois. Une suite
     # qui ne termine jamais — boucle, attente réseau, prompt — ferait tourner ce job indéfiniment
-    # sur TON runner : le rail, lui, abandonne son attente au bout de deux minutes et n'a aucun
-    # moyen d'arrêter ce qui tourne ici.
+    # sur TON runner : le rail, lui, borne seulement son ATTENTE du résultat (vingt minutes dans le
+    # gabarit actuel du runtime) et n'a aucun moyen d'arrêter un job lancé. Seul ce plafond le tue.
     #
     # 15 min couvre deux exécutions d'une suite ordinaire avec une marge large. Si ta suite en
     # demande plus, monte ce chiffre dans le même geste que l'image du job.
     timeout-minutes: 15
-    # `alpine` n'a pas bash. Tout ce qui suit est POSIX.
+    # `sh` : le runner joue chaque `run:` sous `sh -e` (arrêt à la première commande en échec).
+    # Les scripts ci-dessous sont POSIX ; « Sonder » lève ce `-e` par `set +e` (voir son en-tête).
     defaults:
       run:
         shell: sh
     steps:
-      # Pas d'`actions/checkout` : l'action est du node, que l'image du job ne porte pas. On pose
-      # `git` et on clone à la main — sortie n°1 de la note de `ci.yml`, celle qui coûte une ligne.
-      - name: Outils
-        run: apk add --no-cache git >/dev/null 2>&1 || true
+      # Pas d'`actions/checkout`, bien que l'image porte node : la sonde a besoin de DEUX états
+      # (base et tête), et leur récupération vit dans « Sonder » pour que son échec soit un fait
+      # (`reason=fetch-failed`) plutôt qu'un step rouge muet. `git` est dans l'image.
 
       # Le Node de `ci.yml` (job `build`) et de `.github/workflows/deploy.yml` : Node 24 LTS, quel
       # que soit celui de l'image. Sans lui, la suite (Astro 7, `engines` >= 24) jouerait ici sur
@@ -114,10 +116,15 @@ jobs:
           PROBE_HEAD_SHA: ${{ inputs.head_sha }}
           PROBE_TEST_CMD: ${{ inputs.test_cmd }}
         run: |
-          # PAS de `set -e` ici, et c'est délibéré : ce script FAIT ÉCHOUER des commandes exprès —
-          # l'échec de la suite EST la mesure. Un `set -e` avorterait au moment précis où le fait
-          # apparaît, et la sonde rendrait une panne à la place de son résultat.
-          #
+          # ⚠ `set +e` EN PREMIER, ET C'EST DÉLIBÉRÉ : le runner joue ce `run:` sous `sh -e`. Or ce
+          # script FAIT ÉCHOUER des commandes exprès — la suite au témoin puis à la mesure, un
+          # `fetch` refusé : l'échec EST la mesure, ou un fait à émettre. Sous `-e`, le shell
+          # s'arrêterait au moment précis où le fait apparaît, et la sonde rendrait une panne à la
+          # place de son résultat. `set +e` lève ce `-e` avant toute commande dont l'échec est
+          # attendu ; chaque échec est ensuite traité à la main (`|| { fact …; exit 0; }`, `$?`).
+          # La suite, elle, garde la sémantique de la CI : `run_suite` la joue par `sh -e`.
+          set +e
+
           # ⚠ `set -f` : GLOB DÉSACTIVÉE POUR TOUT LE SCRIPT. `$harness` est délibérément NON quoté
           # là où il est développé — c'est ainsi qu'on obtient plusieurs chemins — mais sans `-f`,
           # le shell y applique AUSSI l'expansion de motifs : un projet déclarant `*.test` verrait
@@ -246,7 +253,10 @@ jobs:
           #
           # La sonde n'a plus besoin du réseau : tout ce qui suit est du `checkout` LOCAL. On coupe
           # donc les deux vecteurs ici, à l'endroit exact où le besoin s'arrête.
-          git remote remove origin
+          #
+          # Si le retrait échoue, le jeton reste écrit dans `.git/config` : on NE joue PAS la suite,
+          # on le dit.
+          git remote remove origin || { fact "verdict=inapplicable reason=token-not-removed"; exit 0; }
           unset FORGE_TOKEN
 
           # ── ET LA SUITE JUGÉE NE VOIT PLUS RIEN DU TOUT : LISTE BLANCHE, PAS LISTE NOIRE ──

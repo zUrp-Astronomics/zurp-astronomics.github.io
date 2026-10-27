@@ -357,7 +357,7 @@ test('5. the tabs of a page: the files shown in the order Overview, Assembly, Se
     ['setup', true],
   ]);
   const texts = manualTexts(siteContent(ROOT));
-  assert.deepEqual(texts.tabs, { overview: 'Overview', assembly: 'Assembly', setup: 'Setup', usage: 'Usage' }, 'the titles are the site’s (content/site.yml)');
+  assert.deepEqual(texts.tabs, { overview: 'La bête', assembly: 'Assemblage', setup: 'Installation', usage: 'Utilisation' }, 'the titles are the site’s (content/site.yml)');
   assert.deepEqual(Object.keys(texts.tabs), TABS, 'in the order of the vocabulary');
   assert.throws(() => manualTexts({ product: { manual: { label: 'x', tabs: { overview: 'O' } } } }), /`product\.manual\.tabs` must be a non-empty list/, 'the map of ticket #111 is not a vocabulary');
   assert.throws(() => manualTexts({ product: { manual: { label: 'x', tabs: [{ id: 'setup', holds: 'h' }] } } }), /`product\.manual\.tabs\[0\]\.title` missing/);
@@ -478,7 +478,7 @@ test('8. the guard of the pages (scripts/check-manual.mjs): tabs as the catalog 
   };
   const tabBtn = (id, i) => `<button type="button" class="manual-tab" role="tab" id="tab-${id}" aria-controls="${id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-tab="${id}">${texts.tabs[id]}</button>`;
   const panel = (id, i, inner) => `<div class="manual-panel" role="tabpanel" id="${id}" aria-labelledby="tab-${id}" tabindex="0"${i ? ' hidden' : ''} data-tab-panel="${id}">${inner}</div>`;
-  const installBlock = '<section class="install" id="install" data-install><h2>Install</h2></section>';
+  const installBlock = '<section class="install" id="install" data-install><h2>Installer</h2></section>';
   const page = (setupInner = installBlock, after = '') =>
     `<main><section class="lead"></section><div class="manual" data-manual><div role="tablist">${['overview', 'setup', 'usage'].map(tabBtn).join('')}</div>` +
     panel('overview', 0, `<div class="manual-text" lang="en" data-manual-text><img src="/gizmo/manual/${image.name}"></div>`) +
@@ -489,9 +489,9 @@ test('8. the guard of the pages (scripts/check-manual.mjs): tabs as the catalog 
   assert.deepEqual(manualDirProblems(distDir, product), []);
   assert.match(manualPageProblems(page('', installBlock), product, { texts, distDir }).join('\n'), /the #install block is not in the Setup tab/);
   assert.match(manualPageProblems(page().replace('lang="fr"', 'lang="en"'), product, { texts, distDir }).join('\n'), /the usage text's lang is "en", expected "fr"/);
-  assert.match(manualPageProblems(page().replace('<section class="lead"></section>', '<section class="description"></section>'), product, { texts, distDir }).join('\n'), /« About » section beside the Overview tab/);
+  assert.match(manualPageProblems(page().replace('<section class="lead"></section>', '<section class="description"></section>'), product, { texts, distDir }).join('\n'), /« About » section beside the La bête tab/);
   assert.match(manualPageProblems(page().replace(`/gizmo/manual/${image.name}`, '/gizmo/manual/nope.webp'), product, { texts, distDir }).join('\n'), /is not a file of dist\//);
-  assert.match(manualPageProblems(page().replace('>Usage<', '>Use<'), product, { texts, distDir }).join('\n'), /the usage tab says "Use", expected "Usage"/);
+  assert.match(manualPageProblems(page().replace('>Utilisation<', '>Utiliser<'), product, { texts, distDir }).join('\n'), /the usage tab says "Utiliser", expected "Utilisation"/);
   // Without a manual: nothing of one, and « About » in its place.
   const plain = { slug: 'gizmo', install, manual: null };
   const before = '<main><section class="lead"></section><section class="description"></section>' + installBlock + '<section class="repo"></section></main>';
@@ -512,7 +512,7 @@ test('9. the guard of the GitHub link (scripts/check-manual.mjs, ticket #117): o
   const texts = siteContent(ROOT).product;
   const repo = 'https://github.com/zUrp-Astronomics/gizmo';
   const link = (attrs = '') => `<a class="repo-tab" href="${repo}" target="_blank" rel="noopener" data-repo-link${attrs}>${texts.repoLink} <span aria-hidden="true">${texts.newTabArrow}</span></a>`;
-  const tab = '<button type="button" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true" tabindex="0">Overview</button>';
+  const tab = '<button type="button" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true" tabindex="0">La bête</button>';
   const withManual = (row = `<div role="tablist">${tab}</div>${link()}`) =>
     `<main><section class="lead"></section><div class="manual" data-manual><div class="z2-tabrow">${row}</div><div role="tabpanel" id="overview"></div></div></main>`;
   const product = { slug: 'gizmo', repo, manual: { tabs: [{ id: 'overview', lang: 'en', file: 'o', html: '' }], images: [] } };
@@ -548,7 +548,7 @@ function rootWithSite(edit) {
 
 test('10. the vocabulary of content/site.yml is the one source of the tabs (ticket #119): the four tabs of ticket #111 unchanged; a tab added or the order changed there is read, ordered and titled with no code change', async () => {
   const { tabs } = manualContent(ROOT);
-  assert.deepEqual(tabs.map((t) => [t.id, t.title]), [['overview', 'Overview'], ['assembly', 'Assembly'], ['setup', 'Setup'], ['usage', 'Usage']], 'ids, titles and order as before');
+  assert.deepEqual(tabs.map((t) => [t.id, t.title]), [['overview', 'La bête'], ['assembly', 'Assemblage'], ['setup', 'Installation'], ['usage', 'Utilisation']], 'ids as before, the titles of the French site (ticket #125), the order as before');
   for (const t of tabs) assert.ok(t.holds.length > 0, `${t.id}: what it holds, for the guide`);
   assert.equal(manualContent(ROOT).aboutTab, 'overview', 'Overview replaces « About », as since ticket #111 — said by the vocabulary');
   assert.equal(manualTexts(siteContent(ROOT)).aboutTab, 'overview');

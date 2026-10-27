@@ -20,19 +20,19 @@
 # on `color`; `labelColor` is the colour of the left part of both. Colours are #rrggbb.
 
 software:
-  stamp: 'Software · {{licence}}'
+  stamp: 'Logiciel · {{licence}}'
   # A LICENSE GitHub does not recognise (spdx_id NOASSERTION): no name is invented.
-  unrecognised: Other licence
+  unrecognised: Autre licence
   badge:
-    label: software
+    label: logiciel
     color: '#007ec6'
 
 hardware:
-  stamp: 'Hardware · {{licence}}'
+  stamp: 'Matériel · {{licence}}'
   # A LICENSE-HARDWARE whose first line is none of the titles below.
-  unrecognised: Other licence
+  unrecognised: Autre licence
   badge:
-    label: hardware
+    label: matériel
     color: '#8b5a2b'
   # The hardware licences the site names. `title` is the first line of the licence text, as its
   # official text writes it (compared without regard to case and spaces); `label` the short label of

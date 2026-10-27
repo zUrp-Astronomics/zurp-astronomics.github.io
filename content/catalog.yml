@@ -12,25 +12,25 @@
 # then by name (src/lib/catalog/assemble.mjs).
 sections:
   - id: mounts
-    title: Mounts
+    title: Montures
   - id: cameras
-    title: Cameras
+    title: Caméras
   - id: gadgets
-    title: Gadgets
+    title: Accessoires
   - id: future
-    title: Future
+    title: À venir
 
 # Status of a product: its label (product page badge, org README, status badge of the product
 # README) and the colour of that badge (a shields.io colour name).
 statuses:
   wip:
-    label: WIP
+    label: En cours
     badgeColor: orange
   future:
-    label: Future
+    label: À venir
     badgeColor: lightgrey
   released:
-    label: Released
+    label: Publié
     badgeColor: brightgreen
 
 # The status badge at the top of each product README: shields.io renders it from a JSON the site
@@ -40,6 +40,6 @@ statuses:
 # {{#release}}…{{/release}} shows only when the product has a release, {{release}} being the tag of
 # its latest one. The colour is the status's `badgeColor`.
 statusBadge:
-  label: status
+  label: statut
   message: '{{status}}{{#release}} · {{release}}{{/release}}'
 

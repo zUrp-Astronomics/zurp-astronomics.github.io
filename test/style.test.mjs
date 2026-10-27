@@ -68,10 +68,10 @@ test('5. ↗ for a new tab: every link with target="_blank" shows content/site.y
   assert.equal(newTabArrow, '↗');
   const html =
     `<a href="https://github.com/o/r" target="_blank" rel="noopener" data-repo-link>GitHub <span aria-hidden="true">${newTabArrow}</span></a>` +
-    `<a class="repo-link" href="/r/bench/x/" target="_blank" rel="noopener" data-bench-tab><span>${newTabArrow}</span><span>Open in a new tab</span></a>` +
+    `<a class="repo-link" href="/r/bench/x/" target="_blank" rel="noopener" data-bench-tab><span>${newTabArrow}</span><span>Ouvrir dans un nouvel onglet</span></a>` +
     `<a class="repo-link" href="https://github.com/o/r/releases/download/v1/r.hex" data-download="hex"><span>${downloadArrow}</span><span>r.hex</span></a>`;
   assert.deepEqual(newTabProblems(html, 'p', newTabArrow), []);
-  assert.match(newTabProblems(html.replace(`<span>${newTabArrow}</span><span>Open`, `<span>${downloadArrow}</span><span>Open`), 'p', newTabArrow).join('\n'), /"\/r\/bench\/x\/" opens a new tab without ↗/);
+  assert.match(newTabProblems(html.replace(`<span>${newTabArrow}</span><span>Ouvrir`, `<span>${downloadArrow}</span><span>Ouvrir`), 'p', newTabArrow).join('\n'), /"\/r\/bench\/x\/" opens a new tab without ↗/);
   assert.match(newTabProblems(`<a href="/x">x ${newTabArrow}</a>`, 'p', newTabArrow).join('\n'), /shows ↗, it does not open a new tab/);
   assert.match(newTabProblems(`<a href="/x" target="_blank">x ${newTabArrow}</a>`, 'p', newTabArrow).join('\n'), /without rel="noopener"/);
 });

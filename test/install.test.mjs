@@ -471,7 +471,7 @@ const downloadPart = (kind, links) =>
 const installBlock = ({ tag, inner, id = 'install', version = fill(TEXTS.version, { tag }) }) =>
   `<section class="install" id="${id}" data-install ${CID}><h2 class="z2-band" ${CID}>${esc(TEXTS.title)}</h2><p class="install-version" ${CID}>${esc(version)}</p>${inner}</section>`;
 const productPage = (block = '') =>
-  `<!DOCTYPE html><html lang="en"><head><script type="module">/* site */</script></head><body><main class="z2-container" ${CID}><div class="sheet z2-plate" ${CID}><section class="lead" ${CID}><p class="pitch" ${CID}>A gizmo.</p></section><section class="description" ${CID}><h2 class="z2-band" ${CID}>About</h2><p ${CID}>First paragraph.</p></section>${block}<section class="repo" ${CID}><h2 class="z2-band" ${CID}>Source</h2><a class="repo-link" href="https://github.com/zUrp-Astronomics/Gizmo" ${CID}><span class="repo-icon" aria-hidden="true" ${CID}>⟶</span><span class="repo-url" ${CID}>github.com/zUrp-Astronomics/Gizmo</span></a></section></div></main></body></html>`;
+  `<!DOCTYPE html><html lang="fr"><head><script type="module">/* site */</script></head><body><main class="z2-container" ${CID}><div class="sheet z2-plate" ${CID}><section class="lead" ${CID}><p class="pitch" ${CID}>A gizmo.</p></section><section class="description" ${CID}><h2 class="z2-band" ${CID}>La bête</h2><p ${CID}>First paragraph.</p></section>${block}<section class="repo" ${CID}><h2 class="z2-band" ${CID}>Source</h2><a class="repo-link" href="https://github.com/zUrp-Astronomics/Gizmo" ${CID}><span class="repo-icon" aria-hidden="true" ${CID}>⟶</span><span class="repo-url" ${CID}>github.com/zUrp-Astronomics/Gizmo</span></a></section></div></main></body></html>`;
 
 test('8. the product page shows an #install block — the version, the ESP Web Tools button on the copied manifest with its script, the download links — only when the catalog holds an install; the firmware/ folder holds exactly the manifest and its files', () => {
   const dist = mkdtempSync(join(tmpdir(), 'zurp-dist-'));
@@ -689,7 +689,7 @@ test('11. the product page shows the bench — one button on the bench\'s file i
     /the bench « new tab » link goes to "https:\/\/github\.com\/.*", expected "\/gizmo\/bench\/.*" \(the bench button's URL\)/, 'never linked from the release');
   assert.match(check(withBench, block(benchPart(url, { frame: '' }))), /the bench frame's allow is null: Web Serial needs allow="serial"/);
   assert.match(check(withBench, block(benchPart(url, { frame: `allow="serial" src="${url}"` }))), /the bench frame has a src .*: it is set when the dialog opens/);
-  assert.match(check(withBench, block(benchPart(url, { button: 'Open' }))), /the bench button says "Open", expected "Bench"/);
+  assert.match(check(withBench, block(benchPart(url, { button: 'Open' }))), /the bench button says "Open", expected "Banc"/);
   assert.match(check(withBench, block(benchPart(url).replace(' data-bench-tab', ''))), /0 bench « new tab » link\(s\)/);
   assert.match(check(without, block(benchPart(url))), /1 bench button\(s\), the catalog holds no bench for gizmo \(v1\.0\.0\)/);
   assert.match(check(without, block(benchPart(url))), /1 bench frame\(s\), the catalog holds no bench/);
